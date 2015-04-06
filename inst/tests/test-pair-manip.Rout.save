@@ -1,0 +1,250 @@
+
+R version 3.1.1 (2014-07-10) -- "Sock it to Me"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ####################################################################################################
+> # This script tests the pair manipulation functions of savePairs and mergePairs.
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> suppressPackageStartupMessages(require(rhdf5))
+> 
+> tmp<-"temp-pairs"
+> dir.create(tmp)
+> savecomp<-function(n, nfrags, nchrs) {
++ 	# Simulating the dudes (target<=anchor at all times).
++ 	ai<-as.integer(runif(n, 1, nfrags))
++ 	ti<-as.integer(runif(n, 1, nfrags))
++ 	collected <- data.frame(anchor.id=pmax(ai, ti), target.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
++ 
++ 	# Simulating the fragment IDs.
++ 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
++ 		seqinfo=Seqinfo(seqnames=paste0("chr", 1:nchrs)))
++ 	blah<-sort(blah)
++ 	newdir<-file.path(tmp, "output")
++ 	savePairs(collected, newdir, pairParam(fragments=blah))
++ 
++ 	# Checking if everything makes sense.
++ 	chrs<-as.character(seqnames(blah))
++ 	indices <- h5ls(newdir)
++ 	indices <- indices[indices$otype=="H5I_DATASET",]
++ 	regot <- list()	
++ 	for (x in 1:nrow(indices)) {
++ 		reread<-h5read(newdir, file.path(indices$group[x], indices$name[x]))
++ 		for (y in 1:ncol(reread)) { attributes(reread[,y]) <- NULL }
++ 		regot[[x]] <- reread
++ 		o <- order(reread$anchor.id, reread$target.id)
++ 		stopifnot(all(diff(o)==1L)) 
++ 
++ 		uniq.a<-unique(chrs[reread[,1]])
++ 		uniq.t<-unique(chrs[reread[,2]])
++ 		if (length(uniq.a)!=1L || length(uniq.t)!=1L) { stop("file contains more than one combination") }			
++ 		if (basename(indices$group[x])!=uniq.a || indices$name[x]!=uniq.t) { stop("file contains the incorrect combination") }
++ 	}
++ 
++ 	# Checking that the stored result is the same.
++ 	regot <- do.call(rbind, regot)
++ 	regot <- regot[order(regot$anchor.id, regot$target.id, regot$junk, regot$more.junk),]
++ 	original <- collected[order(collected$anchor.id, collected$target.id, collected$junk, collected$more.junk),]
++ 	rownames(original) <- rownames(regot) <- NULL 
++ 	stopifnot(identical(original, regot))
++ 	head(regot)
++ }
+> 
+> set.seed(23192382)
+> savecomp(100, 10, 5)
+  anchor.id target.id junk more.junk
+1         2         1    3        -1
+2         2         2    4         0
+3         3         1    4        -2
+4         3         2    5        -1
+5         3         2    5         1
+6         3         2    5         1
+> savecomp(100, 10, 15)
+  anchor.id target.id junk more.junk
+1         1         1    2         0
+2         1         1    2         0
+3         2         1    3        -1
+4         2         1    3        -1
+5         2         1    3         1
+6         2         2    4         0
+> savecomp(100, 10, 25)
+  anchor.id target.id junk more.junk
+1         2         1    3        -1
+2         2         1    3        -1
+3         3         1    4        -2
+4         3         1    4        -2
+5         3         1    4        -2
+6         3         1    4        -2
+> savecomp(10, 100, 5)
+  anchor.id target.id junk more.junk
+1        19         5   24        14
+2        20         8   28       -12
+3        47         1   48        46
+4        55        40   95        15
+5        65        64  129         1
+6        67        62  129         5
+> savecomp(10, 100, 15)
+  anchor.id target.id junk more.junk
+1        29        12   41        17
+2        36        35   71         1
+3        38        29   67        -9
+4        72        15   87       -57
+5        74        17   91        57
+6        76        19   95       -57
+> savecomp(10, 100, 25)
+  anchor.id target.id junk more.junk
+1        38         9   47        29
+2        41        21   62        20
+3        43        13   56       -30
+4        61        33   94       -28
+5        70        30  100        40
+6        75        65  140        10
+> savecomp(50, 50, 5)
+  anchor.id target.id junk more.junk
+1        10         8   18         2
+2        12         3   15        -9
+3        15         4   19       -11
+4        18        10   28         8
+5        19        19   38         0
+6        20         8   28       -12
+> savecomp(50, 50, 15)
+  anchor.id target.id junk more.junk
+1        11         3   14        -8
+2        12        10   22        -2
+3        17         5   22       -12
+4        21        12   33         9
+5        23        10   33        13
+6        24         5   29       -19
+> savecomp(50, 50, 25)
+  anchor.id target.id junk more.junk
+1        10         4   14        -6
+2        10        10   20         0
+3        14         2   16        12
+4        15         5   20        10
+5        15        10   25         5
+6        16         7   23        -9
+> 
+> ####################################################################################################
+> # Finally, chekcing the merging algorithms.
+> 
+> mergecomp<-function(nl, n, nfrags, nchrs) {
++ 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
++ 		seqinfo=Seqinfo(seqnames=paste0("chr", 1:nchrs)))
++ 	blah<-sort(blah)
++ 	allfiles<-list()
++ 	allcounts<-list()
++ 	for (x in 1:nl) {
++ 		# Simulating the dudes (target<=anchor at all times).
++ 		ai<-as.integer(runif(n, 1, nfrags))
++ 		ti<-as.integer(runif(n, 1, nfrags))
++ 		collected <- data.frame(anchor.id=pmax(ai, ti), target.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
++ 		allcounts[[x]]<-collected
++ 		allfiles[[x]]<-  file.path(tmp, paste0("output_", x))
++ 		savePairs(collected, allfiles[[x]], pairParam(fragments=blah))
++ 	}
++ 	
++ 	# Comparing the combined with a more brutal merger.		
++ 	allfiles<-unlist(allfiles)
++ 	allcounts<-do.call(rbind, allcounts)
++ 	rdir<-file.path(tmp, "output_ref")
++ 	savePairs(allcounts, rdir, pairParam(fragments=blah))
++ 
++ 	mdir<-file.path(tmp, "output_merged")
++ 	mergePairs(allfiles, mdir)
++ 
++ 	# Comparing internal objects.
++ 	combodirs<-c(mdir, rdir)
++ 	out <- diffHic:::.loadIndices(combodirs, seqlevels(blah))
++ 	for (x in names(out)) {
++ 		for (y in names(out[[x]])) {
++ 			current<-out[[x]][[y]]
++ 			stopifnot(all(current))
++ 
++ 			alpha <- h5read(mdir, file.path(x, y))
++ 			alpha <- alpha[do.call(order, alpha),]
++ 			bravo <- h5read(rdir, file.path(x, y))
++ 			bravo <- bravo[do.call(order, bravo),]
++ 			rownames(alpha) <- rownames(bravo) <- NULL
++ 			stopifnot(identical(alpha, bravo))
++ 		}
++ 	}
++ 
++ 	top.hit <- names(out)[1]
++ 	return(head(alpha))
++ }
+> 
+> mergecomp(2, 100, 10, 5)
+  anchor.id target.id junk more.junk
+1         7         7   14         0
+2         8         7   15        -1
+3         8         7   15        -1
+4         8         7   15        -1
+5         8         7   15        -1
+6         8         7   15        -1
+> mergecomp(3, 100, 10, 15)
+  anchor.id target.id junk more.junk
+1         8         8   16         0
+2         9         8   17        -1
+3         9         8   17        -1
+4         9         8   17         1
+5         9         8   17         1
+6         9         8   17         1
+> mergecomp(4, 100, 10, 25)
+  anchor.id target.id junk more.junk
+1         2         2    4         0
+2         2         2    4         0
+3         2         2    4         0
+4         2         2    4         0
+5         2         2    4         0
+> mergecomp(3, 10, 100, 5)
+  anchor.id target.id junk more.junk
+1        91        72  163       -19
+> mergecomp(4, 10, 100, 15)
+  anchor.id target.id junk more.junk
+1        65        54  119        11
+> mergecomp(2, 10, 100, 25)
+  anchor.id target.id junk more.junk
+1        25        21   46         4
+> mergecomp(4, 50, 50, 5)
+  anchor.id target.id junk more.junk
+1        42        39   81         3
+2        43        40   83        -3
+3        46        44   90         2
+4        49        39   88        10
+5        49        40   89         9
+6        49        40   89         9
+> mergecomp(2, 50, 50, 15)
+  anchor.id target.id junk more.junk
+1        28        27   55        -1
+> mergecomp(3, 50, 50, 25)
+  anchor.id target.id junk more.junk
+1        13         8   21        -5
+2        13        11   24        -2
+> 
+> ####################################################################################################
+> # Cleaning up.
+> 
+> unlink(tmp, recursive=TRUE)
+> 
+> ####################################################################################################
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 18.028   0.520  18.584 

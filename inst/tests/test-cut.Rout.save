@@ -1,0 +1,171 @@
+
+R version 3.1.1 (2014-07-10) -- "Sock it to Me"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ###################################################################################################
+> # This script is designed to test the restriction site finder. We use the E.coli genome to do so 
+> # because it's short and we won't be spending ages putting it together.	
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> 
+> findRestrictionSites <- function(bs, pattern, ref=NULL) {
++ 	require(Biostrings)
++ 	if (nchar(pattern)%%2L!=0L) { stop("Recognition site must be even in size."); }
++ 	ps<-DNAString(pattern);
++ 	if (reverseComplement(ps)!=ps) { stop("Recognition site must be an inverse palindrome."); }
++ 	remainder<-as.integer(nchar(pattern)/2+0.5);
++ 	
++ 	require(BSgenome)
++ 	out<-list();
++ 	for (chr in seqnames(bs)) {
++ 		x<-matchPattern(pattern, bs[[chr]]);
++ 		cuts<-start(x)+remainder-1L;
++ 		out[[chr]]<-c(cuts, length(bs[[chr]]));
++ 	}
++ 	return(out);
++ }
+> 
+> ###################################################################################################
+> 
+> require(BSgenome.Ecoli.NCBI.20080805)
+Loading required package: BSgenome.Ecoli.NCBI.20080805
+Loading required package: BSgenome
+Loading required package: Biostrings
+Loading required package: XVector
+Loading required package: rtracklayer
+> 
+> comp<-function(target, overhang=4L) {
++ 	current<-cutGenome(Ecoli, target, overhang=overhang)
++ 	theoretical<-findRestrictionSites(Ecoli, target)
++ 
++ 	# Odds and ends.
++ 	overhang<-as.integer(overhang+0.5)
++ 	half.ohang<-as.integer(overhang/2L+0.5)
++ 	half.pattern<-as.integer(nchar(target)/2L)
++ 
++ 	# Checking reprocessed cut sites.
++ 	stopifnot(identical(sort(names(theoretical)), sort(seqlevels(current))))
++ 	for (x in names(theoretical)) {
++ 		n<-length(theoretical[[x]])
++  	    cuts1<-end(current[x==seqnames(current)])
++ 		cuts1[-n]<-cuts1[-n]-half.ohang
++ 		stopifnot(identical(cuts1, theoretical[[x]]))
++ 	}
++ 	return(head(current))
++ }
+> 
+> ####################################################################################################
+> # Restriction site must have a 5' overhang.
+> 
+> comp("GGATCC", 4L) # BamHI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames         ranges strand
+          <Rle>      <IRanges>  <Rle>
+  [1] NC_008253 [    1,  9001]      *
+  [2] NC_008253 [ 8998, 16325]      *
+  [3] NC_008253 [16322, 25265]      *
+  [4] NC_008253 [25262, 39070]      *
+  [5] NC_008253 [39067, 42394]      *
+  [6] NC_008253 [42391, 46109]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("GAATTC", 4L) # EcoRI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames         ranges strand
+          <Rle>      <IRanges>  <Rle>
+  [1] NC_008253 [    1,  3845]      *
+  [2] NC_008253 [ 3842,  4360]      *
+  [3] NC_008253 [ 4357,  8066]      *
+  [4] NC_008253 [ 8063, 12957]      *
+  [5] NC_008253 [12954, 13293]      *
+  [6] NC_008253 [13290, 15895]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("AACGTT", 2L) # AclI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames       ranges strand
+          <Rle>    <IRanges>  <Rle>
+  [1] NC_008253 [   1,  382]      *
+  [2] NC_008253 [ 381,  768]      *
+  [3] NC_008253 [ 767, 2160]      *
+  [4] NC_008253 [2159, 4535]      *
+  [5] NC_008253 [4534, 4911]      *
+  [6] NC_008253 [4910, 5585]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("GCGC", 2L) # HinP1I
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames       ranges strand
+          <Rle>    <IRanges>  <Rle>
+  [1] NC_008253 [   1,  153]      *
+  [2] NC_008253 [ 152,  698]      *
+  [3] NC_008253 [ 697,  755]      *
+  [4] NC_008253 [ 754,  993]      *
+  [5] NC_008253 [ 992, 1119]      *
+  [6] NC_008253 [1118, 1334]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("GATC", 4L) # MboI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames       ranges strand
+          <Rle>    <IRanges>  <Rle>
+  [1] NC_008253 [   1,  728]      *
+  [2] NC_008253 [ 725,  783]      *
+  [3] NC_008253 [ 780, 1010]      *
+  [4] NC_008253 [1007, 1044]      *
+  [5] NC_008253 [1041, 1169]      *
+  [6] NC_008253 [1166, 1571]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("GCGGCCGC", 4L) # NotI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames            ranges strand
+          <Rle>         <IRanges>  <Rle>
+  [1] NC_008253 [     1,    8039]      *
+  [2] NC_008253 [  8036,   26700]      *
+  [3] NC_008253 [ 26697,  366773]      *
+  [4] NC_008253 [366770,  702391]      *
+  [5] NC_008253 [702388,  947072]      *
+  [6] NC_008253 [947069, 1138399]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> comp("GGCGCGCC", 4L) # AscI
+GRanges object with 6 ranges and 0 metadata columns:
+       seqnames           ranges strand
+          <Rle>        <IRanges>  <Rle>
+  [1] NC_008253 [     1,  95601]      *
+  [2] NC_008253 [ 95598, 106379]      *
+  [3] NC_008253 [106376, 154803]      *
+  [4] NC_008253 [154800, 167408]      *
+  [5] NC_008253 [167405, 178752]      *
+  [6] NC_008253 [178749, 181386]      *
+  -------
+  seqinfo: 13 sequences from 2008/08/05 genome
+> 
+> ###################################################################################################
+> # End.
+> 
+> proc.time()
+   user  system elapsed 
+ 27.516   0.237  27.823 

@@ -1,0 +1,1003 @@
+
+R Under development (unstable) (2014-12-14 r67167) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ###################################################################################################
+> # This script is designed to test the pair-identifying capabilities of the hiC machinery i.e. preparePairs. 
+> # We start with unit tests for individual components of the preparePairs C++ code.
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> 
+> # Checking CIGAR.
+> 
+> checkCIGAR <- function(cigar, rstrand) {
++ 	out <- .Call(diffHic:::cxx_test_parse_cigar, cigar, rstrand)
++ 	if (is.character(out)) { stop(out) }
++ 	
++ 	true.alen <- GenomicAlignments::cigarWidthAlongReferenceSpace(cigar)
++ 	if (out[1]!=true.alen) { stop("mismatch in alignment length") }
++ 
++ 	offset <- 0
++ 	as.rle <- GenomicAlignments::cigarToRleList(cigar)[[1]]
++ 	if (rstrand) { as.rle <- rev(as.rle) }
++ 	if (runValue(as.rle)[1]=="H") { offset <- runLength(as.rle)[1] } 
++ 	if (out[2]!=offset) { stop("mismatch in offsets") }
++ 
++ 	return(c(alen=true.alen, offset=offset))
++ }
+> 
+> checkCIGAR("5H20M", TRUE)
+  alen offset 
+    20      0 
+> checkCIGAR("5H20M", FALSE)
+  alen offset 
+    20      5 
+> 
+> checkCIGAR("5H20M6H", TRUE)
+  alen offset 
+    20      6 
+> checkCIGAR("5H20M6H", FALSE)
+  alen offset 
+    20      5 
+> 
+> checkCIGAR("5H20M6S", TRUE)
+  alen offset 
+    20      0 
+> checkCIGAR("5H20M6S", FALSE)
+  alen offset 
+    20      5 
+> 
+> checkCIGAR("20M5I30M", TRUE)
+  alen offset 
+    50      0 
+> checkCIGAR("20M5D30M", TRUE)
+  alen offset 
+    55      0 
+> checkCIGAR("20M5N30M", TRUE)
+  alen offset 
+    55      0 
+> checkCIGAR("20M5P30M", TRUE)
+  alen offset 
+    50      0 
+> 
+> checkCIGAR("20M5X30M", TRUE)
+  alen offset 
+    55      0 
+> checkCIGAR("20M5=30M", TRUE)
+  alen offset 
+    55      0 
+> 
+> checkCIGAR("10M2I5M3D20M", TRUE)
+  alen offset 
+    38      0 
+> checkCIGAR("10M2I3D5N20M", TRUE)
+  alen offset 
+    38      0 
+> checkCIGAR("10M2P5M3D20I", TRUE)
+  alen offset 
+    18      0 
+> checkCIGAR("10M2I3D5N20D", TRUE)
+  alen offset 
+    38      0 
+> 
+> checkCIGAR("5H11M5D8I9X6=6H", TRUE)
+  alen offset 
+    31      6 
+> checkCIGAR("5H20X5D8P9N72M", FALSE)
+  alen offset 
+   106      5 
+> checkCIGAR("5S19M34=55D8X20M6S", TRUE)
+  alen offset 
+   136      0 
+> checkCIGAR("5S1M3=5D18X2M6S", FALSE)
+  alen offset 
+    29      0 
+> 
+> # Checking fragment assignment.
+> 
+> assign2fragment <- function(starts, ends, chr, pos, rstrand, len) {
++ 	out <- .Call(diffHic:::cxx_test_fragment_assign, starts, ends, chr, pos, rstrand, len)
++ 	if (is.character(out)) { stop(out) }
++ 
++ 	chr <- chr + 1L
++ 	if (rstrand) { 
++ 		fiveprime <- min(pos + len -1L, tail(ends[[chr]], 1))
++ 		stopifnot(ends[[chr]][out] >= fiveprime && (out==1L || ends[[chr]][out-1] < fiveprime))
++ 	} else { 
++ 		fiveprime <- pos 
++ 		stopifnot(starts[[chr]][out] <= fiveprime && (out==length(starts[[chr]]) || starts[[chr]][out+1] > fiveprime))
++ 	}
++ 	
++ 	out
++ }
+> 
+> starts <- list( c(1L, 100L, 200L, 300L, 400L, 500L), # chr1
++                 c(1L, 100L, 200L, 300L, 400L, 500L)) # chr2
+> ends <- list( c(103L, 203L, 303L, 403L, 503L, 1000L), # chr1
++               c(103L, 203L, 303L, 403L, 503L, 1000L)) # chr2
+> 
+> assign2fragment(starts, ends, 0L, 94L, TRUE, 10L)
+[1] 1
+> assign2fragment(starts, ends, 0L, 95L, TRUE, 10L)
+[1] 2
+> assign2fragment(starts, ends, 0L, 99L, FALSE, 10L)
+[1] 1
+> assign2fragment(starts, ends, 0L, 100L, FALSE, 10L)
+[1] 2
+> 
+> assign2fragment(starts, ends, 0L, 203L, TRUE, 1L)
+[1] 2
+> assign2fragment(starts, ends, 0L, 204L, TRUE, 1L)
+[1] 3
+> assign2fragment(starts, ends, 0L, 209L, FALSE, 1L)
+[1] 3
+> assign2fragment(starts, ends, 0L, 300L, FALSE, 1L)
+[1] 4
+> 
+> assign2fragment(starts, ends, 1L, 1L, FALSE, 10L)
+[1] 1
+> assign2fragment(starts, ends, 1L, 991L, FALSE, 10L)
+[1] 6
+> assign2fragment(starts, ends, 1L, 992L, FALSE, 10L)
+[1] 6
+> assign2fragment(starts, ends, 1L, 991L, TRUE, 10L)
+[1] 6
+> assign2fragment(starts, ends, 1L, 992L, TRUE, 10L)
+[1] 6
+Warning message:
+In assign2fragment(starts, ends, 1L, 992L, TRUE, 10L) :
+  read aligned off end of chromosome
+> 
+> starts <- list( c(1L, 1L, 100L, 200L, 300L, 400L, 500L, 997L), # chr1, with nesting at the start and end.
++                 c(1L, 1L, 100L, 200L, 300L, 400L, 500L, 997L)) # chr2
+> ends <- list( c(4L, 103L, 203L, 303L, 403L, 503L, 1000L, 1000L), # chr1
++               c(4L, 103L, 203L, 303L, 403L, 503L, 1000L, 1000L)) # chr2
+> 
+> assign2fragment(starts, ends, 0L, 1L, FALSE, 10L)
+[1] 2
+> assign2fragment(starts, ends, 0L, 1L, TRUE, 10L)
+[1] 2
+> assign2fragment(starts, ends, 0L, 991L, FALSE, 10L)
+[1] 7
+> assign2fragment(starts, ends, 0L, 991L, TRUE, 10L)
+[1] 7
+> try(assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L)) # This should fail, as it gets assigned into the nested fragment.
+Error : ends[[chr]][out] >= fiveprime && (out == 1L || ends[[chr]][out -  .... is not TRUE
+In addition: Warning message:
+In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
+  read aligned off end of chromosome
+> 
+> ###################################################################################################
+> # We also set up a full simulation for the entire function.
+> 
+> suppressPackageStartupMessages(require("rhdf5"))
+> source("simsam.R")
+> 
+> comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, 
++ 		yield=max(1L, round(npairs/runif(1, 2, 10)))) {
++ 	rlen<-as.integer(rlen)
++ 	spacer<-as.integer(spacer)
++ 	if (min(sizes) <= rlen) { stop("min fragment must be greater than read length") } 
++ 	# Necessary for proper assignment, especially at the start of the chromosome when reverse 
++ 	# reads are bounded at zero (i.e. their 5' ends would not be defined if 1+rlen > fragmentsize)
++ 
++ 	# Randomly generating fragment lengths for the chromosome.
++ 	fragments<-list()
++ 	cut.starts<-list()
++ 	chromosomes<-rep(0L, length(max.cuts));
++ 	outfrags<-list()
++ 	for (i in 1:length(max.cuts)) { 
++ 		fragments[[i]]<-as.integer(round(runif(max.cuts[[i]], sizes[1], sizes[2])))
++ 		ends<-cumsum(fragments[[i]])+1:max.cuts[[i]]*spacer
++ 		if (max.cuts[[i]]>1) { 
++ 			cut.starts[[i]]<-c(1L, (ends+1L)[1:(max.cuts[[i]]-1)])
++ 		} else {
++ 			cut.starts[[i]]<-1L
++ 		}
++ 		outfrags[[i]]<-GRanges(names(max.cuts)[i], IRanges(cut.starts[[i]], ends-spacer))
++ 		chromosomes[i]<-tail(ends, 1)-spacer;
++ 	}
++ 	suppressWarnings(outfrags<-do.call(c, outfrags))
++ 	names(chromosomes)<-names(max.cuts)
++ 	names(fragments)<-names(max.cuts)
++ 	names(cut.starts)<-names(max.cuts)
++ 
++ 	# Randomly generating reads (a la getPETSizes' example).
++     names<-paste('x', rep(1:npairs, 2), sep=".");
++     chrs<-sample(length(chromosomes), length(names), replace=TRUE);
++     pos<-integer(length(names));
++ 	frag.ids<-integer(length(names))
++     str<-rbinom(length(names), 1, 0.5)==1; 
++ 
++     # Assigning positions to all of them. Some finesse is necessary when 
++ 	# there is no spacer (i.e. original genome with positive overhang). We
++ 	# still allow reads to span restriction sites, though.
++     for (i in 1:length(chromosomes)) {
++         current<-chrs==i;
++ 		chosen.frags<-as.integer(runif(sum(current), 1, length(fragments[[i]]))+0.5)
++ 		frag.ids[current]<-chosen.frags
++ 		my.ends <- cut.starts[[i]] + fragments[[i]]
++ 		if (spacer > 0) {
++ 			pos[current]<-as.integer(runif(sum(current), cut.starts[[i]][chosen.frags], my.ends[chosen.frags]-rlen))
++ 		} else {
++ 			cur.for <- str[current]
++ 			forward.frag <- chosen.frags[cur.for]
++ 			pos[current][cur.for] <- as.integer(runif(sum(cur.for), 
++ 					cut.starts[[i]][forward.frag],
++ 					ifelse(forward.frag!=length(cut.starts[[i]]),
++ 						cut.starts[[i]][forward.frag+1L],
++ 						my.ends[forward.frag])))
++ 			
++ 			reverse.frag <- chosen.frags[!cur.for]
++ 			starter <- integer(sum(!cur.for))
++ 			possible.zero <- reverse.frag==1L
++ 			starter[possible.zero] <- 1L
++ 			starter[!possible.zero] <- my.ends[reverse.frag[!possible.zero]-1L] 
++ 			pos[current][!cur.for] <- pmax(1L, 
++ 				as.integer(runif(sum(!cur.for), starter, my.ends[chosen.frags[!cur.for]])) - rlen + 1L)
++ 			# The boundary conditions here are tricky, but because runif will never generate values
++ 			# equal to the boundary, rounding down will always ensure a position in the correct fragment.
++ 		}
++     }
++ 
++     # Throwing them into the SAM file generator. 
++ 	reversi<-c(1:npairs+npairs, 1:npairs)
++     out<-simsam(fname, names(chromosomes)[chrs], pos, str, chromosomes, names=names, len=rlen, 
++ 			is.first=c(rep(TRUE, npairs), rep(FALSE, npairs)), is.paired=TRUE,
++ 			mate.chr=names(chromosomes)[chrs][reversi], mate.pos=pos[reversi], mate.str=str[reversi])
++ 
++ 	if (singles) { 
++ 	    # Adding some singles. You'll get some warnings regarding spacer regions as we're not finessing it.
++     	snames<-schrs<-spos<-NULL
++         snames<-paste('y', 1:singles, sep=".");
++         schrs<-sample(length(chromosomes), singles, replace=TRUE);
++         spos<-integer(singles);
++ 		for (i in 1:length(chromosomes)) {
++ 	       	scurrent<-schrs==i;
++         	spos[scurrent]<-as.integer(round(runif(sum(scurrent), 1, chromosomes[i])))
++ 		}
++ 	
++     	tempname<-file.path(dir, "temp")
++     	sstr<-rbinom(singles, 1, 0.5)==1; 
++ 		out2<-simsam(tempname, names(chromosomes)[schrs], spos, sstr, chromosomes, names=snames, len=rlen)
++ 		more.temp<-file.path(dir, "temp2")
++ 		out<-mergeBam(c(out, out2), more.temp, indexDestination=TRUE, overwrite=TRUE)
++ 		file.rename(more.temp, out)
++ 	}
++ 
++ 	# Resorting by name.
++ 	temp<-sortBam(out, "temp", byQname=TRUE)
++ 	file.rename(temp, out)
++ 
++ 	################ THEORETICAL MATCH ###################
++ 
++ 	# This gets the status: 0 for okay, 1 for dangling end, 3 for self.circles and and 2 for other stuff.
++ 	getstatus <- function(chr1, pos1, frag1, str1, chr2, pos2, frag2, str2) {
++ 		codes<-rep(0L, length(chr1));
++ 		potentials<-chr1==chr2 & frag1==frag2
++ 		
++ 		same.str<-str1==str2;
++ 		codes[ same.str & potentials ] <- 2L;
++ 		potentials <- potentials & !same.str;
++ 		
++ 		self.circle<-(str1 & pos2+rlen <= pos1) | (str2 & pos1+rlen <= pos2);
++ 		codes[ self.circle & potentials ] <- 3L
++ 		potentials<-potentials & !self.circle
++ 		
++ 		overextension<-(str1 & pos1 > pos2) | (str2 & pos2 > pos1) # Don't need to check +rlen, as they're al the same.
++ 		codes[ overextension & potentials ]<- 2L;
++ 		potentials<-potentials & !overextension;
++ 		
++ 		codes[potentials] <- 1L;
++ 		return(codes);
++ 	}
++ 
++ 	# This gets the distance from the 5' end of the read to the next restriction site that it is pointing to (past the one it covers, if it is incomplete).
++ 	getlen <- function(chr, pos, start, str) {
++ 		len.out<-rep(0L, length(chr));
++ 		for (x in 1:length(cut.starts)) { 
++ 			chosen<-x==chr;
++ 			dist2cut<-ifelse(str[chosen], cut.starts[[x]][start[chosen]]+fragments[[x]][start[chosen]]-pos[chosen],
++ 					pos[chosen]+rlen-cut.starts[[x]][start[chosen]])
++ 			len.out[chosen]<-dist2cut;
++ 		}
++ 		return(len.out);
++ 	}	
++ 
++ 	# Now, actually assembling the theoretical values.
++ 	primary<-1:npairs
++ 	secondary<-npairs+1:npairs
++ 	pchrs<-chrs[primary]
++ 	ppos<-pos[primary]
++ 	pfrag<-frag.ids[primary]
++ 	pstr<-str[primary]
++ 	schrs<-chrs[secondary]
++ 	spos<-pos[secondary]
++ 	sfrag<-frag.ids[secondary]
++ 	sstr<-str[secondary]
++ 	codes<-getstatus(pchrs, ppos, pfrag, pstr, schrs, spos, sfrag, sstr)
++ 	frag.lens<-getlen(pchrs, ppos, pfrag, pstr)+getlen(schrs, spos, sfrag, sstr)
++ 	panchor <- pchrs > schrs | 
++ 		(pchrs==schrs & pfrag > sfrag) | 
++ 		(pchrs==schrs & pfrag==sfrag & ppos > spos)
++ 	inserts<-ifelse(pchrs==schrs, pmax(ppos, spos)-pmin(spos, ppos)+rlen, NA)
++ 	orientations<-ifelse(pstr, 0L, ifelse(panchor, 1L, 2L))+ifelse(sstr, 0L, ifelse(panchor, 2L, 1L))
++ 
++ 	################ ACTUAL MATCH ###################
++ 	# Assembling the output list for comparison.
++ 
++ 	tmpdir<-paste0(fname, "_temp")
++ 	param <- pairParam(fragments=outfrags)
++ 	diagnostics <- preparePairs(out, param, tmpdir, yield=yield);
++    	
++ 	stopifnot(sum(codes==1L)==diagnostics$same.id[["dangling"]])
++ 	stopifnot(sum(codes==3L)==diagnostics$same.id[["self.circle"]])
++ 	stopifnot(length(codes)==diagnostics$pairs[["total"]])
++ 	stopifnot(singles==diagnostics$singles)
++ 
++ 	# No support for testing chimeras, we use a fixed example below.
++ 	stopifnot(diagnostics$unmapped.chimeras==0L) 
++ 	stopifnot(diagnostics$chimeras[["total"]]==0L)
++ 	stopifnot(diagnostics$chimeras[["mapped"]]==0L)
++ 	stopifnot(diagnostics$chimeras[["invalid"]]==0L)
++ 
++ 	# Anchor/target synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
++ 	offset<-c(0L, cumsum(max.cuts))
++ 	names(offset)<-NULL
++ 	indices<-diffHic:::.loadIndices(tmpdir, seqlevels(outfrags))
++ 	used<-indices
++ 	fchrs<-as.character(seqnames(outfrags))
++ 
++ 	for (i in 1:length(max.cuts)) {
++ 		for (j in 1:i) {
++ 			stuff<-(chrs[primary]==i & chrs[secondary]==j) | (chrs[primary]==j & chrs[secondary]==i) 
++ 			stuff<-stuff & (codes==0L | codes==2L)
++ 			pids<-frag.ids[primary][stuff];
++ 			sids<-frag.ids[secondary][stuff];
++ 			if (i > j) {
++ 				which.is.which<-chrs[primary][stuff]==i & chrs[secondary][stuff]==j
++  			    anchor<-ifelse(which.is.which, pids, sids)
++ 				target<-ifelse(which.is.which, sids, pids)
++ 			} else {
++ 				anchor<-pmax(pids, sids)
++ 				target<-pmin(pids, sids)
++ 			}
++ 			anchor<-anchor+offset[i]
++ 			target<-target+offset[j]
++ 			totes<-frag.lens[stuff]
++ 			cur.ori<-orientations[stuff]
++ 			cur.insert<-inserts[stuff]
++ 			o<-order(anchor, target, totes, cur.ori, cur.insert)
++ 
++ 			# Checking anchor/target/length/orientation/insert statistics (sorting to ensure comparability).
++ 			achr<-names(max.cuts)[i]
++ 			tchr<-names(max.cuts)[j]
++ 			if (!(achr%in%names(indices)) || !(tchr %in% names(indices[[achr]]))) { 
++ 				if (length(o)) { stop("true interactions are missing") }
++ 				next
++ 			}
++ 			current<-h5read(tmpdir, file.path(achr, tchr))
++ 			for (x in 1:ncol(current)) { attributes(current[,x]) <- NULL }
++ 			collated <- diffHic:::.getStats(current, achr==tchr, outfrags)
++ 			
++ 			o2 <- order(current$anchor.id, current$target.id, collated$length, collated$orientation, collated$insert)
++ 			stopifnot(identical(current$anchor.id[o2], anchor[o]))
++ 			stopifnot(identical(current$target.id[o2], target[o]))
++ 			stopifnot(identical(collated$length[o2], totes[o]))
++ 			stopifnot(identical(collated$orientation[o2], cur.ori[o]))
++ 			if (!identical(collated$insert[o2], cur.insert[o])) { 
++ 				print(cbind(collated$insert[o2], cur.insert[o]))
++ 				print(current[o2,])
++ 			}
++ 			stopifnot(identical(collated$insert[o2], cur.insert[o]))
++ 				
++ 			# Checking that we're looking at the right combination.
++ 	        uniq.a<-unique(fchrs[current[,1]])
++ 			uniq.t<-unique(fchrs[current[,2]])
++ 			if (length(uniq.a)!=1L || length(uniq.t)!=1L) { stop("file contains more than one combination") }
++ 			if (achr!=uniq.a || tchr!=uniq.t) { stop("file contains the incorrect combination") }
++ 			used[[achr]][[tchr]]<-NULL
++ 		}
++ 	}
++ 
++ 	# Checking there's nothing left.
++ 	if (!is.null(unlist(used))) { stop("objects left unused in the directory") }
++ 
++ 	# Length insert and orientation checking.
++ 	keepers<-codes==0L | codes==2L
++ 	valid.len<-frag.lens[keepers]
++ 	valid.insert<-inserts[keepers]
++ 	valid.ori<-orientations[keepers]
++ 	o<-order(valid.len, valid.ori, valid.insert)
++ 	auxiliary<-getPairData(tmpdir, param)
++ 	o2<-do.call(order, auxiliary)
++ 	if (!identical(valid.len[o], auxiliary$length[o2])) { stop("extracted fragment sizes don't match up") }
++ 	if (!identical(valid.insert[o], auxiliary$insert[o2])) { stop("extracted inserts don't match up") }
++ 	if (!identical(valid.ori[o], auxiliary$orientation[o2])) { stop("extracted orientations don't match up") }
++ 
++ 	curdex <- h5ls(tmpdir)
++ 	curdex <- curdex[curdex$otype=="H5I_DATASET",][1,]
++ 	returned <- h5read(tmpdir, file.path(curdex$group, curdex$name))
++ 	processed <- diffHic:::.getStats(returned, basename(curdex$group)==curdex$name, outfrags)
++ 	return(head(data.frame(anchor.id=returned$anchor.id, target.id=returned$target.id, length=processed$length,
++ 		orientation=processed$orientation, insert=processed$insert)))
++ }
+> 
+> ####################################################################################################
+> # Initiating testing with something fairly benign.
+> 
+> set.seed(0)
+> dir<-"hic-test"
+> dir.create(dir)
+> fname<-file.path(dir, "out");
+> max.cuts<-c(chrA=20L, chrB=10L, chrC=5L)
+> 
+> comp(fname, npairs=20, max.cuts=max.cuts)
+Loading required package: Rsamtools
+Loading required package: XVector
+Loading required package: Biostrings
+  anchor.id target.id length orientation insert
+1        23         1    344           1     NA
+2        26         4    274           3     NA
+3        26        10    400           1     NA
+4        26        20    247           2     NA
+5        29        15    240           1     NA
+> comp(fname, npairs=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         4         3    271           3    503
+2        10         2    126           3   2285
+3        12         2    221           1   2785
+4        12         8    435           2    944
+5        14        13    104           0    257
+6        15         2    406           3   3682
+> comp(fname, npairs=100, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         2         1    306           2    198
+2        10         7    423           3   1262
+3        13         9    290           3   1439
+4        15         7    201           1   2778
+5        17         6    379           2   3260
+6        18        14    719           2    879
+> 
+> # Ramping up the aggression in terms of self-circles.
+> 
+> comp(fname, npairs=20, max.cuts=c(chrA=3L))
+  anchor.id target.id length orientation insert
+1         2         1    350           1    360
+2         2         1    306           3    624
+3         2         1    467           2    365
+4         2         2    394           0    270
+5         2         2    407           0    245
+6         3         1    489           1    875
+> comp(fname, npairs=50, max.cuts=c(chrA=3L))
+  anchor.id target.id length orientation insert
+1         1         1    157           0     35
+2         2         1    512           2    166
+3         2         1    100           3    227
+4         2         1    109           2    569
+5         2         1    226           3    359
+6         2         1    153           0    460
+> comp(fname, npairs=100, max.cuts=c(chrA=3L))
+  anchor.id target.id length orientation insert
+1         1         1    276           0     78
+2         1         1    124           0    102
+3         1         1    143           3    119
+4         1         1     56           3     46
+5         2         1    226           3     79
+6         2         1     80           1     90
+> 
+> # Increasing the number of reads all round.
+> 
+> comp(fname, npairs=200, size=c(500, 1000), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         6         2    607           2   3623
+2         7         1   1192           2   4545
+3         7         2   1114           2   3766
+4         7         7    644           0    618
+5         8         1   1144           3   5767
+6         8         1    984           0   5938
+> comp(fname, npairs=1000, size=c(500, 1000), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         4         2    363           2   1686
+2         4         4   1470           3     80
+3         4         4    489           3    399
+4         6         2    796           2   2626
+5         6         4    714           1   1412
+6         6         5    424           3    330
+> 
+> # Adding some singletons.
+> 
+> comp(fname, npairs=200, size=c(20, 100), max.cuts=max.cuts, singles=10)
+  anchor.id target.id length orientation insert
+1         3         2     96           3     73
+2         3         3    116           0     74
+3         5         5    130           0     30
+4         6         2     50           0    309
+5         6         6     33           0     19
+6        11         7    145           0    259
+> comp(fname, npairs=200, size=c(20, 100), max.cuts=max.cuts, singles=50)
+  anchor.id target.id length orientation insert
+1         7         3     53           3    304
+2         8         3    124           3    296
+3         9         3     50           0    368
+4        10         8     50           1    137
+5        13         2    104           0    913
+6        14         4     69           0    734
+> 
+> # Making the fragments smaller.
+> 
+> comp(fname, npairs=200, size=c(60, 100), rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         5         1    136           0    561
+2         6         1    120           1    699
+3         6         1    122           2    699
+4         8         2    169           1    843
+5         8         3    124           1    685
+6         9         4    113           2    719
+> comp(fname, npairs=500, size=c(60, 100), rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         2         2    135           3     73
+2         3         1    140           0    306
+3         4         4    111           2     52
+4         5         4    117           0    165
+5         5         4    122           3    163
+6         8         4    122           2    570
+> 
+> # Trying out negative spacings (i.e., non-filled genomes)
+> 
+> comp(fname, npairs=200, size=c(500, 1000), spacer=-2, max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         3         1   1256           3   1313
+2         3         1    500           3   1955
+3         5         3    995           2   1283
+4         7         4    649           2   2443
+5         9         8   1040           1   1038
+6        11         3    906           1   6508
+> comp(fname, npairs=1000, size=c(500, 1000), spacer=-2, max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         2         2    522           0    374
+2         3         1    989           0   1246
+3         4         2    933           0   1198
+4         4         3    648           0    187
+5         4         3   1025           2    394
+6         5         2   1014           3   2228
+> comp(fname, npairs=200, size=c(500, 1000), spacer=-4, max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         5         3   1157           1   1678
+2         9         6    538           0   2829
+3        13         8   1293           3   3847
+4        14         1   1022           0  11028
+5        14        11    904           0   1681
+6        14        14    869           0    589
+> comp(fname, npairs=1000, size=c(500, 1000), spacer=-4, max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         4         2    815           1   1610
+2         4         3    747           2    950
+3         4         3    813           2    884
+4         4         3    689           3    528
+5         7         1    688           2   4549
+6         7         2    954           1   3971
+> 
+> comp(fname, npairs=200, size=c(20, 100), spacer=-2, max.cuts=max.cuts, singles=10)
+  anchor.id target.id length orientation insert
+1         5         2     45           2    193
+2        10         2     20           3    535
+3        10         9     55           0    108
+4        13         4     75           1    697
+5        14        11     61           2    252
+6        14        13     99           2     42
+> comp(fname, npairs=200, size=c(20, 100), spacer=-2, max.cuts=max.cuts, singles=50)
+  anchor.id target.id length orientation insert
+1         5         1    122           2    288
+2         6         4     83           1    178
+3         7         6     45           3     51
+4         7         6     72           0     72
+5         8         8    109           3     13
+6         9         4     85           0    308
+> comp(fname, npairs=200, size=c(20, 100), spacer=-4, max.cuts=max.cuts, singles=10)
+  anchor.id target.id length orientation insert
+1         5         4     65           1     61
+2         6         4     97           3    111
+3         8         3     88           0    328
+4         8         3     18           1    268
+5         9         3     53           0    409
+6         9         9    141           3     53
+> comp(fname, npairs=200, size=c(20, 100), spacer=-4, max.cuts=max.cuts, singles=50)
+  anchor.id target.id length orientation insert
+1         5         2     41           0    167
+2         5         3     56           1    101
+3         8         6     96           3     66
+4        12         2     44           0    485
+5        12         3     74           0    457
+6        12        12     33           3     15
+> 
+> comp(fname, npairs=200, size=c(60, 100), spacer=-4, rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         3         2    121           3     95
+2         8         2     82           2    584
+3         9         7     86           0    231
+4        11         7     80           1    306
+5        14        12     38           1     99
+6        14        14    116           2     52
+> comp(fname, npairs=500, size=c(60, 100), spacer=-4, rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         4         2     74           3    149
+2         4         2     71           0    158
+3         5         4    139           2    109
+4         6         4     82           3    186
+5         8         4    113           2    363
+6         8         6     81           3    204
+> comp(fname, npairs=200, size=c(60, 100), spacer=-2, rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         3         2    105           3    128
+2         4         1    141           2    273
+3         6         5     53           1     51
+4         8         7    115           0    120
+5        10         3    104           1    549
+6        10         6     47           0    356
+> comp(fname, npairs=500, size=c(60, 100), spacer=-2, rlen=50, max.cuts=max.cuts)
+  anchor.id target.id length orientation insert
+1         2         1    154           0    154
+2         2         1    148           3    191
+3         7         7     44           0     78
+4         8         6     38           1    102
+5         9         2     64           1    492
+6         9         4     68           1    360
+> 
+> # Trying it out with some more elements in a more restricted space.
+> 
+> comp(fname, npairs=500, size=c(100, 500), max.cuts=c(chrA=2L))
+  anchor.id target.id length orientation insert
+1         1         1    460           0    142
+2         1         1    891           0     87
+3         1         1    770           3     48
+4         1         1    378           0    176
+5         1         1     89           3     21
+6         1         1    229           0     65
+> comp(fname, npairs=200, size=c(500, 1000), max.cuts=c(chrA=2L, chrB=1L))
+  anchor.id target.id length orientation insert
+1         1         1    617           0    465
+2         1         1   1509           3     49
+3         1         1    146           0     24
+4         1         1    481           3    171
+5         1         1   1155           0     33
+6         1         1   1151           0    181
+> comp(fname, npairs=1000, size=c(20, 50), max.cuts=c(chrA=1L))
+  anchor.id target.id length orientation insert
+1         1         1     26           3     14
+2         1         1     58           0     14
+3         1         1     36           3     14
+4         1         1     33           3     11
+5         1         1     51           3     25
+6         1         1     44           2     13
+> 
+> # Adding lots of chromosomes.
+> 
+> max.cuts<-c(chrA=5L, chrB=6L, chrC=7L, chrD=4L, chrE=3L, chrF=1L, chrG=2L)
+> comp(fname, npairs=200, size=c(500, 1000), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         3         2    950           3    409
+2         3         3    654           3    438
+3         4         3    579           0   1084
+4         5         3   1364           1   1923
+> comp(fname, npairs=1000, size=c(50, 100), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         2         1     86           0     67
+2         2         2     98           0     14
+3         2         2     54           3     36
+4         2         2     88           2     17
+5         3         2    108           0     72
+6         3         2    110           1    120
+> comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         3         2    171           3    539
+2         4         2    384           0    546
+> comp(fname, npairs=1000, size=c(200, 300), max.cuts=max.cuts);
+  anchor.id target.id length orientation insert
+1         2         2    351           0     59
+2         3         1    256           2    508
+3         3         2    236           0    264
+4         3         2    283           1    293
+5         3         2    348           0    170
+6         4         1    236           1    728
+> 
+> ###################################################################################################
+> # Trying to do simulations with chimeras is hellishly complicated, so we're just going to settle for 
+> # consideration of chimeras with a fixed example.
+> 
+> hic.file<-system.file("exdata", "hic_sort.bam", package="diffHic")
+> break.file<-system.file("exdata", "cuts.rds", package="diffHic")
+> cuts<-readRDS(break.file)
+> param <- pairParam(cuts)
+> tmpdir<-file.path(dir, "gunk")
+> cntdir<-file.path(dir, "gunkcount")
+> 
+> # Check out generator.R in inst/exdata for cross-referencing to names. 
+> # In order of appearance in printfun, all mapped read pairs are (for
+> # each data.frame in the list):
+> 
+> named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6", "other.1"),
++ 		c("good.8", "good.5", "chimeric.good.4", "chimeric.good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.1", "chimeric.invalid.3", "chimeric.invalid.7", "chimeric.good.2"),
++ 		c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> 
+> # We also have 3 unmapped reads, 3 dangling ends, 2 self-circles, 2 singletons.
+> # For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
+> 	
+> preparePairs(hic.file, param, tmpdir, dedup=FALSE)
+$pairs
+   total   marked filtered   mapped 
+      30        0        3       27 
+
+$same.id
+   dangling self.circle 
+          3           2 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12      12      12       7 
+
+> 
+> printfun<-function(dir, named=NULL) {
++ 	output<-list()
++ 	ix <- 1L
++ 	indices <- suppressWarnings(diffHic:::.loadIndices(tmpdir))
++ 	for (ax in names(indices)) {
++ 		if (is.null(output[[ax]])) { output[[ax]]<-list() }
++ 		for (tx in names(indices[[ax]])) {
++ 			extracted <- h5read(dir, file.path(ax, tx))
++ 			processed <- diffHic:::.getStats(extracted, ax==tx, cuts)
++ 			output[[ax]][[tx]] <- data.frame(anchor.id=extracted$anchor.id, target.id=extracted$target.id,
++ 				length=processed$length, orientation=processed$orientation, insert=processed$insert)
++ 			if (!is.null(named[[ix]])) { rownames(output[[ax]][[tx]])<-named[[ix]] }
++ 			ix <- ix + 1L
++ 		}
++ 	}
++ 	return(output)
++ }
+> printfun(tmpdir, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+chimeric.invalid.5         2         1     40           1     40
+good.1                     2         1     80           1     80
+good.2                     2         1     60           2     54
+good.3                     4         1     40           3    160
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+chimeric.invalid.6         4         3     10           1     10
+other.1                    4         4     65           0     35
+
+
+$chrB
+$chrB$chrA
+                   anchor.id target.id length orientation insert
+good.8                     5         2     10           2     NA
+good.5                     5         3     30           2     NA
+chimeric.good.4            5         4     30           2     NA
+chimeric.good.5            5         4     25           0     NA
+chimeric.good.1            6         1     35           0     NA
+chimeric.invalid.2         6         2     10           1     NA
+chimeric.invalid.1         6         3     10           1     NA
+chimeric.invalid.3         6         3     20           3     NA
+chimeric.invalid.7         6         3     15           3     NA
+chimeric.good.2            7         3     20           1     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
+> # Alright, so once duplicates are removed, we lose:
+> #  	self.1 (mapped/self.circles -> marked)
+> #   other.1 (mapped/other -> marked)	
+> #   dangling.1 (mapped/dangling -> marked)
+> #   chimeric.good.2 (mapped/chimeric$mapped/multi -> marked)
+> #	chimeric.invalid.1 (mapped/chimeric$mapped/multi/invalid -> marked)
+> #   chimeric.invalid.4 (--chimeric$multi/invalid)
+> #	chimeric.good.4 (mapped/chimeric$mapped/multi -> marked)
+> #	chimeric.good.5 (mapped/chimeric$mapped/multi -> marked)
+> #
+> # So, a gain of +7 to marked, a loss of -7 to mapped, a loss of -1 to each of
+> # dangling and self.circles, a loss of -4 to chimeric$mapped, -5 to
+> # chimeric$multi and -2 to chimeric$invalid. 
+> 
+> tmpdir2<-file.path(dir, "gunk2")
+> preparePairs(hic.file, param, tmpdir2)
+$pairs
+   total   marked filtered   mapped 
+      30        7        3       20 
+
+$same.id
+   dangling self.circle 
+          2           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       8       7       5 
+
+> named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
++ 	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.3", "chimeric.invalid.7"),
++ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> printfun(tmpdir2, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+chimeric.invalid.5         2         1     40           1     40
+good.1                     2         1     80           1     80
+good.2                     2         1     60           2     54
+good.3                     4         1     40           3    160
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+chimeric.invalid.6         4         3     10           1     10
+
+
+$chrB
+$chrB$chrA
+                   anchor.id target.id length orientation insert
+good.8                     5         2     10           2     NA
+good.5                     5         3     30           2     NA
+chimeric.good.1            6         1     35           0     NA
+chimeric.invalid.2         6         2     10           1     NA
+chimeric.invalid.3         6         3     20           3     NA
+chimeric.invalid.7         6         3     15           3     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
+> # Once invalid chimeras are removed, we see a loss of all rows corresponding to
+> # invalid chimeras in printfun. No change in the statistics should be observed.
+> # Note that chimeric.invalid.4 is still okay as ther invalid component is removed
+> # by duplicate removal (for some reason; that shouldn't happen in real data).
+> 
+> preparePairs(hic.file, param, tmpdir2, ichim=FALSE)
+$pairs
+   total   marked filtered   mapped 
+      30        7        3       20 
+
+$same.id
+   dangling self.circle 
+          2           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       8       7       5 
+
+> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
++ 	c("good.8", "good.5", "chimeric.good.1"),
++ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> printfun(tmpdir2, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+good.1                     2         1     80           1     80
+good.2                     2         1     60           2     54
+good.3                     4         1     40           3    160
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+
+
+$chrB
+$chrB$chrA
+                anchor.id target.id length orientation insert
+good.8                  5         2     10           2     NA
+good.5                  5         3     30           2     NA
+chimeric.good.1         6         1     35           0     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
+> # Throwing out those with poor mapping quality. We lose:
+> #   good.1 (mapped -> filtered)
+> #   good.3 (mapped -> filtered)
+> #   dangling.2 (mapped/dangling -> filtered)
+> #   dangling.3 (mapped/dangling -> filtered)
+> #   chimeric.good.1 (--chimeric$multi)
+> #	chimeric.invalid.2 (mapped/chimeric$mapped/multi/invalid -> filtered)
+> #   chimeric.invalid.3 (--chimeric$multi/invalid)
+> # 	chimeric.invalid.6 (mapped/chimeric$mapped/multi/invalid -> filtered)
+> #
+> # So, a gain of +6 for filtered, a loss of -6 for mapped, a loss of -2
+> # for dangling, a loss of -2 for chimeric$mapped, -4 for chimeric$multi
+> # and -3 for chimeric$invalid. For printfun, we see:
+> # 	A/A = chimeric.invalid.5, good.2, chimeric.invalid.4, good.4
+> #	B/A = good.8, good.5, chimeric.invalid.7
+> # 	B/B = good.7, good.6, chimeric.good.
+> 
+> preparePairs(hic.file, param, tmpdir2, minq=100)
+$pairs
+   total   marked filtered   mapped 
+      30        7        9       14 
+
+$same.id
+   dangling self.circle 
+          0           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       6       3       2 
+
+> named <- list(c("chimeric.invalid.5", "good.2", "chimeric.invalid.4", "good.4"),
++ 	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.3", "chimeric.invalid.7"),
++ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> printfun(tmpdir2, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+chimeric.invalid.5         2         1     40           1     40
+good.2                     2         1     60           2     54
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+
+
+$chrB
+$chrB$chrA
+                   anchor.id target.id length orientation insert
+good.8                     5         2     10           2     NA
+good.5                     5         3     30           2     NA
+chimeric.good.1            6         1     35           0     NA
+chimeric.invalid.3         6         3     20           3     NA
+chimeric.invalid.7         6         3     15           3     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
+> ###################################################################################################
+> # This tests whether they are counted properly. 
+> 
+> unlink(dir, recursive=TRUE) # Cleaning up
+> 
+> ###################################################################################################
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 15.659   0.347  16.092 

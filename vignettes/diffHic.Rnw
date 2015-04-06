@@ -1,0 +1,39 @@
+%\VignetteIndexEntry{diffHic Vignette}
+%\VignetteKeyword{Hi-C}
+%\VignetteKeyword{differential interactions}
+%\VignettePackage{diffHic}
+\documentclass[12pt]{article}
+
+\textwidth=6.2in
+\textheight=8.5in
+\oddsidemargin=0.2in
+\evensidemargin=0.2in
+\headheight=0in
+\headsep=0in
+
+\begin{document}
+
+\title{Introducing the diffHic package}
+\author{Aaron Lun}
+\date{First edition 2 March 2015\\[0.05in]
+Last revised 3 March 2015}
+\maketitle
+
+The \texttt{diffHic} package is designed for the detection of differential interactions from Hi-C data.
+It partitions the genome into bins, and counts the number of read pairs mapping to each pair of bins.
+Each bin pair is then tested for significant differences between libraries, using the methods in the \texttt{edgeR} package. 
+\texttt{diffHic} can be applied to any Hi-C data set containing multiple biological conditions, though the inclusion of biological replicates in the experimental design is strongly recommended.
+
+On a technical level, the \texttt{diffHic} package provides methods for read alignment and pre-processing into HDF5 files for counting.
+It provides methods for filtering and normalization prior to the statistical analysis.
+Functions are also defined for consolidating results from multiple bin sizes, and for visualizing the interaction space.
+The full user's guide is available as part of the online documentation and can be obtained by typing:
+\begin{Schunk}
+\begin{Sinput}
+> library(diffHic)
+> diffHicUsersGuide()
+\end{Sinput}
+\end{Schunk}
+at the R prompt to open the user's guide in a pdf viewer.
+
+\end{document}

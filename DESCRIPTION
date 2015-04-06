@@ -1,0 +1,20 @@
+Package: diffHic
+Version: 0.99.4
+Date: 2015/04/04
+Title: Differential analyis of Hi-C data
+Author: Aaron Lun <alun@wehi.edu.au>
+Maintainer: Aaron Lun <alun@wehi.edu.au>
+Depends: R (>= 3.2.0), GenomicRanges
+Imports: Rsamtools, Biostrings, BSgenome, rhdf5, edgeR, limma, csaw,
+        locfit, methods, IRanges, S4Vectors, GenomeInfoDb, BiocGenerics
+Suggests: BSgenome.Ecoli.NCBI.20080805
+biocViews: MultipleComparison, Preprocessing, Sequencing, Coverage,
+        Alignment, Normalization, Clustering
+Description: Detects differential interactions across biological
+        conditions in a Hi-C experiment. Methods are provided for read
+        alignment and data pre-processing into interaction counts.
+        Statistical analysis is based on edgeR and supports
+        normalization and filtering. Several visualization options are
+        also available.
+License: GPL-3
+NeedsCompilation: yes

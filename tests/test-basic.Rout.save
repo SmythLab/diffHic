@@ -1,0 +1,210 @@
+
+R Under development (unstable) (2014-12-14 r67167) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # These are just placeholders for the real things in inst/tests.
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> 
+> hic.file <- system.file("exdata", "hic_sort.bam", package="diffHic")
+> cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
+> param <- pairParam(fragments=cuts)
+> 
+> # Setting up the parameters
+> fout <- "output.h5"
+> preparePairs(hic.file, param, file=fout)
+$pairs
+   total   marked filtered   mapped 
+      30        7        3       20 
+
+$same.id
+   dangling self.circle 
+          2           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       8       7       5 
+
+> head(getPairData(fout, param))
+  length orientation insert
+1     40           1     40
+2     80           1     80
+3     60           2     54
+4     40           3    160
+5     20           1     66
+6     80           0    114
+> 
+> loadChromos(fout)
+  anchors targets
+1    chrA    chrA
+2    chrB    chrA
+3    chrB    chrB
+> head(loadData(fout, "chrA", "chrA"))
+  anchor.id target.id anchor.pos target.pos anchor.len target.len
+1         2         1         49         14         -5         10
+2         2         1         79          9        -10         10
+3         2         1         65         21         10        -10
+4         4         1        156          6        -10        -10
+5         4         2        141         80         -5         10
+6         4         2        154         50         10         10
+> head(loadData(fout, "chrA", "chrB"))
+  anchor.id target.id anchor.pos target.pos anchor.len target.len
+1         5         2         19         44         10        -10
+2         5         3         14        105         10        -10
+3         6         1         65         19          5         10
+4         6         2         24         90         -5          5
+5         6         3         24        100         -5        -10
+6         6         3         24         95         -5        -10
+Warning message:
+In value[[3L]](cond) : anchor and target definitions are reversed
+> 
+> # Loading the counts.
+> data <- squareCounts(fout, param, width=50, filter=1)
+> data
+DIList object for 1 library with 10 pairs across 6 regions
+> 
+> margins <- marginCounts(fout, param, width=50)
+> margins
+DIList object for 1 library with 6 pairs across 6 regions
+> totalCounts(fout, param)
+[1] 17
+> 
+> regions <- GRanges("chrA", IRanges(c(1, 100, 150), c(20, 140, 160)))
+> connectCounts(fout, param, regions=regions, filter=1L)
+DIList object for 1 library with 2 pairs across 3 regions
+> 
+> # Checking some values.
+> head(getArea(data))
+[1] 2208 2304 2208 2208 3312 3174
+> head(getDistance(data))
+[1]  47 140  93  47  NA  NA
+> 
+> anchors(data)
+GRanges object with 10 ranges and 1 metadata column:
+       seqnames     ranges strand |    nfrags
+          <Rle>  <IRanges>  <Rle> | <integer>
+   [1]     chrA [ 49,  94]      * |         1
+   [2]     chrA [141, 188]      * |         1
+   [3]     chrA [141, 188]      * |         1
+   [4]     chrA [141, 188]      * |         1
+   [5]     chrB [  1,  69]      * |         2
+   [6]     chrB [  1,  69]      * |         2
+   [7]     chrB [  1,  69]      * |         2
+   [8]     chrB [  1,  69]      * |         2
+   [9]     chrB [ 70,  92]      * |         1
+  [10]     chrB [ 70,  92]      * |         1
+  -------
+  seqinfo: 2 sequences from an unspecified genome
+> targets(data)
+GRanges object with 10 ranges and 1 metadata column:
+       seqnames    ranges strand |    nfrags
+          <Rle> <IRanges>  <Rle> | <integer>
+   [1]     chrA [ 1,  48]      * |         1
+   [2]     chrA [ 1,  48]      * |         1
+   [3]     chrA [49,  94]      * |         1
+   [4]     chrA [95, 140]      * |         1
+   [5]     chrA [ 1,  48]      * |         1
+   [6]     chrA [49,  94]      * |         1
+   [7]     chrA [95, 140]      * |         1
+   [8]     chrB [ 1,  69]      * |         2
+   [9]     chrB [ 1,  69]      * |         2
+  [10]     chrB [70,  92]      * |         1
+  -------
+  seqinfo: 2 sequences from an unspecified genome
+> counts(data)
+      [,1]
+ [1,]    3
+ [2,]    1
+ [3,]    2
+ [4,]    1
+ [5,]    1
+ [6,]    2
+ [7,]    3
+ [8,]    1
+ [9,]    2
+[10,]    1
+> regions(data)
+GRanges object with 6 ranges and 1 metadata column:
+      seqnames     ranges strand |    nfrags
+         <Rle>  <IRanges>  <Rle> | <integer>
+  [1]     chrA [  1,  48]      * |         1
+  [2]     chrA [ 49,  94]      * |         1
+  [3]     chrA [ 95, 140]      * |         1
+  [4]     chrA [141, 188]      * |         1
+  [5]     chrB [  1,  69]      * |         2
+  [6]     chrB [ 70,  92]      * |         1
+  -------
+  seqinfo: 2 sequences from an unspecified genome
+> 
+> data$totals
+[1] 17
+> colData(data)
+DataFrame with 1 row and 1 column
+     totals
+  <integer>
+1        17
+> exptData(data)
+List of length 2
+names(2): param width
+> asDGEList(data)
+An object of class "DGEList"
+$counts
+   Sample1
+1        3
+2        1
+3        2
+4        1
+5        1
+6        2
+7        3
+8        1
+9        2
+10       1
+
+$samples
+        group lib.size norm.factors
+Sample1     1       17            1
+
+> 
+> # Playing around with some bin counts.
+> stuff <- correctedContact(data)
+> head(stuff$truth)
+[1]        NA 0.6123523 0.6123523        NA 0.2041633 0.2041633
+> 
+> data.large <- squareCounts(fout, param, width=100, filter=1)
+> boxed <- boxPairs(larger=data.large, smaller=data)
+> head(boxed$indices$larger)
+[1] 1 2 3 4 5 6
+> head(boxed$indices$smaller)
+[1] 1 2 2 3 4 4
+> 
+> head(enrichedPairs(data))
+[1]  1.0324215  0.0000000  0.5849625  0.0000000 -0.2895066  0.2630344
+> head(clusterPairs(data, tol=10)$id)
+[1] 1 2 2 2 3 3
+> 
+> # End.
+> 
+> unlink(fout)
+> 
+> proc.time()
+   user  system elapsed 
+  9.364   0.174   9.532 

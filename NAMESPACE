@@ -1,0 +1,34 @@
+#  Calling the dynamic library.
+useDynLib(diffHic, .registration=TRUE, .fixes="cxx_")
+
+#  All functions exported, sorted by approximate function:
+export(diffHicUsersGuide,
+	cutGenome, segmentGenome,
+    preparePairs, mergePairs, savePairs, prepPseudoPairs,
+	getPairData, prunePairs, 
+	loadChromos, loadData,
+	DIList, pairParam,
+    squareCounts, connectCounts, marginCounts, totalCounts, 
+    correctedContact, normalizeCNV, matchMargins,
+    getDistance, getArea,
+	filterDirect, filterTrended, filterPeaks, enrichedPairs,
+    boxPairs, clusterPairs, consolidatePairs,
+    plotPlaid, rotPlaid, plotDI, rotDI)
+
+# Exporting the DIList class.
+exportClasses(
+    DIList, pairParam
+)
+
+exportMethods(
+    anchors, targets, counts, regions, "[", show, colData, exptData,
+    asDGEList, normalize, reform
+)
+
+# Requires several imports.
+import(Rsamtools,GenomicRanges,Biostrings,BSgenome,rhdf5,
+	IRanges,S4Vectors,GenomeInfoDb,
+	edgeR,limma,locfit,methods,csaw)
+	
+importFrom("BiocGenerics", counts)
+
