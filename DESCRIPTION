@@ -1,5 +1,5 @@
 Package: diffHic
-Version: 0.99.4
+Version: 0.99.5
 Date: 2015/04/07
 Title: Differential analyis of Hi-C data
 Author: Aaron Lun <alun@wehi.edu.au>
@@ -9,7 +9,7 @@ Imports: Rsamtools, Biostrings, BSgenome, rhdf5, edgeR, limma, csaw,
         locfit, methods, IRanges, S4Vectors, GenomeInfoDb, BiocGenerics
 Suggests: BSgenome.Ecoli.NCBI.20080805
 biocViews: MultipleComparison, Preprocessing, Sequencing, Coverage,
-        Alignment, Normalization, Clustering
+        Alignment, Normalization, Clustering, HiC
 Description: Detects differential interactions across biological
         conditions in a Hi-C experiment. Methods are provided for read
         alignment and data pre-processing into interaction counts.
