@@ -38,7 +38,27 @@ regions(data)
 data$totals
 colData(data)
 exptData(data)
+
 asDGEList(data)
+asDGEList(data, lib.size=20)$samples
+asDGEList(data, norm.factors=2, group="a")$samples
+
+# Simple normalization with dummy data.
+set.seed(3423746)
+npts <- 100
+npairs <- 5000
+nlibs <- 4
+anchors <- sample(npts, npairs, replace=TRUE)
+targets <- sample(npts, npairs, replace=TRUE)
+dummy <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
+    totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
+    regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
+
+normalize(dummy)
+normalize(dummy, logratio=0)
+normalize(dummy, lib.sizes=c(10, 20, 15, 25))
+head(normalize(dummy, type="loess"))
+head(normalize(dummy, type="loess", span=0.5))
 
 # Playing around with some bin counts.
 stuff <- correctedContact(data)
