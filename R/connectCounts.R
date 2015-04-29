@@ -6,12 +6,13 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 #
 # written by Aaron Lun
 # a long time ago.
-# last modified 27 March 2015
+# last modified 29 April 2015
 {
 	nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") } 
 	filter<-as.integer(filter)
 	fragments <- param$fragments
+	frag.by.chr <- .splitByChr(fragments)
 
 	# Setting up other local references.
 	restrict <- param$restrict
@@ -69,9 +70,9 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 		regions$original <- 1:length(regions)
 	}
 
-	# Figuring out which regions are anchor or targets.
-	fdata <- .delimitFragments(fragments)
-	matched <- match(as.character(seqnames(regions)), fdata$chr)
+	# Ordering regions, consistent with the previous definitions of anchor/targets.
+	ordered.chrs <- as.character(runValue(seqnames(fragments)))
+	matched <- match(as.character(seqnames(regions)), ordered.chrs)
 	if (any(is.na(matched))) { stop("chromosome present in regions and not in fragments") }
 
 	nregs <- length(regions)
@@ -96,14 +97,10 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	for (anchor in names(overall)) {
 		current<-overall[[anchor]]
 		for (target in names(current)) {
-			if (!.checkIfPairOK(restrict, anchor, target)) { next }
 
-           	pairs <- .baseHiCParser(current[[target]], files, anchor, target, discard=discard, cap=cap)
-			for (lib in 1:length(pairs)) { 
-				.checkIndexOK(fragments, anchor, pairs[[lib]]$anchor.id)
-				if (anchor!=target) { .checkIndexOK(fragments, target, pairs[[lib]]$target.id) }
-	            full.sizes[lib] <- full.sizes[lib] + nrow(pairs[[lib]])
-			}
+           	pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+				chr.limits=frag.by.chr, discard=discard, cap=cap)
+			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }	
 
 			# Extracting counts. Running through the fragments and figuring out what matches where.

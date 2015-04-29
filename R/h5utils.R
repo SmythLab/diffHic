@@ -7,6 +7,8 @@
 	overall <- list()
 	ni<-length(y)
 	do.restrict <- length(restrict)!=0L
+	only.pair <- attributes(restrict)$only.pair
+	if (is.null(only.pair)) { only.pair <- FALSE }
 	check.chrs <- !missing(frag.chrs)
 	if (!check.chrs) { warning("no protection against nonsensical chromosomes in the data") }
 
@@ -19,16 +21,28 @@
 				warning("'", ac, "' in data is not present in fragment chromosomes") 
 				next
 			}
-			if (do.restrict && !ac %in% restrict) { next }
-			if (is.null(overall[[ac]])) { overall[[ac]]<-list() }
 			subcurrent <- current[[ac]]
+
+			# Checking whether we should skip this anchor; otherwise, taking only the 
+			# relevant targets for the inner iteration step.
+			if (do.restrict) {
+				amatch <- match(ac, restrict)
+				if (is.na(amatch)) { next }
+				if (only.pair) {
+					if (! (restrict[-amatch] %in% subcurrent)) { next }
+					subcurrent <- restrict[-amatch]
+				} else {
+					subcurrent <- intersect(subcurrent, restrict)
+					if (!length(subcurrent)) { next }
+				}
+			}
+			if (is.null(overall[[ac]])) { overall[[ac]]<-list() }
 				
 			for (tc in subcurrent) {
 				if (check.chrs && !tc %in% frag.chrs) { 
 					warning("'", tc, "' in data is not present in fragment chromosomes") 
 					next
 				}
-				if (do.restrict && !tc %in% restrict) { next } 
 				if (is.null(overall[[ac]][[tc]])) { overall[[ac]][[tc]] <- logical(ni) }
 				overall[[ac]][[tc]][ix] <- TRUE
 			}

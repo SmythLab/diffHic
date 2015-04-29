@@ -1,12 +1,18 @@
 #include "diffhic.h"
 #include "coord.h"
 
-SEXP count_patch(SEXP all, SEXP bin, SEXP filter) try {
+SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) try {
     if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
 	const int* bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
 	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
 	const int f=asInteger(filter);
-   	if (!isNewList(all)) { throw std::runtime_error("data on interacting PETs must be contained within a list"); }
+	if (!isInteger(firstbin) || LENGTH(firstbin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
+
+	// Getting the indices of the first and last bin on the target chromosome.
+	const int fbin=asInteger(firstbin);
+	if (!isInteger(lastbin) || LENGTH(lastbin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
+	const int lbin=asInteger(lastbin);
+	if (!isNewList(all)) { throw std::runtime_error("data on interacting PETs must be contained within a list"); }
 
 	// Setting up other structures, including pointers. We assume it's sorted on R's side.
 	const int nlibs=LENGTH(all);
@@ -36,37 +42,46 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter) try {
 		// Populating the priority queue.
 		if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
 	}
-	
-	/* Running through all libraries. The idea is to use stretches of identical anchors to restrain the map
-	 * so that it only contains differing targets. This assumes that the bin transformation is monotonic,
-	 * and that anchors are sorted.
-	 */
-	std::deque<int> counts, anchors, targets;
-	int total=0, countsum=0;
-	std::map<int, int> bins;
-	std::map<int, int>::iterator itb;
-	std::deque<int> curcounts;
 
-	int curab, curtb, curlib;
+	// Setting up the memory containers.
+	const int nbins=lbin-fbin+1;
+	int* curcounts=(int*)R_alloc(nlibs*nbins, sizeof(int)); 
+	bool* ischanged=(bool*)R_alloc(nbins, sizeof(bool));
+	for (int i=0; i<nbins; ++i) { ischanged[i]=false; }
+	std::deque<int> waschanged, counts, anchors, targets;
+	size_t rowdex;
+
+	/* Running through all libraries. The idea is to use stretches of identical bin anchors, such that
+	 * we only need to worry about different bin targets (i.e., the problem becomes 1-dimensional).
+	 * This assumes that the bin transformation is monotonic, and that anchors are sorted.
+	 */
+	int countsum=0;
+	int curab, curtb, curlib, curdex, lib;
 	bool failed;
+
 	while (!next.empty()) {
 		curab=next.top().anchor;
 		failed=false;
 		do {
 			curtb=next.top().target;
-			itb=bins.lower_bound(curtb);
-			if (itb==bins.end() || bins.key_comp()(curtb, itb->first)) {
-				curcounts.resize(total+nlibs);
-				itb=bins.insert(itb, std::make_pair(curtb, total));
-				total+=nlibs;
-			}
-			const int& curdex=itb->second;
+			if (curtb > lbin || curtb < fbin) { throw std::runtime_error("target bin index is out the specified range");}
+			curdex=curtb-fbin;
 
-			// Inner loop, to avoid multiple searches when the next batch of rows are in the same bin.
+			// Checking whether we need to set up a new row, or whether it's already in use.
+			if (!ischanged[curdex]) {
+				waschanged.push_back(curdex);
+				ischanged[curdex]=true;
+				curdex*=nlibs;
+ 			    for (lib=0; lib<nlibs; ++lib) { curcounts[curdex+lib]=0; }
+			} else {
+				curdex*=nlibs;
+			}
+
+			// Inner loop, to avoid multiple searches when the next batch of rows are in the same bin pair.
 			do {
 				curlib=next.top().library;
 				int& libdex=indices[curlib];
-				curcounts[curdex+curlib]+=1;
+				++(curcounts[curdex+curlib]);
 				next.pop();
  	           	if ((++libdex) < nums[curlib]) {
 					next.push(coord(bptr[aptrs[curlib][libdex]], bptr[tptrs[curlib][libdex]], curlib));
@@ -81,20 +96,24 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter) try {
 			} while ( curtb == next.top().target );
 		} while (!failed);
 
+		// Sorting so all targets are in ascending order during addition (anchor sorting is implicit).
+		std::sort(waschanged.begin(), waschanged.end());
+
 		// Adding it to the main list, if it's large enough.
-		for (itb=bins.begin(); itb!=bins.end(); ++itb) {
-			const int& curdex=itb->second;
+		for (rowdex=0; rowdex<waschanged.size(); ++rowdex) {
+			curdex=waschanged[rowdex]*nlibs;
 			countsum=0;
-			for (int i=0; i<nlibs; ++i) { countsum+=curcounts[curdex+i]; }
+			for (lib=0; lib<nlibs; ++lib) { countsum+=curcounts[curdex+lib]; }
 			if (countsum >= f) { 
 				anchors.push_back(curab);
-				targets.push_back(itb->first);
-				for (int i=0; i<nlibs; ++i) { counts.push_back(curcounts[curdex+i]); }
-			}	
+				targets.push_back(waschanged[rowdex]+fbin);
+				for (lib=0; lib<nlibs; ++lib) { counts.push_back(curcounts[curdex+lib]); }
+			}
+
+			// Resetting the ischanged vector for the next stretch of bin anchors.
+			ischanged[waschanged[rowdex]]=false;
 		}
-		total=0;
-		bins.clear();
-		curcounts.clear();
+		waschanged.clear();
 	}
 
 	SEXP output=PROTECT(allocVector(VECSXP, 3));

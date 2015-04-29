@@ -7,8 +7,8 @@
 \description{Plot interactions between two sequences in a plaid format with informative colouring.}
 
 \usage{
-plotPlaid(file, param, anchor, target=anchor, width=10000, 
-	col="red", max.count=20, xlab=NULL, ylab=NULL, 
+plotPlaid(file, param, first.region, second.region=first.region, 
+    width=10000, col="red", max.count=20, xlab=NULL, ylab=NULL, 
 	diag=TRUE, count=FALSE, count.args=list(), ...)
 rotPlaid(file, param, region, width=10000, col="red", 
     max.count=20, xlab=NULL, ylab="Gap", ...) 
@@ -17,14 +17,14 @@ rotPlaid(file, param, region, width=10000, col="red",
 \arguments{
 	\item{file}{character string specifying the path to an index file produced by \code{\link{preparePairs}}}
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
-	\item{anchor}{a \code{GRanges} object of length 1 specifying the anchor region}
-	\item{target}{a \code{GRanges} object of length 1 specifying the target region}
+	\item{first.region}{a \code{GRanges} object of length 1 specifying the first region}
+	\item{second.region}{a \code{GRanges} object of length 1 specifying the second region}
 	\item{region}{a \code{GRanges} object of length 1 specifying the region of interest}
 	\item{width}{an integer scalar specifying the width of each bin in base pairs}
 	\item{col}{any type of R color to describe the color of the plot elements}
 	\item{max.count}{a numeric scalar specifying the count for which the darkest color is obtained}
-	\item{xlab}{character string for the x-axis label on the plot, defaults to the anchor chromosome name}
-	\item{ylab}{character string for the y-axis label on the plot, defaults to the target chromosome name in \code{plotPlaid}}
+	\item{xlab}{character string for the x-axis label on the plot, defaults to the chromosome name of \code{first.region}}
+	\item{ylab}{character string for the y-axis label on the plot, defaults to the chromosome name of \code{second.regeion} in \code{plotPlaid}}
 	\item{diag}{a logical scalar specifying whether boxes should be shown above the diagonal for intra-chromosomal plots in \code{plotPlaid}}
 	\item{count}{a logical scalar specifying whether the count for each bin should be plotted in \code{plotPlaid}}
 	\item{count.args}{a named list of arguments to be passed to \code{\link{text}} for plotting of bin counts, if \code{count=TRUE}}
@@ -33,7 +33,7 @@ rotPlaid(file, param, region, width=10000, col="red",
 
 \details{
 The \code{plotPlaid} function constructs a plaid plot on the current graphics device.
-The \code{anchor} and \code{target} regions are represented by the x- and y-axes, respectively.
+The intervals of the \code{first.region} and \code{second.region} are represented by the x- and y-axes, respectively.
 Each region is partitioned into bins of size \code{width}.
 Each bin pair is represented by a box in the plotting space, where each side of the box represents a bin.
 The colour of the box depends on the number of read pairs mapped between the corresponding bins.
@@ -47,7 +47,8 @@ Scaling \code{max.count} is recommended for valid comparisons between libraries 
 If \code{count=TRUE}, the number of read pairs will be shown on top of each bin. 
 This will be slower to plot but can be useful in some cases, e.g., when more detail is required, or when the range of colors is not sufficient to capture the range of counts in the data. 
 If \code{diag=TRUE}, boxes will also be plotted above the diagonal for intra-chromosomal plots. 
-This is set as the default to avoid confusion when anchor/target ordering is misspecified, but can be turned off to reduce redundancy in visualization around the diagonal.
+This is set as the default to avoid confusion when \code{first.region} is not set as the anchor range, i.e., it has a lower sorting order than \code{second.region}.
+However, this can also be turned off to reduce redundancy in visualization around the diagonal.
 
 The \code{rotPlaid} function constructs a plaid plot that has been rotated by 45 degrees.
 This is useful for visualizing local interactions within a specified \code{region}.
@@ -76,11 +77,11 @@ fout <- "temp_saved.h5"
 invisible(preparePairs(hic.file, param, fout))
 
 # Constructing intra-chromosomal plaid plots around various regions.
-plotPlaid(fout, param, anchor=GRanges("chrA", IRanges(1, 100)), 
-    target=GRanges("chrA", IRanges(1, 200)), width=50, diag=TRUE)
+plotPlaid(fout, param, first.region=GRanges("chrA", IRanges(1, 100)), 
+    second.region=GRanges("chrA", IRanges(1, 200)), width=50, diag=TRUE)
 box()
-xxx <- plotPlaid(fout, param, anchor=GRanges("chrA", IRanges(1, 100)), 
-    target=GRanges("chrA", IRanges(1, 200)), width=50, diag=FALSE)
+xxx <- plotPlaid(fout, param, first.region=GRanges("chrA", IRanges(1, 100)), 
+    second.region=GRanges("chrA", IRanges(1, 200)), width=50, diag=FALSE)
 
 # Making colorbars.
 xxx(1:2)
@@ -88,16 +89,16 @@ xxx(1:5)
 xxx(1:10)
 
 # Constructing inter-chromosomal plaid plots around various regions
-plotPlaid(fout, param, anchor=GRanges("chrB", IRanges(1, 100)), 
-    target=GRanges("chrA", IRanges(1, 200)), width=50)
-plotPlaid(fout, param, anchor=GRanges("chrB", IRanges(1, 100)), 
-    target=GRanges("chrA", IRanges(1, 200)), width=100)
+plotPlaid(fout, param, first.region=GRanges("chrB", IRanges(1, 100)), 
+    second.region=GRanges("chrA", IRanges(1, 200)), width=50)
+plotPlaid(fout, param, first.region=GRanges("chrB", IRanges(1, 100)), 
+    second.region=GRanges("chrA", IRanges(1, 200)), width=100)
 
 # For a hypothetical second library which is half the size of the previous one:
-plotPlaid(fout, param, anchor=GRanges("chrB", IRanges(1, 100)),
-    target=GRanges("chrA", IRanges(1, 200)), width=100, max.count=20, count=TRUE)
-plotPlaid(fout, param, anchor=GRanges("chrB", IRanges(1, 100)),
-    target=GRanges("chrA", IRanges(1, 200)), width=100, max.count=40,
+plotPlaid(fout, param, first.region=GRanges("chrB", IRanges(1, 100)),
+    second.region=GRanges("chrA", IRanges(1, 200)), width=100, max.count=20, count=TRUE)
+plotPlaid(fout, param, first.region=GRanges("chrB", IRanges(1, 100)),
+    second.region=GRanges("chrA", IRanges(1, 200)), width=100, max.count=40,
     count=TRUE, count.args=list(col="blue"))
 
 # Rotated

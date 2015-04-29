@@ -5,7 +5,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 #
 # written by Aaron Lun
 # some time ago
-# last modified 3 March 2015
+# last modified 29 April 2015
 {
 	nlibs <- length(files)
 	if (nlibs==0) { 
@@ -17,8 +17,12 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	filter<-as.integer(filter) 
 	fragments <- param$fragments
 	new.pts <- .getBinID(fragments, width)
-	chrs <- seqlevels(fragments)
 	
+	# Setting up ranges for the fragments and bins.
+	chrs <- seqlevels(fragments)
+	frag.by.chr <- .splitByChr(fragments)
+	bin.by.chr <- .splitByChr(new.pts$region)
+		
 	# Setting up other local references.
 	restrict <- param$restrict
 	discard <- .splitDiscards(param$discard)
@@ -35,23 +39,20 @@ squareCounts <- function(files, param, width=50000, filter=1L)
     for (anchor in names(overall)) {
         current <- overall[[anchor]]
 		for (target in names(current)) {
-			if (!.checkIfPairOK(restrict, anchor, target)) { next }
 
 			# Extracting counts and checking them.
-			pairs <- .baseHiCParser(current[[target]], files, anchor, target, discard=discard, cap=cap)
-			for (lib in 1:length(pairs)) { 
-				.checkIndexOK(fragments, anchor, pairs[[lib]]$anchor.id)
-				if (anchor!=target) { .checkIndexOK(fragments, target, pairs[[lib]]$target.id) }
-				full.sizes[lib] <- full.sizes[lib] + nrow(pairs[[lib]]) 
-			}
+			pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+				chr.limits=frag.by.chr, discard=discard, cap=cap)
+			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 			
 			# Aggregating them in C++ to obtain count combinations for each bin pair.
-            out <- .Call(cxx_count_patch, pairs, new.pts$id, filter)
+			out <- .Call(cxx_count_patch, pairs, new.pts$id, filter, 
+				bin.by.chr$first[[target]], bin.by.chr$last[[target]])
 			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
 			# Storing counts and locations. 
-			if (any(out[[1]] < out[[2]])) { stop("anchor ID should be greater than target ID") }
+			if (any(out[[1]] < out[[2]])) { stop("anchor ID should not be less than target ID") }
 			out.a[[idex]] <- out[[1]]
  			out.t[[idex]] <- out[[2]]
 			out.counts[[idex]] <- out[[3]]
@@ -96,11 +97,11 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	out.ids<-integer(length(fragments))
 	out.ranges<-list()
 	last<-0L
-	frag.data <- .delimitFragments(fragments)
+	frag.data <- .splitByChr(fragments)
 	nfrags <- list() 
 	
 	for (x in 1:length(frag.data$chr)) {
-		curindex <- frag.data$start[x]:frag.data$end[x]
+		curindex <- frag.data$first[x]:frag.data$last[x]
 		curf <- fragments[curindex]
 		mids <- (start(curf)+end(curf))/2
 		bin.id <- as.integer((mids-0.1)/width)+1L 
@@ -130,7 +131,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 
 ####################################################################################################
 
-.baseHiCParser <- function(ok, files, anchor, target, discard, cap)
+.baseHiCParser <- function(ok, files, anchor, target, chr.limits, discard, cap)
 # A courtesy function, to assist with loading counts in this function and others.
 {
 	overall<-list()
@@ -147,6 +148,18 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 			# Checking fidelity, figuring out which ones to throw out.
 			check <- .Call(cxx_check_input, out$anchor.id, out$target.id)
 			if (is.character(check)) { stop(check) }
+
+			# Checking that we're all on the right chromosome.
+			if (nrow(out)) { 
+				if (max(out$anchor.id) > chr.limits$last[[anchor]] || 
+						min(out$anchor.id) < chr.limits$first[[anchor]]) { 
+					stop("anchor index outside range of fragment object") 
+				}
+				if (max(out$target.id) > chr.limits$last[[target]] || 
+						min(out$target.id) < chr.limits$first[[target]]) { 
+					stop("target index outside range of fragment object") 
+				}
+			}
 
 			# Overlapping with those in the discard intervals.
 			if (!is.null(adisc) || !is.null(tdisc)) {
@@ -174,6 +187,8 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	return(overall)
 }
 
+####################################################################################################
+
 .splitDiscards <- function(discard) 
 # Splits the discard GRanges into a list of constituent chromosomes,
 # along with IRanges for everything. This allows easy access tot he
@@ -195,30 +210,3 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	return(output)
 }
 
-.checkIfPairOK <- function(restrict, anchor, target) 
-# This just checks if we're going for only one pair. If so, it checks
-# for whether we're talking about the pair of the same chromosome, in 
-# which case the pair must be okay (as the restrict should have thrown
-# out everything else). If we're talking about the pair of different
-# chromosomes, then we must have differences between anchor and target
-# in order to be getting the right pair.
-{
-	if (attributes(restrict)$only.pair) { 
-		if (restrict[1]!=restrict[2]) { return(anchor!=target) } 
-	}
-	return(TRUE)
-}
-
-.checkIndexOK <- function(fragments, nominal, indices) 
-# Checking that everything, in fact, comes from the same chromosome.
-# It also checks for out-of-boundedness. The rather complicated code
-# in the 'if' just speeds things up by avoiding expansion of the entire 
-# vector; it's faster than 'unique', too.
-{
-	if (length(indices)) {
-		if (max(indices) > length(fragments)) { stop("index outside range of fragment object") }
-		if (!all((seqnames(fragments) == nominal)[which(tabulate(indices)>0L)])) {
-			stop("mismatch between requested and extracted chromosomes") }
-	}
-	return(TRUE)
-}

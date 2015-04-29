@@ -7,8 +7,9 @@
 \description{Plot differential interactions in a plaid format with informative colouring.}
 
 \usage{
-plotDI(data, fc, anchor, target=anchor, col.up="red", col.down="blue",
-    background="grey70", zlim=NULL, xlab=NULL, ylab=NULL, diag=TRUE, ...)
+plotDI(data, fc, first.region, second.region=first.region, 
+    col.up="red", col.down="blue", background="grey70", 
+    zlim=NULL, xlab=NULL, ylab=NULL, diag=TRUE, ...)
 rotDI(data, fc, region, col.up="red", col.down="blue",
     background="grey70", zlim=NULL, xlab=NULL, ylab="Gap", ...)
 
@@ -17,22 +18,22 @@ rotDI(data, fc, region, col.up="red", col.down="blue",
 \arguments{
 	\item{data}{a \code{DIList} object}
 	\item{fc}{a numeric vector of log-fold changes}
-	\item{anchor}{a \code{GRanges} object of length 1 specifying the anchor region}
-	\item{target}{a \code{GRanges} object of length 1 specifying the target region}
+	\item{first.region}{a \code{GRanges} object of length 1 specifying the first region}
+	\item{second.region}{a \code{GRanges} object of length 1 specifying the second region}
 	\item{region}{a \code{GRanges} object of length 1 specifying the region of interest}
 	\item{col.up}{any type of R color to describe the maximum color for positive log-fold changes}
 	\item{col.down}{any type of R color to describe the maximum color for negative log-fold changes}
 	\item{background}{any type of R color, specifying the background color of the interaction space}
 	\item{zlim}{a numeric scalar indicating the maximum absolute log-fold change}
-	\item{xlab}{character string for the x-axis label on the plot, defaults to the anchor chromosome name}
-	\item{ylab}{character string for the y-axis label on the plot, defaults to the target chromosome name in \code{plotDI}}
+	\item{xlab}{character string for the x-axis label on the plot, defaults to the first chromosome name}
+	\item{ylab}{character string for the y-axis label on the plot, defaults to the second chromosome name in \code{plotDI}}
 	\item{diag}{a logical scalar specifying whether boxes should be shown above the diagonal for intra-chromosomal plots in \code{plotDI}}
 	\item{...}{other named arguments to be passed to \code{\link{plot}}}
 }	
 
 \details{
 The \code{plotDI} function constructs a plaid plot on the current graphics device.
-The \code{anchor} and \code{target} regions are represented by the x- and y-axes, respectively.
+The intervals of \code{first.region} and \code{second.region} are represented by the x- and y-axes, respectively.
 Each bin pair is represented by a box in the plotting space, where each side of the box represents a bin.
 Plotting space that is not covered by any bin pair is shown in \code{background}.
 
@@ -42,7 +43,8 @@ The chosen color is proportional to the magnitude of the log-FC, and the most ex
 The maximum value can be capped at \code{zlim} for better resolution of small log-FCs.
 
 If \code{diag=TRUE}, boxes will also be plotted above the diagonal for intra-chromosomal plots. 
-This is set as the default to avoid confusion when anchor/target ordering is misspecified, but can be turned off to reduce redundancy in visualization around the diagonal.
+This is set as the default to avoid confusion when \code{first.region} is not set as the anchor range, i.e., it has a lower sorting order than \code{second.region}.
+However, this can also be turned off to reduce redundancy in visualization around the diagonal.
 
 The \code{rotDI} function constructs a rotated plot of differential interactions, for visualization of local changes.
 See \code{\link{rotPlaid}} for more details. 
@@ -71,16 +73,16 @@ out <- DIList(matrix(0, 500, 1), anchors=all.anchors, targets=all.targets,
 fc <- runif(nrow(out), -2, 2)
 
 # Constructing intra-chromosomal DI plots around various regions
-plotDI(out, fc, anchor=GRanges("chrA", IRanges(1, 10)), 
-    target=GRanges("chrA", IRanges(1, 10)), diag=TRUE)
-plotDI(out, fc, anchor=GRanges("chrA", IRanges(1, 10)), 
-    target=GRanges("chrA", IRanges(1, 10)), diag=FALSE)
+plotDI(out, fc, first.region=GRanges("chrA", IRanges(1, 10)), 
+    second.region=GRanges("chrA", IRanges(1, 10)), diag=TRUE)
+plotDI(out, fc, first.region=GRanges("chrA", IRanges(1, 10)), 
+    second.region=GRanges("chrA", IRanges(1, 10)), diag=FALSE)
 
 # Constructing inter-chromosomal DI plots around various regions
-xxx <- plotDI(out, fc, anchor=GRanges("chrB", IRanges(1, 10)), 
-    target=GRanges("chrA", IRanges(1, 20)), diag=TRUE)
-plotDI(out, fc, anchor=GRanges("chrB", IRanges(1, 100)), 
-    target=GRanges("chrA", IRanges(1, 200)), diag=TRUE, zlim=5)
+xxx <- plotDI(out, fc, first.region=GRanges("chrB", IRanges(1, 10)), 
+    second.region=GRanges("chrA", IRanges(1, 20)), diag=TRUE)
+plotDI(out, fc, first.region=GRanges("chrB", IRanges(1, 100)), 
+    second.region=GRanges("chrA", IRanges(1, 200)), diag=TRUE, zlim=5)
 
 # Making colorbars.
 xxx((-10):10/10)

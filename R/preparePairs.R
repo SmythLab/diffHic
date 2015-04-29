@@ -5,7 +5,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 #
 # written by Aaron Lun
 # created 30 May 2013
-# last modified 27 March 2015
+# last modified 29 April 2015
 {
 	# Preparing cuts; start positions, end positions, index in 'fragments', segmented by chromosome.
 	# Anchor/target order is defined by the order of chromosomes in 'fragments'; earlier chromosomes
@@ -13,19 +13,19 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 	scuts <- ecuts <- list()
 	boost.idx<- list()
 	fragments <- param$fragments
-	frag.data <- .delimitFragments(fragments)
+	frag.data <- .splitByChr(fragments)
 	chrs <- frag.data$chr
 
 	curends<-end(fragments)
 	curstarts<-start(fragments)
 	for (x in 1:length(chrs)) {
-		curdex <- frag.data$start[x]:frag.data$end[x]
+		curdex <- frag.data$first[x]:frag.data$last[x]
 		scuts[[x]] <- curstarts[curdex]
 		ecuts[[x]] <- curends[curdex]
 		if (x==1L) {
 			boost.idx[[chrs[x]]] <- 0L
 		} else {
-			boost.idx[[chrs[x]]] <- frag.data$end[x-1L]
+			boost.idx[[chrs[x]]] <- frag.data$last[x-1L]
 		}
 	}
 
@@ -53,16 +53,16 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 	.innerPrepLoop(bam=bam, file=file, chrs=chrs, chr.start=boost.idx, FUN=FUN, yield=yield)
 }
 
-.delimitFragments <- function(fragments)
-# Gets the start and end for each chromosome in the fragment list. There's no need
-# to check for correctness, as all objects take a pairParam object (and checking is
-# performed therein).
+.splitByChr <- function(ranges)
+# Gets the start and end for each chromosome in the sorted GRanges. 
 {
-	ref.chrs <- as.character(runValue(seqnames(fragments)))
-	ref.len <- runLength(seqnames(fragments))
+	ref.chrs <- as.character(runValue(seqnames(ranges)))
+	if (anyDuplicated(ref.chrs)) { stop("ranges for each chromosome should be consecutive") }
+	ref.len <- runLength(seqnames(ranges))
 	end.index <- cumsum(ref.len)
 	start.index <- end.index - ref.len + 1L
-	return(list(chr=ref.chrs, start=start.index, end=end.index))
+	names(end.index) <- names(start.index) <- ref.chrs
+	return(list(chr=ref.chrs, first=start.index, last=end.index))
 }
 
 .innerPrepLoop <- function(bam, file, chrs, chr.start, FUN, yield)

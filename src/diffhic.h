@@ -44,7 +44,7 @@ SEXP count_connect(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP count_marginals (SEXP, SEXP, SEXP);
 
-SEXP count_patch(SEXP, SEXP, SEXP);
+SEXP count_patch(SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP iterative_correction(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 

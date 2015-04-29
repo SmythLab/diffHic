@@ -2,7 +2,8 @@
 #include "coord.h"
 
 SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEXP is_second) try {		
-	if (!isInteger(start) || !isInteger(end) || !isInteger(region)) { throw std::runtime_error("fragment/indices for first regionion must be integer vectors"); }
+	if (!isInteger(start) || !isInteger(end) || !isInteger(region)) { 
+		throw std::runtime_error("fragment/region indices must be integer vectors"); }
 	const int ni=LENGTH(start), nrp1=LENGTH(region)+1; // As 'end' refers to one-past-the-end. 
 	if (LENGTH(end)!=ni) { throw std::runtime_error("start/end index vectors should be the same length"); }
 
@@ -66,6 +67,14 @@ SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEX
 	int curab, curtb, curlib;
 	combo temp;
 	int counter=0;
+	int x1, x2, lib;
+
+	int smallest=-1;
+	std::deque<int> returned_anchors, returned_targets;
+	std::deque<size_t> count_indices;
+	int countsum;
+	size_t index;
+
 	while (!next.empty()) {
 		curab=next.top().anchor;
 		curtb=next.top().target;
@@ -94,8 +103,8 @@ SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEX
 	
 		if (s1x!=e1x && s2x!=e2x) { 
 			if (s1x <= 0 || s2x <= 0 || e1x > nrp1 || e2x > nrp1) { throw std::runtime_error("invalid start/endpoints for region indices"); }
-			for (int x1=s1x; x1<e1x; ++x1) {
-				for (int x2=s2x; x2<e2x; ++x2) { 
+			for (x1=s1x; x1<e1x; ++x1) {
+				for (x2=s2x; x2<e2x; ++x2) { 
 					if (rptr[x1] > rptr[x2]) {
 						temp.first=rptr[x1];
 						temp.second=rptr[x2];
@@ -104,6 +113,7 @@ SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEX
 						temp.first=rptr[x2];
 						temp.second=rptr[x1];
 					}
+					if (temp.first < smallest) { throw std::runtime_error("largest index cannot be lower than 'smallest' threshold"); } 
 
 					// Checking secondary; i.e., one read in second ranges, other region outside.
 					if (check_second && iptr[temp.first]==iptr[temp.second]) { continue; }
@@ -115,38 +125,59 @@ SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEX
 					} else if ((itb->second).second==counter) { 
 						/* The 'counter' avoids adding the same range twice to a particular pair. Regions
 						 * can be irregularly sized and spaced, e.g., nested, so it's not possible to set up 
-						 * a general rule to avoid redundant counting.
+						 * a general rule to avoid redundant counting. For example, the target fragment might
+						 * overlap regions 1, 2 while the anchor might just overlap 1, if 2 is nested in 1.
 						 */
 						continue;
 					}
 					(itb->second).second=counter;
 					const int& index=(itb->second).first;
-					for (int lib=0; lib<nlibs; ++lib) { counts[index+lib] += curcounts[lib]; }
+					for (lib=0; lib<nlibs; ++lib) { counts[index+lib] += curcounts[lib]; }
 				}
 			}
 		}
 
 		// Resetting.
-		for (int i=0; i<nlibs; ++i) { curcounts[i]=0; }
+		for (lib=0; lib<nlibs; ++lib) { curcounts[lib]=0; }
+
+		/* Removing all entries where the first index is below the smallest region index for the anchor 
+		 * fragment. As we iterate, the anchor fragment will increase, so the smallest region index will 
+		 * only get higher (regions have already been sorted at the R-level). This means that lower entries 
+		 * will no longer be accessible. Swapping with the index for the target fragment has no effect, as 
+		 * you need to be higher to swap. The aim is to shrink the map to make it (almost) 1-dimensional.
+		 */
+		smallest=rptr[s1x];
+		for (x1=s1x+1; x1<e1x; ++x1) { if (smallest > rptr[x1]) { smallest=rptr[x1]; } }
+		itb=bins.begin();
+		while (itb!=bins.end()) { 
+			if ((itb->first).first < smallest) {
+				countsum=0;
+				index=(itb->second).first;
+				for (lib=0; lib<nlibs; ++lib, ++index) { countsum += counts[index]; }
+				if (countsum >= filtval) { 
+					returned_anchors.push_back((itb->first).first);
+					returned_targets.push_back((itb->first).second);
+					count_indices.push_back((itb->second).first);
+				}
+				bins.erase(itb++);
+			} else {
+				break;
+			}
+		}
 	}
 
 	// Assessing how many combinations are above threshold.
-	size_t index=0;
-	int countsum=0, ncombos=0;
-	std::deque<bool> isokay;
-	while (index < counts.size()) { 
-		for (int i=0; i<nlibs; ++i) { 
-			countsum += counts[index];
-			++index; 
-		}
-		if (countsum>=filtval) { 
-			isokay.push_back(true);
-			++ncombos;
-		} else {
-			isokay.push_back(false);
-		}
+	for (itb=bins.begin(); itb!=bins.end(); ++itb) { 
 		countsum=0;
+		index=(itb->second).first;
+		for (lib=0; lib<nlibs; ++lib, ++index) { countsum += counts[index]; }
+		if (countsum >= filtval) { 
+			returned_anchors.push_back((itb->first).first);
+			returned_targets.push_back((itb->first).second);
+			count_indices.push_back((itb->second).first);
+		}
 	}
+	const size_t ncombos=count_indices.size();
 
 	// Returning all count combinations underneath the threshold.
 	SEXP output=PROTECT(allocVector(VECSXP, 3));
@@ -163,15 +194,11 @@ SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEX
 		}	
 		
 		// Iterating across and filling both the matrix and the components.
-		int odex=0;
-		for (itb=bins.begin(); itb!=bins.end(); ++itb) {
-			if (isokay[(itb->second).first/nlibs]) { 
-				aoptr[odex]=(itb->first).first;
-				toptr[odex]=(itb->first).second;
-				const int& index=(itb->second).first;
-				for (int i=0; i<nlibs; ++i) { coptrs[i][odex]=counts[index+i]; }
-				++odex;
-			}
+		for (size_t odex=0; odex < ncombos; ++odex) { 
+			aoptr[odex]=returned_anchors[odex];
+			toptr[odex]=returned_targets[odex];
+			const int& index=count_indices[odex];
+			for (int i=0; i<nlibs; ++i) { coptrs[i][odex]=counts[index+i]; }
 		}
 	} catch (std::exception& e) { 
 		UNPROTECT(1);

@@ -6,13 +6,14 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE,
 #
 # written by Aaron Lun
 # created 27 March 2015
+# last modified 29 April 2015
 {
 	fragments <- param$fragments
 	n.per.chr <- runLength(seqnames(fragments))
-	frag.data <- .delimitFragments(fragments)
+	frag.data <- .splitByChr(fragments)
 
 	chrs <- frag.data$chr
-	last.in.chr <- frag.data$end
+	last.in.chr <- frag.data$last
 	before.first <- as.list(c(0L, last.in.chr[-length(chrs)]))
 	names(before.first) <- chrs
 

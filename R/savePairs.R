@@ -4,7 +4,9 @@ savePairs <- function(x, file, param)
 # to each file. This speeds up any attempt at random access. The idea is to act as a 
 # convenience function if you have a matrix of counts (or whatever) and you just want to save it.
 #
-# written by Aaron Lun  
+# written by Aaron Lun 
+# created some time ago
+# last modified 29 April 2015	
 {
 	swap <- x$anchor.id < x$target.id
 	if (any(swap)) { 
@@ -15,9 +17,9 @@ savePairs <- function(x, file, param)
     if (file.exists(file)) { unlink(file, recursive=TRUE) }
 
     # Need to reorder so fragments are sorted by chromosome COMBINATION. 
-    frag.out <- .delimitFragments(param$fragments)
+    frag.out <- .splitByChr(param$fragments)
 	all.chrs <- frag.out$chr
-	full.chrs <- rep(1:length(all.chrs), frag.out$end-frag.out$start+1L)
+	full.chrs <- rep(1:length(all.chrs), frag.out$last-frag.out$first+1L)
     achr <- full.chrs[x$anchor.id]
     tchr <- full.chrs[x$target.id]
     new.o <- order(achr, tchr, x$anchor.id, x$target.id)

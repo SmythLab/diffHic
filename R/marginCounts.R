@@ -10,6 +10,7 @@ marginCounts <- function(files, param, width=50000)
 	nlibs <- length(files)
 	width <- as.integer(width)
 	fragments <- param$fragments
+	frag.by.chr <- .splitByChr(fragments)
 
 	# Setting up other local references.
 	restrict <- param$restrict
@@ -30,10 +31,10 @@ marginCounts <- function(files, param, width=50000)
     for (anchor in names(overall)) {
 		current <- overall[[anchor]]
 		for (target in names(current)) {
-			if (!.checkIfPairOK(restrict, anchor, target)) { next } 
     
-      		pairs <- .baseHiCParser(current[[target]], files, anchor, target, discard=discard, cap=cap)
-           	full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+      		pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+				chr.limits=frag.by.chr, discard=discard, cap=cap)
+			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
 			# Aggregating them in C++ to get the count combinations and location of each bin.
             out <- .Call(cxx_count_marginals, pairs, new.pts$id, total.bins)

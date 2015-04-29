@@ -5,14 +5,13 @@ enrichedPairs <- function(data, flank=5, prior.count=2, abundances=NULL)
 #
 # written by Aaron Lun
 # created 23 April 2014
-# last modified 23 March 2015
+# last modified 29 April 2015
 {
 	flank <- as.integer(flank)
 	if (flank <= 0L) { stop("flank width must be a positive integer") }
-	rdata <- .delimitFragments(regions(data))
-	last.id <- rdata$end
-	first.id <- rdata$start
-	names(last.id) <- names(first.id) <- rdata$chr
+	rdata <- .splitByChr(regions(data))
+	last.id <- rdata$last
+	first.id <- rdata$first
 	if (is.null(abundances)) { abundances <- aveLogCPM(asDGEList(data), prior.count=0) }
 
 	# Rescaling to count-level data with at least 6 dp, for stable calculations with integers.
@@ -28,14 +27,15 @@ enrichedPairs <- function(data, flank=5, prior.count=2, abundances=NULL)
 	
 	# Running through each pair of chromosomes.
 	np <- nrow(data)
-	by.chr <- split(1:np, as.character(seqnames(anchors(data))))
+	all.chrs <- as.character(seqnames(regions(data)))
 	aid <- anchors(data, id=TRUE)
+	by.chr <- split(1:np, all.chrs[aid])
 	tid <- targets(data, id=TRUE)
 	output <- numeric(np)
 
 	for (anchor in names(by.chr)) {
 		next.chr <- by.chr[[anchor]]
-		next.chr <- split(next.chr, as.character(seqnames(targets(data[next.chr,]))))
+		next.chr <- split(next.chr, all.chrs[tid[next.chr]])
 		a.len <- last.id[[anchor]] - first.id[[anchor]] + 1L
 
 		for (target in names(next.chr)) {

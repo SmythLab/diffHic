@@ -35,6 +35,7 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 	}
 	xdiscard <- diffHic:::.splitDiscards(discard)
 	lost.frag <- lost.in <- lost.out <- lost.disc <- 0L
+	frag.by.chr <- diffHic:::.splitByChr(cuts)
 
 	combo <- c(dir1, dir2, dir1x, dir2x)
 	stuff <- diffHic:::.loadIndices(combo, seqlevels(cuts))
@@ -113,7 +114,8 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 			}
 									
 			# Running through them with every possible check.
-			comparator <- diffHic:::.baseHiCParser(current[[tx]][1:2], combo[1:2], ax, tx, discard=xdiscard, cap=cap)
+			comparator <- diffHic:::.baseHiCParser(current[[tx]][1:2], combo[1:2], ax, tx, 
+				chr.limits=frag.by.chr, discard=xdiscard, cap=cap)
 			for (d in 1:2) {
 				stopifnot(identical(everything[[d]], comparator[[d]]))
 			}

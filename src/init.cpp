@@ -15,7 +15,7 @@ static const R_CallMethodDef all_call_entries[] = {
 	CALLDEF(quadrant_bg, 9),
 	CALLDEF(count_connect, 6),
 	CALLDEF(count_marginals, 3),
-	CALLDEF(count_patch, 3),
+	CALLDEF(count_patch, 5),
 	CALLDEF(iterative_correction, 9),
 	CALLDEF(report_hic_pairs, 11),
 	CALLDEF(report_hic_binned_pairs, 12),

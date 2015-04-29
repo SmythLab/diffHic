@@ -192,7 +192,8 @@ setValidity("pairParam", function(object) {
 			return('restriction fragments should be sorted by chromosome name')	
 		}
 	
-		# <, not <=, to allow nested fragments at start and end of the chromosome when remainder=0.	
+		# <, not <=, to allow nested fragments at start and end of the chromosome when 
+		# overhang and site lengths are equal.
 		unsort <- diff(start(object@fragments)) < 0L | diff(end(object@fragments)) < 0L 
 
 		# Should be +1, to get to the first element of each chromosome; but, unsort 
