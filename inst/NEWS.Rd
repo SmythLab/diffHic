@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.1}{\itemize{
+\section{Version 1.1.3}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -14,6 +14,9 @@ Optimized C++ code for connectCounts(), squareCounts().
 
 \item 
 Streamlined various R utilities used throughout all functions.
+
+\item 
+Added iter_map.py to inst/python, for iterative mapping of DNase Hi-C data.
 
 \item 
 Updated documentation, tests and user's guide.

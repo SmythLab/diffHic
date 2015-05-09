@@ -43,6 +43,12 @@ struct bottomright : public basic {
 struct updown : public basic {
 	updown(int w, int t, bool i) : basic(w, t, i) { level=-w; }
 	~updown() {};
+	bool bump_level() { 
+		if (level >= width) { return false; }
+		++level;
+		if (level==0) { ++level; }
+		return true; 
+	}
 	void set(int a, int t) {
 		row=a+level;
 		left=t;

@@ -29,11 +29,14 @@ SEXP count_marginals (SEXP all, SEXP bins, SEXP total) try {
             	if (!isInteger(current_col)) { throw std::runtime_error("interaction data must be in integer format"); }
             	int* ptr=INTEGER(current_col);
             	switch (j) {
-                	case 0: 
-						aaptr=ptr; 
+                	case 0:
+						aaptr=ptr;
 						num=LENGTH(current_col);
 						break;
-                	case 1: ttptr=ptr; break;
+                	case 1: 
+						ttptr=ptr;
+						if (LENGTH(current_col)!=num) { throw std::runtime_error("vectors should be the same length"); }
+						break;
                 	default: break;
             	}
 			}

@@ -4,36 +4,11 @@
 suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 suppressPackageStartupMessages(require(edgeR))
 
-.getLimits <- function(x, flank, start, end) {
-	lower.x <- x - flank
-	upper.x <- x + flank
-	if (lower.x < start) { upper.x <- upper.x + start - lower.x }
-	if (upper.x > end) { lower.x <- lower.x + end - upper.x }
-	lower.x <- max(start, lower.x)
-	upper.x <- min(upper.x, end)
-	return(c(lower.x, upper.x))
-}
-
 # Defining some odds and ends.
 
 lower.left <- function(x) { 
 	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
 	out[nrow(x),1] <- FALSE
-	out
-}
-upper.right <- function(x) { 
-	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
-	out[1, ncol(x)] <- FALSE
-	out
-}
-upper.left <- function(x) { 
-	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
-	out[1,1] <- FALSE
-	out	
-}
-lower.right <- function(x) { 
-	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
-	out[nrow(x), ncol(x)] <- FALSE
 	out
 }
 all.but.middle <- function(x) {
