@@ -1,5 +1,4 @@
-#include "diffhic.h"
-#include "coord.h"
+#include "read_count.h"
 
 SEXP count_connect(SEXP all, SEXP start, SEXP end, SEXP region, SEXP filter, SEXP is_second) try {		
 	if (!isInteger(start) || !isInteger(end) || !isInteger(region)) { 

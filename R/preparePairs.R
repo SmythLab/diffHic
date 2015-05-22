@@ -67,7 +67,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 
 .innerPrepLoop <- function(bam, file, chrs, chr.start, FUN, yield)
 # This is the function that does the heavy lifting of looping through the file.
-# The collation function is specified in FUN. The idea is to allow the prepBinPairs
+# The collation function is specified in FUN. The idea is to allow the prepPseudoPairs
 # function to use the same loop without having to repeat the code.
 {
 	# Setting up storage vectors for diagnostics and other output.

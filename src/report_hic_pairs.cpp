@@ -445,6 +445,9 @@ int simple_finder::find_fragment(const int& c, const int& p, const bool& r, cons
 }
 
 int no_status_check (const segment& left, const segment& right) { 
+	/* Fragment IDs have no concept in DNase Hi-C, so automatic 
+	 * detection of self-circles/dangling ends is impossible. 
+	 */
 	(void)left; 
 	(void)right; // Just to avoid unused warnings, but maintain compatibility.
 	return NEITHER; 
@@ -459,7 +462,7 @@ struct check_invalid_freed_chimera : public check_invalid_chimera {
 		bool invalid=false;
 		if (read1.size()==2) { invalid=!is_pet(read2[0], read1[1]); }
 		if (read2.size()==2 && !invalid) { invalid=!is_pet(read1[0], read2[1]); }
-		/* Doesn't accout for cases where the 5' end is nested inside the 3' end and the mate.
+		/* Doesn't account for cases where the 5' end is nested inside the 3' end and the mate.
 		 * These are physically impossible from a single linear DNA molecule. I suppose we can
 		 * forgive this, because it could form from interactions betwen homologous chromosomes.
  		 */

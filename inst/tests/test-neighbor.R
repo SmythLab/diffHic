@@ -148,4 +148,58 @@ comp(200, c(chrA=10, chrB=5, chrC=20), 1)
 comp(200, c(chrA=20, chrB=5), 1)
 
 ###################################################################################################
+# Same sort of simulation, but direct from read data, for neighbourCounts testing.
+
+chromos<-c(chrA=51, chrB=31)
+source("simcounts.R")
+
+dir.create("temp-neighbor")
+dir1<-"temp-neighbor/1.h5"
+dir2<-"temp-neighbor/2.h5"
+
+comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, prior.count=2) {
+	simgen(dir1, npairs1, chromos)
+	simgen(dir2, npairs2, chromos)
+	param <- pairParam(fragments=cuts)
+
+	out <- neighbourCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count)
+
+	ref <- squareCounts(c(dir1, dir2), width=width, param, filter=1)
+	keep <- rowSums(counts(ref)) >= filter
+	enrichment <- enrichedPairs(ref, flank=flank, prior.count=prior.count)
+
+	if (!identical(ref[keep,], out$interaction)) { stop("extracted counts don't match up") }
+	if (any(abs(enrichment[keep] - out$enrichment) > 1e-6)) { stop("enrichment values don't match up") }
+	return(head(enrichment[keep]))
+}
+
+set.seed(2384)
+comp2(100, 50, 10000, cuts=simcuts(chromos))
+comp2(100, 50, 10000, cuts=simcuts(chromos), filter=10)
+comp2(100, 50, 10000, cuts=simcuts(chromos), flank=3)
+comp2(100, 50, 10000, cuts=simcuts(chromos), prior.count=1)
+
+comp2(50, 200, 5000, cuts=simcuts(chromos))
+comp2(50, 200, 5000, cuts=simcuts(chromos), filter=10)
+comp2(50, 200, 5000, cuts=simcuts(chromos), flank=3)
+comp2(50, 200, 5000, cuts=simcuts(chromos), prior.count=1)
+
+comp2(100, 200, 1000, cuts=simcuts(chromos))
+comp2(100, 200, 1000, cuts=simcuts(chromos), filter=5)
+comp2(100, 200, 1000, cuts=simcuts(chromos), flank=3)
+comp2(100, 200, 1000, cuts=simcuts(chromos), prior.count=1)
+
+comp2(10, 20, 1000, cuts=simcuts(chromos))
+comp2(10, 20, 1000, cuts=simcuts(chromos), filter=5)
+comp2(10, 20, 1000, cuts=simcuts(chromos), flank=3)
+comp2(10, 20, 1000, cuts=simcuts(chromos), prior.count=1)
+
+#####################################################################################################
+# Cleaning up
+
+unlink("temp-neighbor", recursive=TRUE)
+
+#####################################################################################################
+# End.
+
 

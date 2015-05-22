@@ -61,14 +61,10 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	}
 
 	# Collating all the other results.
-	if (idex==1L) { 
-		out.a <- out.t <- integer(0)
-		out.counts <- matrix(0L, ncol=nlibs, nrow=0L)
-	} else {
-		out.a <- unlist(out.a)
-		out.t <- unlist(out.t)
-		out.counts <- do.call(rbind, out.counts)
-	}
+	out.a <- unlist(out.a)
+	out.t <- unlist(out.t)
+	out.counts <- do.call(rbind, out.counts)
+
 	return(DIList(counts=out.counts, totals=full.sizes, 
 		anchors=out.a, targets=out.t, regions=new.pts$region,
 		exptData=List(param=param, width=width)))
