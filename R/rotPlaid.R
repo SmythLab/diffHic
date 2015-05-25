@@ -1,4 +1,4 @@
-rotPlaid <- function(file, param, region, width=10000, col="red", max.count=20, xlab=NULL, ylab="Gap", ...)
+rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20, xlab=NULL, ylab="Gap", ...)
 # This constructs a sideways plot of interaction intensities.
 # Boxes represent interactions where the interacting loci are
 # on the x-axis, extended from the diagonal.

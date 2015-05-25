@@ -99,6 +99,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
     std::deque<std::deque<int> > neighbourarea(nmodes);
 	basic * base_ptr=NULL;
 	size_t saved_dex=0; // Points to the entry in 'anchors' to be interrogated.
+	int ref_matching_dex=0; // Points to entry in 'ref_anchors' matching anchor for previous 'saved_dex'.
 	size_t n_to_drop;
 
 	// Other assorted sundries.
@@ -152,14 +153,22 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 
 			// Computing the neighbourhood count for all bin pairs with anchors of 'anchors[saved_dex]'.
 			for (mode=0; mode<nmodes; ++mode) { 
+				leftdex=rightdex=0;
 				switch (mode) {
-					case 0: base_ptr=&lr; break;
+					case 0: 
+						base_ptr=&lr; 
+						leftdex=rightdex=ref_matching_dex; // starting from the stretch in ref_anchors that is past the previous 'saved_anchor'.
+						break;
 					case 1: base_ptr=&ud; break;
 					case 2: base_ptr=&aa; break;
 					case 3: base_ptr=&br; break;
 				}
 
-				leftdex=rightdex=0;
+				/* Each bump_level will result in an increase in desired_anchor, so we can hot-start 
+				 * from the previous left/rightdex from the last level (i.e., no need to reset to 
+				 * zero within the loop). Both indices MUST increase (even when saved_copy_dex 
+				 * is reset to saved_dex) as they've been stuck on the previous desired_anchor.
+				 */
 				current_average.first=current_average.second=0;
 				do { 
 					for (saved_copy_dex=saved_dex; saved_copy_dex < anchors.size() && 
@@ -193,22 +202,34 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 							--(neighbourarea[mode][saved_copy_dex]);
 						}
 					}
-					/* Each bump_level will result in an increase in desired_anchor, so we can hot-start 
-					 * from the previous left/rightdex. Both indices MUST increase (even when saved_copy_dex 
-					 * is reset to saved_dex) as they've been stuck on the previous desired_anchor.
-					 */
 				} while (base_ptr->bump_level());
+
+				/* Storing the location on ref_anchors where 'saved_anchor' terminates, to hotstart for
+				 * the next 'saved_anchor' for 'leftright' (as it only operates within the same anchor values).
+				 */
+				if (mode==0) { ref_matching_dex=rightdex; }
 			}
-			while (saved_dex < anchors.size() && anchors[saved_dex]==saved_anchor) { ++saved_dex; } // Shifting onwards.
+			
+			// Shifting onwards to the next 'saved_anchor'.
+			while (saved_dex < anchors.size() && anchors[saved_dex]==saved_anchor) { ++saved_dex; } 
 		}
 
 		// Dropping elements in the reference data that will no longer be used, to save memory.
 		if (saved_dex < anchors.size()) { 
 			n_to_drop=0;
 			while (n_to_drop < ref_anchors.size() && ref_anchors[n_to_drop] < anchors[saved_dex] - bwidth) { ++n_to_drop; }
-			ref_anchors.erase(ref_anchors.begin(), ref_anchors.begin()+n_to_drop);
-			ref_targets.erase(ref_targets.begin(), ref_targets.begin()+n_to_drop);
-			ref_ave.erase(ref_ave.begin(), ref_ave.begin()+n_to_drop);
+			if (n_to_drop) { 
+				ref_anchors.erase(ref_anchors.begin(), ref_anchors.begin()+n_to_drop);
+				ref_targets.erase(ref_targets.begin(), ref_targets.begin()+n_to_drop);
+				ref_ave.erase(ref_ave.begin(), ref_ave.begin()+n_to_drop);
+
+				/* The 'matching_dex' gets pulled down as well. It's possible that the next 'saved_anchor'
+				 * skips a couple of ref_anchors, so the number dropped might include 'matching_dex'. In
+				 * that case, we just start from zero during the neighbourhood calculations.
+				 */
+				ref_matching_dex-=n_to_drop;
+				if (ref_matching_dex < 0) { ref_matching_dex=0; }
+			}
 		} else if (engine.empty()) { break; }
 	}
 

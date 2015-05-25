@@ -8,9 +8,9 @@
 
 \usage{
 plotPlaid(file, param, first.region, second.region=first.region, 
-    width=10000, col="red", max.count=20, xlab=NULL, ylab=NULL, 
+    width=10000, col="black", max.count=20, xlab=NULL, ylab=NULL, 
 	diag=TRUE, count=FALSE, count.args=list(), ...)
-rotPlaid(file, param, region, width=10000, col="red", 
+rotPlaid(file, param, region, width=10000, col="black", 
     max.count=20, xlab=NULL, ylab="Gap", ...) 
 }
 

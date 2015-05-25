@@ -1,5 +1,5 @@
 plotPlaid <- function(file, param, first.region, second.region=first.region,
-   	width=10000, col="red", max.count=20, xlab=NULL, ylab=NULL, 
+   	width=10000, col="black", max.count=20, xlab=NULL, ylab=NULL, 
 	diag=TRUE, count=FALSE, count.args=list(), ...)
 # This function takes a set of boundaries and a count directory and it generates a plaid plot of 
 # the result. The plot is colour coded with heat for the desired count range (white for nothing
