@@ -33,7 +33,7 @@ filterDirect <- function(data, ...)
 	return(threshold)
 }
 
-.makeEmpty <- function(data, ...) { scaledAverage(DGEList(0, lib.size=mean(data$totals)), ...) }
+.makeEmpty <- function(data, ...) { scaledAverage(DGEList(rbind(integer(ncol(data))), lib.size=data$totals), ...) }
 
 filterTrended <- function(data, span=0.25, ...)
 # Implements the trended filtering method on the abundances of 

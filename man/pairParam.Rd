@@ -27,7 +27,7 @@ The object can be can be obtained by applying \code{\link{cutGenome}} on an appr
 
 If \code{restrict} is supplied, reads will only be extracted for the specified chromosomes. 
 This is useful to restrict the analysis to interesting chromosomes, e.g., no contigs/scaffolds or mitochondria. 
-\code{restrict} can also be a 1-by-2 matrix, specifying a single pair of chromosomes over which read pairs are to be counted.
+\code{restrict} can also be a \code{n}-by-2 matrix, specifying \code{n} pairs of chromosomes over which read pairs are to be counted.
 
 If \code{discard} is set, a read will be removed if the corresponding alignment is wholly contained within the supplied ranges. 
 Any pairs involving reads discarded in this manner will be ignored.
@@ -102,6 +102,7 @@ reform(blah, cap=10)
 # Different restrict options.
 pairParam(cuts, restrict=c('chr2', 'chr3'))
 pairParam(cuts, restrict=cbind('chr2', 'chr3'))
+pairParam(cuts, restrict=cbind(c('chr1', 'chr2'), c('chr3', 'chr4')))
 }
 
 \keyword{counting}

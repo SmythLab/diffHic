@@ -21,9 +21,9 @@ Anchor and target regions are guaranteed to be identical.
 }
 
 \details{
-The genome is first split into non-overlapping adjacent bins of size \code{width}. 
-These bins are rounded to the nearest restriction site. 
-The marginal count for each bin is defined as the number of read pairs with at least one end mapped within the bin.
+The genome is first split into non-overlapping adjacent bins of size \code{width}, which are rounded to the nearest restriction site. 
+The marginal count for each bin is defined as the number of reads in the library mapped to the bin.
+This acts as a proxy for genomic coverage by treating Hi-C data as single-end.
 
 Even though counts do not correspond to interactions, a \code{DIList} object is still used to store the output for convenience.
 Bin coordinates can be extracted as the anchor or target intervals in the output.

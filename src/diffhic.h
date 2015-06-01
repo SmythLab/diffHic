@@ -46,8 +46,6 @@ SEXP count_background(SEXP, SEXP, SEXP, SEXP,
 
 SEXP count_connect(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
-SEXP count_marginals (SEXP, SEXP, SEXP);
-
 SEXP count_patch(SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP iterative_correction(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -63,6 +61,8 @@ SEXP test_fragment_assign(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP pair_stats (SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP get_missing_dist(SEXP, SEXP, SEXP, SEXP);
+
+SEXP directionality(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 }
 

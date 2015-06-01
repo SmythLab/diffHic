@@ -14,6 +14,7 @@ export(diffHicUsersGuide,
 	filterDirect, filterTrended, 
 	filterPeaks, enrichedPairs, neighbourCounts,
     boxPairs, clusterPairs, consolidatePairs,
+	compartmentalize, domainDirections,
     plotPlaid, rotPlaid, plotDI, rotDI)
 
 # Exporting the DIList class.
@@ -22,8 +23,8 @@ exportClasses(
 )
 
 exportMethods(
-    anchors, targets, counts, regions, "[", show, colData, exptData,
-    asDGEList, normalize, reform
+    anchors, targets, counts, regions, 
+	asDGEList, normalize, reform 
 )
 
 # Requires several imports.

@@ -115,6 +115,18 @@ setMethod("exptData", signature("DIList"), function(x, ...) {
 	x@exptData
 })
 
+# Modifier functions.
+
+setMethod("$<-", signature("DIList"), function(x, name, value) { 
+	x@colData[[name]] <- value
+	x
+})
+
+setMethod("exptData<-", signature("DIList", "SimpleList"), function(x, ..., value) {
+	x@exptData <- value
+	x
+})
+
 # Constructor object.
 DIList <- function(counts, totals=colSums(counts), anchors, targets, regions, exptData=List(), ...) {
 	if (!is.integer(counts)) { storage.mode(counts) <- "integer" }
@@ -160,6 +172,38 @@ setMethod("c", signature("DIList"), function (x, ..., add.totals=TRUE, recursive
 	new("DIList", counts=do.call(rbind, output), 
 		anchors=unlist(out.a), targets=unlist(out.t), regions=regions(x),
 		exptData=exptData(x), colData=colData)
+})
+
+setMethod("as.matrix", signature("DIList"), function(x, first=NULL, second=first, fill=NULL, ...) {
+	if (!is.null(first)) { keep.first <- as.logical(seqnames(regions(x)) %in% first) }
+	else { keep.first <- !logical(length(regions(x))) }
+	if (!is.null(second)) { keep.second <- as.logical(seqnames(regions(x)) %in% second) }
+	else { keep.second <- !logical(length(regions(x))) }
+	new.f <- cumsum(keep.first)
+	new.s <- cumsum(keep.second)
+
+	mat <- matrix(NA, nrow=sum(keep.first), ncol=sum(keep.second))
+	rownames(mat) <- which(keep.first)
+	colnames(mat) <- which(keep.second)
+	aid <- anchors(x, id=TRUE)
+	tid <- targets(x, id=TRUE)
+
+	retain <- keep.first[aid] & keep.second[tid]
+	ax <- new.f[aid[retain]]
+	tx <- new.s[tid[retain]]
+	flip.retain <- keep.first[tid] & keep.second[aid]
+	flip.ax <- new.f[tid[flip.retain]]
+	flip.tx <- new.s[aid[flip.retain]]
+
+	if (is.null(fill)) { 
+		fill <- numeric(nrow(x))
+		retained <- retain | flip.retain
+		fill[retained] <- aveLogCPM(asDGEList(x[retained,])) 
+	}
+	mat[ax + (tx-1L) * nrow(mat)] <- fill[retain] 
+	mat[flip.ax + (flip.tx-1L) * nrow(mat)] <- fill[flip.retain] 
+
+	return(mat)
 })
 
 # Setting some methods inspired by equivalents in csaw.
@@ -212,6 +256,10 @@ setValidity("pairParam", function(object) {
 	if (length(object@cap)!=1L || (!is.na(object@cap) && object@cap <= 0L)) { 
 		return('any specified cap should be a positive integer')
 	}
+
+	if (attributes(object@restrict)$paired && length(object@restrict)%%2!=0L) {
+		return('restrict vector must be of even length for paired extraction')
+	}
 	return(TRUE)
 })
 
@@ -258,11 +306,12 @@ setMethod("show", signature("pairParam"), function(object) {
 	if (!nr) { 
 		cat("No limits on chromosomes for read extraction\n")
 	} else {
-		if (!attributes(object@restrict)$only.pair) {
+		if (!attributes(object@restrict)$paired) {
 			cat("Read extraction is limited to", nr, ifelse(nr==1L, "chromosome\n", "chromosomes\n"))
 		} else {
-			cat("Read extraction is limited to pairs between", 
-				paste0("'", object@restrict[1], "'"), "and", paste0("'", object@restrict[2], "'\n"))
+			nr <- length(object@restrict)/2
+			cat("Read extraction is limited to pairs between:\n", 
+				paste0("\t'", object@restrict[1:nr], "' and '", object@restrict[nr+1:nr], "'\n"), sep="")
 		}
 	}
 
@@ -295,15 +344,13 @@ pairParam <- function(fragments,
 }
 
 .editRestrict <- function(restrict) {
-	only.pair <- FALSE
+	paired <- FALSE
 	if (!is.null(dim(restrict))) { 
-		if (nrow(restrict)!=1L || ncol(restrict)!=2L) {
-			stop("restrict matrix can only have a single row with two values")
-		}
-		only.pair <- TRUE
+		if (ncol(restrict)!=2L) { stop("restrict matrix must have two columns") }
+		paired <- TRUE
 	}
 	restrict <- as.character(restrict)
-	attr(restrict, "only.pair") <- only.pair
+	attr(restrict, "paired") <- paired
 	restrict
 }
 

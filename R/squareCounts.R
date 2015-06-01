@@ -13,8 +13,8 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	} else if (width < 0) { 
 		stop("width must be a non-negative integer")
 	} 
-	width<-as.integer(width) 
-	filter<-as.integer(filter) 
+	width <- as.integer(width) 
+	filter <- as.integer(filter) 
 	fragments <- param$fragments
 	new.pts <- .getBinID(fragments, width)
 	
@@ -74,13 +74,16 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 # Recall the enforcement of anchor >= target. Bin pairs should technically be
 # reflected around the diagonal, to ensure that all points are counted, e.g.,
 # if a bin pair overlaps a point in (target, anchor) form but not in (anchor,
-# target) form. However, this is not required due to the enforcement above.
+# target) form. However, this is not required, as shown below:
 # 
-# Consider a point (x, y) where y > x; this implies that the target range [te,
-# ts] includes 'y', and the anchor range [ae, as] includes 'x'. The anchor
-# range must be above the target range (i.e., as >= ts, ae >= te). If ts <= y
-# <= te and as <= x <= ae, then you can fiddle with this to obtain ts <= x <=
-# te and as <= y <= ae (as x < y), i.e., the point (y, x) is also covered.
+# Consider a point (x, y) past the diagonal (i.e., no enforcement), where y >
+# x. Assume that this point is covered by our bin pair. This implies that the
+# target range of our bin pair `[te, ts]` includes 'y', and the anchor range
+# `[ae, as]` includes 'x'. The anchor range must be above the target range
+# (i.e., as >= ts, ae >= te). If ts <= y <= te and as <= x <= ae, then you can
+# fiddle with this to obtain ts <= x <= te and as <= y <= ae (as x < y), i.e.,
+# the point (y, x) is also covered. So, we're guaranteed to have already
+# counted anything past the diagonal, meaning that reflection is not needed.
 
 ####################################################################################################
 

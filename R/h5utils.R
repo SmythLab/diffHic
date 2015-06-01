@@ -6,11 +6,14 @@
 	y <- path.expand(y)
 	overall <- list()
 	ni<-length(y)
-	do.restrict <- length(restrict)!=0L
-	only.pair <- attributes(restrict)$only.pair
-	if (is.null(only.pair)) { only.pair <- FALSE }
 	check.chrs <- !missing(frag.chrs)
 	if (!check.chrs) { warning("no protection against nonsensical chromosomes in the data") }
+	
+	# Checking how we want to do restriction.
+	do.restrict <- length(restrict)!=0L
+	paired <- attributes(restrict)$paired
+	if (is.null(paired)) { paired <- FALSE }
+	else if (paired) { nr <- length(restrict)/2L }
 
 	for (ix in 1:ni) {
 		all.data <- loadChromos(y[ix])
@@ -26,15 +29,16 @@
 			# Checking whether we should skip this anchor; otherwise, taking only the 
 			# relevant targets for the inner iteration step.
 			if (do.restrict) {
-				amatch <- match(ac, restrict)
-				if (is.na(amatch)) { next }
-				if (only.pair) {
-					if (! (restrict[-amatch] %in% subcurrent)) { next }
-					subcurrent <- restrict[-amatch]
+				amatch <- restrict==ac
+				if (!any(amatch)) { next }
+				if (paired) {
+					tmatch <- which(amatch)
+					tmatch <- tmatch + nr * (-1L)^(tmatch > nr) # Getting the chromosome in the other column.
+					subcurrent <- intersect(subcurrent, restrict[tmatch])
 				} else {
 					subcurrent <- intersect(subcurrent, restrict)
-					if (!length(subcurrent)) { next }
 				}
+				if (!length(subcurrent)) { next }
 			}
 			if (is.null(overall[[ac]])) { overall[[ac]]<-list() }
 				

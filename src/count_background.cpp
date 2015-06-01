@@ -1,51 +1,15 @@
 #include "read_count.h"
 #include "neighbours.h"
-#include <cmath>
 
-const double low_value=std::pow(10.0, -10.0);
-const double MULT=1000000;
 typedef std::pair<int, int> floater;
+const double MULT=1000000;
 
-floater nb_average(const int& nlibs, const int& maxit, const double& tolerance, const double* offset, 
-		const int* y, const double& disp) { // Code copied from glm_one_group in edgeR's src.
-
-	bool nonzero=false;
-	double cur_beta=0;
-	for (int j=0; j<nlibs; ++j) {
-		const int& cur_val=y[j];
-		if (cur_val>low_value) {
-			cur_beta+=cur_val/std::exp(offset[j]);
-			nonzero=true;
-		}
-	}
-	cur_beta=std::log(cur_beta/nlibs);
-	if (!nonzero) { return std::make_pair(0, 0); }
-
-	double dl, info, mu, step, denominator;
-	for (int i=0; i<maxit; ++i) {
-		dl=0;
- 	    info=0;
-		for (int j=0; j<nlibs; ++j) {
-			mu=std::exp(cur_beta+offset[j]), denominator=1+mu*disp;
-			dl+=(y[j]-mu)/denominator;
-			info+=mu/denominator;
-		}
-		step=dl/info;
-		cur_beta+=step;
-		if (std::abs(step)<tolerance) { break; }
-	}
-
+floater double2int(double x) { 
 	// Getting integer values.
-	cur_beta=std::exp(cur_beta);
-	int int_comp=int(cur_beta);
-	int dec_comp=int((cur_beta-double(int_comp))*MULT);
+	int int_comp=int(x);
+	int dec_comp=int((x-double(int_comp))*MULT);
 	return std::make_pair(int_comp, dec_comp);
 }
-
-/*********************************************************************
- ******************** Main looping. **********************************
- *********************************************************************/
-
 
 SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter, 
 		SEXP first_target_bin, SEXP last_target_bin, SEXP first_anchor_bin, SEXP last_anchor_bin,
@@ -59,11 +23,11 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 	// Getting the indices of the first and last bin on the target and anchor chromosomes.
 	if (!isInteger(first_target_bin) || LENGTH(first_target_bin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
 	const int ftbin=asInteger(first_target_bin);
-	if (!isInteger(last_target_bin) || LENGTH(last_target_bin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
+	if (!isInteger(last_target_bin) || LENGTH(last_target_bin)!=1) { throw std::runtime_error("index of last bin on target chromosome must be an integer scalar"); }
 	const int ltbin=asInteger(last_target_bin);
-	if (!isInteger(first_anchor_bin) || LENGTH(first_anchor_bin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
+	if (!isInteger(first_anchor_bin) || LENGTH(first_anchor_bin)!=1) { throw std::runtime_error("index of first bin on anchor chromosome must be an integer scalar"); }
 	const int fabin=asInteger(first_anchor_bin);
-	if (!isInteger(last_anchor_bin) || LENGTH(last_anchor_bin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
+	if (!isInteger(last_anchor_bin) || LENGTH(last_anchor_bin)!=1) { throw std::runtime_error("index of last bin on anchor chromosome must be an integer scalar"); }
 	const int labin=asInteger(last_anchor_bin);
 	const bool intra=(fabin==ftbin);
 
@@ -120,7 +84,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 				ref_targets.push_back(waschanged[vecdex]);
 
 				rowdex=waschanged[vecdex]*nlibs;
-				current_average=nb_average(nlibs, maxit, tol, offptr, curcounts+rowdex, disp);
+				current_average=double2int(nb_average(nlibs, maxit, tol, offptr, curcounts+rowdex, disp));
 				ref_ave.push_back(current_average);
 
 				countsum=0;

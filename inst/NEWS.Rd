@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.5}{\itemize{
+\section{Version 1.1.6}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -23,6 +23,15 @@ Added the neighbourCounts() function, for simultaneous read counting and enrichm
 
 \item
 Switched default colour in rotPlaid(), plotPlaid() to black.
+
+\item
+Added compartmentalize() function to identify genomic compartments.
+
+\item 
+Added domainDirections() function to help identify domains.
+
+\item 
+Modified marginCounts() function for proper single-end-like treatment of Hi-C data.
 
 \item 
 Updated documentation, tests and user's guide.

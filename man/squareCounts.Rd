@@ -12,7 +12,7 @@ squareCounts(files, param, width=50000, filter=1L)
 \arguments{
 	\item{files}{a character vector containing paths to the index files generated from each Hi-C library}
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
-	\item{width}{an integer scalar specifying the width of each square in base pairs}
+	\item{width}{an integer scalar specifying the width of each bin in base pairs}
 	\item{filter}{an integer scalar specifying the minimum count for each square}
 }
 
@@ -77,11 +77,14 @@ head(counts(y))
 # Attempting with other parameters.
 y <- squareCounts(fout, reform(param, restrict="chrA"), width=100, filter=1)
 head(counts(y))
-y <- squareCounts(fout, reform(param, restrict=cbind("chrA", "chrB")), filter=1)
+y <- squareCounts(fout, filter=1,
+    param=reform(param, restrict=cbind("chrA", "chrB"))) 
 head(counts(y))
-y <- squareCounts(fout, reform(param, cap=1), width=100, filter=1)
+y <- squareCounts(fout, filter=1,
+    param=reform(param, cap=1), width=100)
 head(counts(y))
-y <- squareCounts(fout, reform(param, discard=GRanges("chrA", IRanges(1, 50))), width=100, filter=1)
+y <- squareCounts(fout, width=100, filter=1, 
+    param=reform(param, discard=GRanges("chrA", IRanges(1, 50))))
 head(counts(y))
 
 \dontshow{

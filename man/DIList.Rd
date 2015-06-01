@@ -13,19 +13,20 @@
 \alias{counts}
 \alias{counts,DIList-method}
 
-\alias{$}
 \alias{$,DIList-method}
-\alias{colData}
 \alias{colData,DIList-method}
-\alias{exptData}
 \alias{exptData,DIList-method}
 
 \alias{dim,DIList-method}
 \alias{dimnames,DIList-method}
 
+\alias{$<-,DIList-method}
+\alias{exptData<-,DIList,SimpleList-method}
+
 \alias{[,DIList,ANY,ANY-method}
 \alias{show,DIList-method}
 \alias{c,DIList-method}
+\alias{as.matrix,DIList-method}
 
 \title{DIList class and methods}
 
@@ -104,6 +105,21 @@ In the code snippets below, \code{x} is a DIList object.
 }
 }
 
+\section{Modifiers}{
+In the code snippets below, \code{x} is a DIList object.
+
+\describe{ 
+	\item{}{\code{x$name <- value}:
+	Assign \code{value} to the \code{name} field of the \code{colData} in \code{x}.
+	Primarily intended for modification of the library sizes in \code{totals}, but can also be used to store additional library-specific information.
+	}
+	\item{}{\code{exptData(x) <- value}:
+	Assign a \code{SimpleList} object named \code{value} to the \code{exptData} slot of \code{x}.
+	Note that this also works with list accessors, e.g., by assigning to \code{exptData(x)$name}.
+	}	
+}
+}
+
 \section{Subsetting and combining}{
 In the code snippets below, \code{x} is a DIList object.
 
@@ -129,6 +145,15 @@ In the code snippets below, \code{x} is a DIList object.
 		Shows a summary of the information in \code{x}.
 		Specifically, a string is printed that reports the number of libraries, number of interactions and total number of regions in \code{x}.
 	}
+	\item{}{\code{as.matrix(x, first=NULL, second=first, fill=NULL, ...)}:
+		Converts \code{x} into a contact matrix where rows and columns represent regions on the \code{first} and \code{second} chromosomes, respectively.
+		Entries of the matrix correspond to an interaction of \code{x}.
+		Each entry is extracted from \code{fill}, where \code{fill} is a numeric vector with one value per interaction in \code{x}.
+ 	   	By default, the average abundance of each interaction in \code{x} is used as the entry.
+		For intra-chromosomal spaces, both sides of the diagonal are filled.
+		Multiple chromosomes can also be specified in \code{first} or \code{second}. 
+		Each row and column is named according to the matching index of \code{regions(x)}.
+	}
 }
 }
 
@@ -137,7 +162,7 @@ In the code snippets below, \code{x} is a DIList object.
 \examples{
 blah <- DIList(counts=matrix(c(1,1,2,2,3,3,4,4,5,5,6,6), ncol=2), 
     totals=c(10L, 10L), anchors=c(1,2,3,4,5,6), targets=c(1,1,2,2,3,3), 
-	regions=GRanges("chrA", IRanges(10+1:20, 2+21:40)))
+	regions=GRanges("chrA", IRanges(1:6*10, 1:6*10+9)))
 nrow(blah)
 ncol(blah)
 
@@ -157,8 +182,15 @@ blah$totals
 colData(blah)
 exptData(blah)
 
+blah$totals <- c(10L, 20L)
+exptData(blah)$width <- 5
+exptData(blah)
+
 c(blah, blah)
 c(blah[1:2,], blah[3:4,], add.totals=FALSE)
+
+as.matrix(blah, anchor="chrA")
+as.matrix(blah, fill=runif(nrow(blah)))
 }
 
 \seealso{
