@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.6}{\itemize{
+\section{Version 1.1.7}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -32,6 +32,15 @@ Added domainDirections() function to help identify domains.
 
 \item 
 Modified marginCounts() function for proper single-end-like treatment of Hi-C data.
+
+\item
+Extended clusterPairs() to merge bin pairs from multiple DILists.
+
+\item
+Switched to reporting ranges directly from boxPairs(), added support for minimum bounding box output.
+
+\item
+Modified consolidatePairs() to accept index vectors for greater modularity.
 
 \item 
 Updated documentation, tests and user's guide.

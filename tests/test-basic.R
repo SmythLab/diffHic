@@ -70,7 +70,7 @@ head(boxed$indices$larger)
 head(boxed$indices$smaller)
 
 head(enrichedPairs(data))
-head(clusterPairs(data, tol=10)$id)
+head(clusterPairs(data, tol=10)$indices[[1]])
 
 # End.
 

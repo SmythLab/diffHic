@@ -1,11 +1,11 @@
-boxPairs <- function(..., reference)
+boxPairs <- function(..., reference, minbox=FALSE)
 # This function reports bin pairs that are nested within other bin pairs.  The
 # idea is to consolidate smaller bin pairs into their larger counterparts for
 # summarization of analyses involving multiple bin sizes.
 #
 # written by Aaron Lun
 # created 3 June 2014
-# last modified 20 March 2015
+# last modified 4 June 2015
 {
 	all.hits <- list(...)
 	nk <- length(all.hits)
@@ -53,18 +53,38 @@ boxPairs <- function(..., reference)
 	by.mode <- split(1:length(is.diff), all.mode)
 	
 	indices <- list()
-	total.pairs <- sum(is.diff)
-	freqs <- matrix(0L, nrow=total.pairs, ncol=nk)
 	for (x in 1:nk) {
 		chosen <- by.mode[[as.character(x)]]
 		current.out <- integer(length(chosen))
 		current.out[all.idx[chosen]] <- now.index[chosen]
 		indices[[x]] <- current.out
-		freqs[,x] <- tabulate(current.out, nbins=total.pairs)
 	}
-
-	# Collating all unique pairs.
-	colnames(freqs) <- names(num.pairs) <- names(indices) <- names(all.hits)
-	return(list(indices=indices, pairs=DIList(counts=freqs, totals=num.pairs, 
-			anchors=all.a[is.diff], targets=all.t[is.diff], regions=parents)))
+	names(indices) <- names(all.hits)
+	
+	# Selecting the boundaries to report.
+	if (minbox) {
+		a.chrs <- a.starts <- a.ends <- t.chrs <- t.starts <- t.ends <- list()
+		for (x in 1:nk) { 
+			current <- all.hits[[x]]
+			aid <- anchors(current, id=TRUE)
+			tid <- targets(current, id=TRUE)
+			rstarts <- start(regions(current))
+			rends <- end(regions(current))
+			rchrs <- as.character(seqnames(regions(current)))
+			a.chrs[[x]] <- rchrs[aid]
+			a.starts[[x]] <- rstarts[aid]
+			a.ends[[x]] <- rends[aid] + 1L
+			t.chrs[[x]] <- rchrs[tid]
+			t.starts[[x]] <- rstarts[tid]
+			t.ends[[x]] <- rends[tid] + 1L
+		}
+		boxed <- .minBoundingBox(unlist(indices), unlist(a.chrs), unlist(a.starts), unlist(a.ends), 
+			unlist(t.chrs), unlist(t.starts), unlist(t.ends), seqinfo(parents))
+		anchors <- boxed$anchors
+		targets <- boxed$targets
+	} else {
+		anchors <- parents[all.a[is.diff]]
+		targets <- parents[all.t[is.diff]]
+	}
+	return(list(indices=indices, anchors=anchors, targets=targets))
 }

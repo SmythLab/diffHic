@@ -1,5 +1,5 @@
 #include "diffhic.h"
-//#define DEBUG 0
+//#define DEBUG 1
 
 #ifdef DEBUG
 #include <iostream>
@@ -18,7 +18,7 @@
 
 const int nothing=-1;
 
-SEXP cluster_2d (SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t, SEXP tol) try {
+SEXP cluster_2d (SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t, SEXP tol, SEXP verbose) try {
 	if (!isInteger(start_a) || !isInteger(start_t) || !isInteger(end_a) || !isInteger(end_t)) {
 		throw std::runtime_error("anchor or target start and ends must be integer"); }
 	const int npts=LENGTH(start_a);
@@ -26,12 +26,15 @@ SEXP cluster_2d (SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t, SEXP tol) t
 		throw std::runtime_error("lengths of coordinate vectors are not equal"); }
 	if (!isInteger(tol) || LENGTH(tol)!=1) { 
 		throw std::runtime_error("tolerance should be an integer scalar"); }
+	if (!isLogical(verbose) || LENGTH(verbose)!=1) { 
+		throw std::runtime_error("verbosity should be a logical scalar"); }
 
 	const int width=asInteger(tol);
 	const int* asptr=INTEGER(start_a),
 		* aeptr=INTEGER(end_a),
 		* tsptr=INTEGER(start_t),
 		* teptr=INTEGER(end_t);
+	const int verb=asLogical(verbose);
 	
 	// Setting up the output construct, which specifies the cluster ID of each point.
 	SEXP output=PROTECT(allocVector(INTSXP, npts));
@@ -47,6 +50,7 @@ try {
 	std::map<int, std::pair<int, int> >::iterator itl, ito;
 	std::set<std::pair<int, int> > synonyms;
 	int ptdex=0, numids=0;
+	bool beforestart;
 
 	while (ptdex < npts) {
 		const int& cura=asptr[ptdex];
@@ -61,13 +65,6 @@ try {
 		const int basea=cura-width;
 		const int finisht=endt+width;
 		int& myid=(optr[ptdex]=nothing);
-		if (finisht <= baset || enda+width<=basea) {
-			// Not adding the box if the minimum overlap cannot possibly be obtained.
-			myid=numids;
-			++numids;
-			++ptdex;	
-			continue;			
-		}
 
 		// Identifying the landscape element before or at the current target
 		itl=landscape.lower_bound(baset);
@@ -98,48 +95,76 @@ try {
 				++itl;
 			} 
 		}
-		if (myid==nothing) {
-			// Incrementing to the next ID, if the current box doesn't overlap with anything.
+		if (myid==nothing) { // Incrementing to the next ID, if the current box doesn't overlap with anything.
 			myid=numids;
 			++numids;
 		}
 
-		/* Now, adding the current box to the landscape. We delete all points below it;
-		 * these shouldn't affect synonym identification later as anything matched 
-		 * by something with a higher anchor at the same target should also be matched
-		 * by the current box i.e. all synonyms accounted for. Of course, this assumes 
-		 * no nesting of windows. It also rules out searching for minimum overlap, 
-		 * but that's just a price we'll have to pay.
-		 */
-
-		// First, iterating to endt from finisht. We need to go the other way if the width is negative.
-		if (width<=0) { while (itl!=landscape.end() && itl->first <= endt) { ++itl; } }
+		// Adding the current endpoint of our box to the landscape.
 		if (itl==landscape.begin()) {
- 	 	   	itl=landscape.insert(itl, std::make_pair(endt, std::make_pair(enda, nothing)));
+ 	 	   	itl=landscape.insert(itl, std::make_pair(endt, std::make_pair(nothing, nothing)));
 		} else {
 			--itl; 
-			while (itl!=landscape.begin() && itl->first > endt) { --itl; }
-			if (itl->first!=endt) { // only need to change if it's different, remember; we want to keep the existing underlying element.
+			while (itl!=landscape.begin() && itl->first > endt) { --itl; } // Get to the first point in front of or equal to endt.
+
+			/* We only need to change if it's different, remember; we want to keep the existing underlying element.
+			 * We also only add it if the landscape is less than the added point, otherwise we'd be underground or redundant.
+			 * Of course, the latter only applies if it's not a 'nothing' endpost.
+			 */
+			if (itl->first!=endt && ((itl->second).first < enda || (itl->second).second==nothing)) {
 				const int& lastid=(itl->second).second;
 				const int& lastheight=(itl->second).first;
 				++itl;
 				itl=landscape.insert(itl, std::make_pair(endt, std::make_pair(lastheight, lastid)));
+			} else if (itl->first!=endt) {
+				++itl; // Set to first element greater than endt, if nothing is equal to it. Ensures later `--itl' starts at the right point.
 			}
 		}
 
-		// After we find endt, curt is always smaller, so regardless of width, we can just traverse downwards.	
-		if (itl==landscape.begin()) {
-			itl=landscape.insert(itl, std::make_pair(curt, std::make_pair(enda, myid)));
-		} else {
+		/* After we find endt, curt is always smaller, so regardless of width, we can just traverse downwards.	
+		 * We either delete the existing points if they are lower than the current height, or we alter it if 
+		 * it was a 'nothing' post. Deletion is possible because there's no way that later elements with higher
+		 * start anchors can overlap an end anchor lower than our current end anchor without also overlapping
+		 * our current end anchor; moreover, if our current start anchor didn't overlap the deleted end anchor,
+		 * then there's no way that later start anchors could overlap it either. So, the highest would be the best.
+		 * Finally, we add a new start post if the preceding element is not overriding us.
+		 */
+		beforestart=(itl==landscape.begin());
+		if (!beforestart) { 
 			--itl;
-			while (itl->first > curt) { 
-				if (itl!=landscape.begin()) { 
-					landscape.erase(itl--); 
+			while (itl->first > curt) {
+				if ((itl->second).second==nothing) {
+					// Peeking to see if the previous element has a high 'enda'.
+					--itl;
+					if ((itl->second).first <= enda) {
+						++itl;
+						landscape.erase(itl--);
+					} else {
+						++itl;
+						(itl->second).first=enda;
+						(itl->second).second=myid;
+						--itl; // landscape can't start with nothing, so don't worry about begin().
+					}
+				} else if ((itl->second).first <= enda) { 
+					if (itl!=landscape.begin()) { 
+						landscape.erase(itl--); 
+					} else {
+						landscape.erase(itl++);
+						beforestart=true;
+						break;
+					}
 				} else {
-					landscape.erase(itl++);
-					break;
+					if (itl==landscape.begin()) { 
+						beforestart=true;
+						break; 
+					}
+					--itl;
 				}
-			}
+ 			}
+		}
+		if (beforestart) { // If the current target is before the landscape start, we must add it.
+			itl=landscape.insert(itl, std::make_pair(curt, std::make_pair(enda, myid)));
+		} else if ((itl->second).first < enda || (itl->second).second==nothing) { // Shouldn't be empty, after adding the endpoint, above. 
 			if (itl->first==curt) {
 				(itl->second).first=enda;
 				(itl->second).second=myid;
@@ -147,6 +172,13 @@ try {
 				++itl;
 				itl=landscape.insert(itl, std::make_pair(curt, std::make_pair(enda, myid)));
 			}
+		}
+
+		if (verb) { // Printing landscape.
+			for (std::map<int, std::pair<int, int> >::const_iterator itx=landscape.begin(); itx!=landscape.end(); ++itx) {
+                Rprintf("%i[%i](%i) ", itx->first, (itx->second).first, (itx->second).second);
+			}
+			Rprintf("\n");
 		}
 
 #ifdef DEBUG
@@ -212,7 +244,6 @@ try {
 		}
 	}
 	
-	// Now, going through and correcting the synonyms.
 	for (int i=0; i<npts; ++i) { optr[i]=newids[optr[i]]; }
 } catch (std::exception &e) {
 	UNPROTECT(1);
@@ -386,10 +417,9 @@ try {
 			first_ptr[current]=i+1;
 			start_ptr[current]=sptr[i];
 			end_ptr[current]=eptr[i];
-		} else if (start_ptr[current] > sptr[i]) { 
-			start_ptr[current]=sptr[i];
-		} else if (end_ptr[current] < eptr[i]) {
-			end_ptr[current]=eptr[i];
+		} else { 
+			if (start_ptr[current] > sptr[i]) { start_ptr[current]=sptr[i]; } 
+			if (end_ptr[current] < eptr[i]) { end_ptr[current]=eptr[i]; }
 		}
 	}	
 

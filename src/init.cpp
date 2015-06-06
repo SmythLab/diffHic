@@ -9,7 +9,7 @@ extern "C" {
 static const R_CallMethodDef all_call_entries[] = {
 	CALLDEF(check_input, 2),
 	CALLDEF(cap_input, 3),
-	CALLDEF(cluster_2d, 5),
+	CALLDEF(cluster_2d, 6),
 	CALLDEF(split_clusters, 6),
 	CALLDEF(get_bounding_box, 3),
 	CALLDEF(quadrant_bg, 9),

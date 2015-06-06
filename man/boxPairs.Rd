@@ -5,18 +5,19 @@
 \description{Match smaller bin pairs to the larger bin pairs in which they are nested.}
 
 \usage{
-boxPairs(..., reference)
+boxPairs(..., reference, minbox=FALSE)
 }
 
 \arguments{
 \item{...}{one or more named \code{DIList} objects produced by \code{\link{squareCounts}}, with smaller bin sizes than \code{reference}}
 \item{reference}{an integer scalar specifying the reference bin size}
+\item{minbox}{a logical scalar indicating whether coordinates for the minimum bounding box should be returned}
 }
 
 \value{
 A list object containing:
 \item{indices}{a named list of integer vectors for every \code{DIList} in the ellipsis, see Details} 
-\item{pairs}{a \code{DIList} describing the parent bin pairs in which the input bin pairs are nested}
+\item{anchors,targets}{\code{GRanges} objects specifying the coordinates of the parent bin pair or, if \code{minbox=TRUE}, the minimum bounding box}
 }
 
 \details{
@@ -30,23 +31,18 @@ In particular, the value of \code{width} in \code{\link{squareCounts}} must be s
 This is necessary to ensure complete nesting.
 Otherwise, the behaviour of the function will not be clearly defined.
 
+In the output, one vector will be present in \code{indices} for each input \code{DIList} in the ellipsis.
+In each vector, each entry represents an index for a single input bin pair in the corresponding \code{DIList}.
+This index points to the entries in \code{anchors} and \code{targets} that specify the coordinates of the parent bin pair.
+Thus, bin pairs with the same index are nested in the same parent.
+
 Some users may wish to identify bin pairs in one \code{DIList} that are nested within bin pairs in another \code{DIList}.
 This can be done by supplying both \code{DIList} objects in the ellipsis, and leaving \code{reference} unspecified.
 The value of \code{reference} will be automatically selected as the largest width of the supplied \code{DIList} objects.
 Nesting can be identified by \code{\link{match}}ing the output indices for the smaller bin pairs to those of the larger bin pairs.
-}
 
-\section{Explaining the return value}{
-One vector will be present in the output \code{indices} for each input \code{DIList} in the ellipsis.
-In each vector, each entry represents an index for a single input bin pair in the corresponding \code{DIList}.
-This index points to a row of \code{pairs} and indicates the parent bin pair in which that input bin pair is nested.
-
-The \code{pairs} object holds the coordinates of each parent bin pair.
-Note that the counts in this \code{DIList} are repurposed here.
-Each parent bin pair corresponds to a row of the count matrix, whereas each input \code{DIList} corresponds to a column.
-Each entry specifies the number of nested bin pairs in the parent for the corresponding input \code{DIList}.
-Similarly, the \code{totals} vector contains the total number of input bin pairs in each input \code{DIList}.
-All columns/entries are named according to the name of the corresponding input \code{DIList}.
+If \code{minbox=TRUE}, the coordinates in \code{anchors} and \code{targets} represent the minimum bounding box for all nested bin pairs in each parent.
+This may be more precise if nesting only occurs in a portion of the interaction space of the parent bin pair.
 }
 
 \seealso{
@@ -79,6 +75,7 @@ y2 <- DIList(matrix(0, ncol(all.combos2), 1), anchors=all.combos2[2,],
 # Clustering.
 boxPairs(reference=5, larger=y2, smaller=y)
 boxPairs(reference=10, larger=y2, smaller=y)
+boxPairs(reference=10, larger=y2, smaller=y, minbox=TRUE)
 boxPairs(larger=y2, smaller=y)
 }
 

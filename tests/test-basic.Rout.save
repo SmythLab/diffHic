@@ -239,7 +239,7 @@ Sample1     a       17            2
 > 
 > head(enrichedPairs(data))
 [1]  1.0324215  0.0000000  0.5849625  0.0000000 -0.2895066  0.2630344
-> head(clusterPairs(data, tol=10)$id)
+> head(clusterPairs(data, tol=10)$indices[[1]])
 [1] 1 2 2 2 3 3
 > 
 > # End.
@@ -248,4 +248,4 @@ Sample1     a       17            2
 > 
 > proc.time()
    user  system elapsed 
-  6.580   0.184   6.798 
+  6.643   0.128   6.783 
