@@ -11,8 +11,8 @@ set -u
 #	Rickman et al. = GSE37752
 
 dekker=(SRR027957.sra SRR027958.sra)
-sofueva=(SRR941267.sra) # SRR941268.sra SRR941269.sra SRR941270.sra SRR941271.sra SRR941272.sra SRR941273.sra SRR941274.sra SRR941275.sra SRR941276.sra SRR941277.sra SRR941278.sra SRR941279.sra SRR941280.sra SRR941281.sra SRR941282.sra) 
-rickman=(SRR493818.sra) # SRR493819.sra SRR493820.sra SRR493821.sra SRR493822.sra SRR493823.sra SRR493824.sra  SRR493825.sra SRR493826.sra SRR493827.sra)
+sofueva=(SRR941267.sra SRR941268.sra SRR941269.sra SRR941270.sra SRR941271.sra SRR941272.sra SRR941273.sra SRR941274.sra SRR941275.sra SRR941276.sra SRR941277.sra SRR941278.sra SRR941279.sra SRR941280.sra SRR941281.sra SRR941282.sra) 
+rickman=(SRR493818.sra SRR493819.sra SRR493820.sra SRR493821.sra SRR493822.sra SRR493823.sra SRR493824.sra  SRR493825.sra SRR493826.sra SRR493827.sra)
 
 # <<ASSUMPTION>>: Bowtie2 and cutadapt are installed.
 
@@ -22,7 +22,7 @@ cutcmd=cutadapt
 # <<ASSUMPTION>>: hg19 and mm10 indices have been built.
 #	This can be done by making a FASTA file from a BSGenome object:
 #
-#   > bs <- BSGenome.Mmusculus.UCSC.mm10
+#	> bs <- BSGenome.Mmusculus.UCSC.mm10
 #	> outfile <- "mm10.fa"
 #	> for (chr in seqnames(bs)) {
 #	+     y <- getSeq(bs, names = chr, start = 1, end = length(bs[[chr]]))
@@ -31,7 +31,7 @@ cutcmd=cutadapt
 #	+     writeXStringSet(filepath = outfile, y, append = TRUE)
 #	+ }
 #
-#   ... and then running "bowtie2-build mm10.fa mm10_index/mm10" in the shell.
+#	... and then running "bowtie2-build mm10.fa mm10_index/mm10" in the shell.
 #	Alternatively, you can use your own FASTA file.
 
 hg19=hg19_index/hg19
@@ -58,7 +58,7 @@ fqdcmd=fastq-dump
 # We pull out the Hi-C mapping script from diffHic.
 
 mapper=hicmap.py
-echo "require(diffHic); file.copy(system.file('python', 'presplit_map.py', package='diffHic'), '$mapper');" | ${rcmd} --no-save
+echo "require(diffHic); file.copy(system.file('python', 'presplit_map.py', package='diffHic'), '$mapper', overwrite=TRUE)" | ${rcmd} --no-save
 if [ ! -e $mapper ]; then
 	echo "Extraction of Hi-C mapping script failed."
 	exit 1
@@ -115,5 +115,22 @@ done
 
 rm $tmpfile
 rm -r $vtmp
+
+# Printing out a log file with version numbers.
+ticket=success.log
+if [[ -e $ticket ]]; then
+        rm $ticket
+fi
+
+set +e
+$bowcmd --version | grep "bowtie2" >> $ticket
+$cutcmd --version >> $ticket
+stored=`$samcmd 2>&1 | grep -i "Version:"`
+printf "Samtools $stored\n" >> $ticket
+stored=`$markcmd --version 2>&1`
+printf "MarkDuplicates version $stored\n" >> $ticket
+stored=`$fixcmd --version 2>&1`
+printf "FixMateInformation version $stored\n" >> $ticket
+$fqdcmd --version | grep "." >> $ticket
 
 ###############################################################
