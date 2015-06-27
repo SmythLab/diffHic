@@ -37,6 +37,7 @@ Also, invalidity of chimeras is determined by checking whether the 3' end is mor
 The size of the pseudo-fragments is determined by, well, \code{size} in \code{segmentGenome}.
 Smaller sizes provide better resolution but increase computational work.
 Needless to say, the \code{param$fragments} field should contain the output from \code{segmentGenome}, rather than from \code{\link{cutGenome}}.
+Also see \code{\link{cutGenome}} documentation for a warning about the chromosome names.
 
 Some loss of spatial resolution is inevitable when reads are summarized into pseudo-fragments.
 This is largely irrelevant, though, as counting across the interaction space will ultimately use much larger bins (usually at least 2 kbp).

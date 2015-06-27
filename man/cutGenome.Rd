@@ -33,6 +33,13 @@ Nonetheless, they are still reported to maintain the correspondence between frag
 Cleavage sites on the forward strand can be obtained as the \code{start} locations of all fragments (excepting the first fragment on each chromosome).
 }
 
+\section{Warning}{
+If \code{bs} is a FASTQ file, the chromosome names in the FASTQ headers will be loaded faithfully by \code{cutGenome}.
+However, many mapping pipelines will drop the rest of the name past the first whitespace when constructing the alignment index.
+To be safe, users should ensure that the chromosome names in the FASTQ headers consist of one word.
+Otherwise, there will be a discrepancy between the chromosome names in the output \code{GRanges}, and those in the BAM files after alignment.
+}
+
 % Interpretations of consecutive sites is generally tricky.
 % For starters, the 'remainder' is so low that the strands are unlikely to stay stuck together until the fill-in step.
 % This becomes an impossibility if remainder is zero, such that ssDNA is formed after cleavage of consecutive sites.

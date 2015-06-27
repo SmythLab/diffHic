@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.7}{\itemize{
+\section{Version 1.1.9}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -41,6 +41,9 @@ Switched to reporting ranges directly from boxPairs(), added support for minimum
 
 \item
 Modified consolidatePairs() to accept index vectors for greater modularity.
+
+\item 
+Added reference argument for large bin pairs, in filterDirect() and filterTrended().
 
 \item 
 Updated documentation, tests and user's guide.
