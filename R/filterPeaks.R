@@ -1,4 +1,4 @@
-enrichedPairs <- function(data, flank=5, prior.count=2, abundances=NULL)
+enrichedPairs <- function(data, flank=5, exclude=0, prior.count=2, abundances=NULL)
 # This function identifies the highest-abundance neighbour in the interaction space
 # for each bin pair in `data`. The aim is to compare the abundance of each element
 # with the abundance of its neighbour. 
@@ -8,7 +8,11 @@ enrichedPairs <- function(data, flank=5, prior.count=2, abundances=NULL)
 # last modified 29 April 2015
 {
 	flank <- as.integer(flank)
+	exclude <- as.integer(exclude)
 	if (flank <= 0L) { stop("flank width must be a positive integer") }
+	if (exclude < 0L) { stop("exclude width must be a positive integer") }
+	if (flank <= exclude) { stop("exclude width must be less than the flank width") }
+	
 	rdata <- .splitByChr(regions(data))
 	last.id <- rdata$last
 	first.id <- rdata$first
@@ -51,7 +55,7 @@ enrichedPairs <- function(data, flank=5, prior.count=2, abundances=NULL)
 			o <- order(all.a, all.t)
 			collected <- .Call(cxx_quadrant_bg, all.a[o], all.t[o], 
 				converted$int[o], converted$dec[o], MULT, 
-				flank, a.len, t.len, anchor==target)
+				flank, exclude, a.len, t.len, anchor==target)
 			if (is.character(collected)) { stop(collected) }
 			collected[o] <- collected
 

@@ -11,14 +11,17 @@ floater double2int(double x) {
 	return std::make_pair(int_comp, dec_comp);
 }
 
-SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter, 
+SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, SEXP filter, 
 		SEXP first_target_bin, SEXP last_target_bin, SEXP first_anchor_bin, SEXP last_anchor_bin,
 		SEXP max_it, SEXP tolerance, SEXP offsets, SEXP dispersion,
 		SEXP prior_count) try {
+
 	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
 	const int f=asInteger(filter);
 	if (!isInteger(back_width) || LENGTH(back_width)!=1) { throw std::runtime_error("width of neighbourhood regions must be an integer scalar"); }
 	const int bwidth=asInteger(back_width);
+	if (!isInteger(exclude_width) || LENGTH(exclude_width)!=1) { throw std::runtime_error("exclusion width must be an integer scalar"); }
+	const int xwidth=asInteger(exclude_width);
 
 	// Getting the indices of the first and last bin on the target and anchor chromosomes.
 	if (!isInteger(first_target_bin) || LENGTH(first_target_bin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
@@ -108,23 +111,40 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 		}
 
 		if (saved_dex < anchors.size() && (engine.empty() || ref_anchors.back() >= anchors[saved_dex] + bwidth)) { 
-			bottomright br(bwidth, ntbins, intra);
-			leftright lr(bwidth, ntbins, intra);
-			updown ud(bwidth, ntbins, intra);
-			allaround aa(bwidth, ntbins, intra);
+			bottomright br(bwidth, ntbins, intra, xwidth);
+			leftright1 lr1(bwidth, ntbins, intra, xwidth);
+			leftright2 lr2(bwidth, ntbins, intra, xwidth);
+			updown ud(bwidth, ntbins, intra, xwidth);
+			allaround1 aa1(bwidth, ntbins, intra, xwidth);
+			allaround2 aa2(bwidth, ntbins, intra, xwidth);
 			const int& saved_anchor=anchors[saved_dex];
 			int fullsize=ref_anchors.size();
+			bool halfdone=false;
 
 			// Computing the neighbourhood count for all bin pairs with anchors of 'anchors[saved_dex]'.
 			for (mode=0; mode<nmodes; ++mode) { 
 				leftdex=rightdex=0;
 				switch (mode) {
 					case 0: 
-						base_ptr=&lr; 
+						if (!halfdone) {
+							base_ptr=&lr1; 
+							halfdone=true;
+						} else {
+							base_ptr=&lr2;
+							halfdone=false;						
+						}
 						leftdex=rightdex=ref_matching_dex; // starting from the stretch in ref_anchors that is past the previous 'saved_anchor'.
 						break;
 					case 1: base_ptr=&ud; break;
-					case 2: base_ptr=&aa; break;
+					case 2: 
+						if (!halfdone) {
+							base_ptr=&aa1;
+							halfdone=true;
+						} else {
+							base_ptr=&aa2;
+							halfdone=false;
+						}
+						break;	
 					case 3: base_ptr=&br; break;
 				}
 
@@ -160,13 +180,14 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP filter,
 						neighbourave[mode][saved_copy_dex].first+=current_average.first;
 						neighbourave[mode][saved_copy_dex].second+=current_average.second;
 						neighbourarea[mode][saved_copy_dex]+=rightbound-leftbound;
-						if (base_ptr->discard_self()) { 
-							neighbourave[mode][saved_copy_dex].first-=averages[saved_copy_dex].first;
-							neighbourave[mode][saved_copy_dex].second-=averages[saved_copy_dex].second;
-							--(neighbourarea[mode][saved_copy_dex]);
-						}
 					}
 				} while (base_ptr->bump_level());
+				
+				// Resetting to do the second half of certain neighbourhoods.
+				if (halfdone) { 
+					--mode;
+					continue;
+				}
 
 				/* Storing the location on ref_anchors where 'saved_anchor' terminates, to hotstart for
 				 * the next 'saved_anchor' for 'leftright' (as it only operates within the same anchor values).

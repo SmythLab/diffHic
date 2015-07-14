@@ -6,19 +6,25 @@ suppressPackageStartupMessages(require(edgeR))
 
 # Defining some odds and ends.
 
-lower.left <- function(x) { 
+lower.left <- function(x, exclude=0) { 
 	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
-	out[nrow(x),1] <- FALSE
-	out
-}
-all.but.middle <- function(x) {
-	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
-	out[ceiling(length(out)/2)] <- FALSE
+	out[nrow(x)+(-exclude):0,1:(1+exclude)] <- FALSE
 	out
 }
 
-comp <- function(npairs, chromos, flanking, prior=2) {
+all.but.middle <- function(x, exclude=0) {
+	out <- matrix(TRUE, nrow=nrow(x), ncol=ncol(x))
+	midrow <- ceiling(nrow(x)/2) + (-exclude):exclude
+	midrow <- midrow[midrow > 0 & midrow <= nrow(x)]
+	midcol <- ceiling(ncol(x)/2) + (-exclude):exclude
+	midcol <- midcol[midcol > 0 & midcol <= ncol(x)]
+	out[midrow, midcol] <- FALSE
+	out
+}
+
+comp <- function(npairs, chromos, flanking, exclude=0, prior=2) {
 	flanking <- as.integer(flanking)
+	exclude <- as.integer(exclude)
 
 	nlibs <- 4L
 	lambda <- 5
@@ -37,7 +43,7 @@ comp <- function(npairs, chromos, flanking, prior=2) {
 	data@regions$nfrags <- rep(1:3, length.out=nbins)
 	
 	# Computing the reference enrichment value.
-	bg <- enrichedPairs(data, flank=flanking, prior.count=prior)
+	bg <- enrichedPairs(data, flank=flanking, prior.count=prior, exclude=exclude)
 	final.ref <- numeric(length(bg))
 
 	# Sorting them by chromosome pairs.
@@ -74,6 +80,7 @@ comp <- function(npairs, chromos, flanking, prior=2) {
 		for (pair in 1:nrow(current)) {
 			total.num <- 4L
 			collected <- numeric(total.num)
+			collected.n <- numeric(total.num)
 			ax <- a.dex[pair]
 			tx <- t.dex[pair]
 
@@ -102,7 +109,7 @@ comp <- function(npairs, chromos, flanking, prior=2) {
 					out[x > alen | x < 1 | y > tlen | y < 1] <- -1
 					return(out)
 				})
-				indices <- indices[keep(indices)]
+				indices <- indices[keep(indices, exclude)]
 				indices <- indices[indices > 0]
 				indices <- indices[valid[indices]]
 
@@ -110,8 +117,14 @@ comp <- function(npairs, chromos, flanking, prior=2) {
 				relevant.rows <- inter.space[indices]
 				is.zero <- relevant.rows==0L			
 				collected[quad] <- sum(rel.ab[relevant.rows[!is.zero]])/length(relevant.rows)
+				collected.n[quad] <- length(relevant.rows)
 			}
-#			print(sprintf("%i %i %.3f", ax, tx, collected[6]))
+
+#			if (exclude) { # Troubleshooting.
+#				print(c(aid[pair], tid[pair]))
+#				print(collected)
+#				print(collected.n)
+#			}
 		
 			output[pair] <- log2((rel.ab[pair]+prior)/(max(collected, na.rm=TRUE)+prior))
 		}
@@ -147,6 +160,11 @@ comp(200, c(chrA=10, chrC=20), 1)
 comp(200, c(chrA=10, chrB=5, chrC=20), 1)
 comp(200, c(chrA=20, chrB=5), 1)
 
+comp(200, c(chrA=10, chrB=30, chrC=20), 3, exclude=1)
+comp(200, c(chrA=10, chrC=20), 3, exclude=1)
+comp(200, c(chrA=10, chrB=5, chrC=20), 3, exclude=1)
+comp(200, c(chrA=20, chrB=5), 3, exclude=1)
+
 ###################################################################################################
 # Same sort of simulation, but direct from read data, for neighbourCounts testing.
 
@@ -157,16 +175,17 @@ dir.create("temp-neighbor")
 dir1<-"temp-neighbor/1.h5"
 dir2<-"temp-neighbor/2.h5"
 
-comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, prior.count=2) {
+comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, exclude=0, prior.count=2) {
 	simgen(dir1, npairs1, chromos)
 	simgen(dir2, npairs2, chromos)
 	param <- pairParam(fragments=cuts)
 
-	out <- neighbourCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count)
+	out <- neighbourCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
+		exclude=exclude)
 
 	ref <- squareCounts(c(dir1, dir2), width=width, param, filter=1)
 	keep <- rowSums(counts(ref)) >= filter
-	enrichment <- enrichedPairs(ref, flank=flank, prior.count=prior.count)
+	enrichment <- enrichedPairs(ref, flank=flank, prior.count=prior.count, exclude=exclude)
 
 	if (!identical(ref[keep,], out$interaction)) { stop("extracted counts don't match up") }
 	if (any(abs(enrichment[keep] - out$enrichment) > 1e-6)) { stop("enrichment values don't match up") }
@@ -193,6 +212,11 @@ comp2(10, 20, 1000, cuts=simcuts(chromos))
 comp2(10, 20, 1000, cuts=simcuts(chromos), filter=5)
 comp2(10, 20, 1000, cuts=simcuts(chromos), flank=3)
 comp2(10, 20, 1000, cuts=simcuts(chromos), prior.count=1)
+
+comp2(10, 20, 1000, cuts=simcuts(chromos), exclude=1)
+comp2(50, 20, 1000, cuts=simcuts(chromos), exclude=1)
+comp2(100, 50, 1000, cuts=simcuts(chromos), exclude=2)
+comp2(50, 200, 1000, cuts=simcuts(chromos), exclude=2)
 
 #####################################################################################################
 # Cleaning up

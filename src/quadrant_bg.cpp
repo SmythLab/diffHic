@@ -3,7 +3,9 @@
 
 SEXP quadrant_bg (SEXP anchor, SEXP target, 
 		SEXP abundance_int, SEXP abundance_dec, SEXP mult,
-		SEXP width, SEXP alen, SEXP tlen, SEXP issame) try {
+		SEXP width, SEXP exclude, 
+		SEXP alen, SEXP tlen, SEXP issame) try {
+
 	if (!isInteger(anchor) || !isInteger(target)) { throw std::runtime_error("anchor/target vectors must be integer"); }
 	const int npair=LENGTH(anchor);
 	if (LENGTH(target)!=npair) { throw std::runtime_error("anchor/target vectors must have the same length"); }
@@ -22,6 +24,8 @@ SEXP quadrant_bg (SEXP anchor, SEXP target,
 	const double multiplier=asReal(mult);
 	if (!isInteger(width) || LENGTH(width)!=1) { throw std::runtime_error("flank width must be an integer scalar"); }
 	const int flank_width=asInteger(width);
+	if (!isInteger(exclude) || LENGTH(exclude)!=1) { throw std::runtime_error("exclusion width must be an integer scalar"); }
+	const int exwidth=asInteger(exclude);
 
 	if (!isInteger(alen) || LENGTH(alen)!=1) { throw std::runtime_error("anchor length must be an integer scalar"); }
 	const int alength=asInteger(alen);
@@ -45,23 +49,30 @@ SEXP quadrant_bg (SEXP anchor, SEXP target,
 		double temp_val;
 
 		// Iterating over all quadrants.
-		bottomright br(flank_width, tlength, intrachr);		
-		updown ud(flank_width, tlength, intrachr);
-		leftright lr(flank_width, tlength, intrachr);
-		allaround aa(flank_width, tlength, intrachr);
+		bottomright br(flank_width, tlength, intrachr, exwidth);		
+		updown ud(flank_width, tlength, intrachr, exwidth);
+		leftright1 lr1(flank_width, tlength, intrachr, exwidth);
+		leftright2 lr2(flank_width, tlength, intrachr, exwidth);
+		allaround1 aa1(flank_width, tlength, intrachr, exwidth);
+		allaround2 aa2(flank_width, tlength, intrachr, exwidth);
 		basic* current=NULL;
 
-		for (int quadtype=(intrachr ? 0 : 1); quadtype<4; ++quadtype) {
+		for (int quadtype=(intrachr ? 0 : 1); quadtype<6; ++quadtype) {
 			switch(quadtype) { 
 				case 0: current=&br; break;
 				case 1: current=&ud; break;
-				case 2: current=&lr; break;
-				case 3: current=&aa; break;
+				case 2: current=&lr1; break;
+				case 3: current=&lr2; break;
+				case 4: current=&aa1; break;
+				case 5: current=&aa2; break;
 			}
-			for (curpair=0; curpair<npair; ++curpair) { 
-				nptr[curpair]=0; 
-				temp_int[curpair]=0;
-				temp_dec[curpair]=0;
+
+			if (quadtype!=3 && quadtype!=5) { // Don't clear them, we want them added on from 2 and 4, respectively.
+				for (curpair=0; curpair<npair; ++curpair) { 
+					nptr[curpair]=0; 
+					temp_int[curpair]=0;
+					temp_dec[curpair]=0;
+				}
 			}
 
 			// Iterating across all flank widths.
@@ -94,27 +105,21 @@ SEXP quadrant_bg (SEXP anchor, SEXP target,
 					}
 
 					if (cur_anchor >= 0) {
-						if (!current->discard_self()) { 
-							temp_int[curpair] += running_sum_int;
-							temp_dec[curpair] += running_sum_dec;
-							nptr[curpair] += right_edge - left_edge; // Figuring out the actual number of boxes.
-						} else {
-							temp_int[curpair] += running_sum_int - biptr[curpair]; 
-							temp_dec[curpair] += running_sum_dec - bdptr[curpair];
-							nptr[curpair] += right_edge - left_edge - 1;
-//						Rprintf("%i L:%i R:%i %i %i\n", cur_anchor, left_edge, right_edge, aptr[curpair], tptr[curpair]);
-						}
-
+						temp_int[curpair] += running_sum_int;
+						temp_dec[curpair] += running_sum_dec;
+						nptr[curpair] += right_edge - left_edge; // Figuring out the actual number of boxes.
 					}
 				}
 			} while (current->bump_level());
 
-			// Checking if it exceeds the previous maxima.
-			for (curpair=0; curpair<npair; ++curpair) {
-				if (nptr[curpair]) {
-					temp_val = (temp_int[curpair] + temp_dec[curpair]/multiplier)/nptr[curpair];
-					if (optr[curpair] < temp_val) { optr[curpair]=temp_val; }
-//	 			    Rprintf("%i %i %.3f\n", aptr[curpair]+1, tptr[curpair]+1, temp_val);
+			// Checking if it exceeds the previous maxima (2 and 4 are only half done, so we skip them).
+			if (quadtype!=2 && quadtype!=4) { 
+				for (curpair=0; curpair<npair; ++curpair) {
+					if (nptr[curpair]) {
+						temp_val = (temp_int[curpair] + temp_dec[curpair]/multiplier)/nptr[curpair];
+						if (optr[curpair] < temp_val) { optr[curpair]=temp_val; }
+//						if (exwidth) { Rprintf("%i %i %.3f %i\n", aptr[curpair]+1, tptr[curpair]+1, temp_val, nptr[curpair]); }
+					}
 				}
 			}
 		}

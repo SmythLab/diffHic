@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.9}{\itemize{
+\section{Version 1.1.10}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -20,6 +20,9 @@ Added iter_map.py to inst/python, for iterative mapping of DNase Hi-C data.
 
 \item
 Added the neighbourCounts() function, for simultaneous read counting and enrichment calculation.
+
+\item
+Added exclude for enrichedPairs(), to provide an exclusion zone in the local neighbourhood.
 
 \item
 Switched default colour in rotPlaid(), plotPlaid() to black.
@@ -44,6 +47,7 @@ Modified consolidatePairs() to accept index vectors for greater modularity.
 
 \item 
 Added reference argument for large bin pairs, in filterDirect() and filterTrended().
+
 
 \item 
 Updated documentation, tests and user's guide.

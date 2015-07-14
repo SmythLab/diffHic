@@ -6,7 +6,8 @@
 \description{Collate count combinations for interactions between pairs of bins across multiple Hi-C libraries.}
 
 \usage{
-neighbourCounts(files, param, width=50000, filter=1L, flank=NULL, prior.count=NULL)
+neighbourCounts(files, param, width=50000, filter=1L, flank=NULL, 
+    exclude=NULL, prior.count=NULL)
 }
 
 \arguments{
@@ -15,6 +16,7 @@ neighbourCounts(files, param, width=50000, filter=1L, flank=NULL, prior.count=NU
 	\item{width}{an integer scalar specifying the width of each square in base pairs}
 	\item{filter}{an integer scalar specifying the minimum count for each square}
 	\item{flank}{an integer scalar, specifying the number of bins to consider as the local neighbourhood}
+	\item{exclude}{an integer scalar, specifying the number of bins to exclude from the neighbourhood}
 	\item{prior.count}{a numeric scalar indicating the prior count to use in computing the log-fold increase}
 }
 

@@ -1,4 +1,4 @@
-neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, prior.count=NULL)
+neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL, prior.count=NULL)
 # This does the same thing as squareCounts, except that it simultaneously computes the 
 # filter statistic for each extracted bin pair. This has lower memory requirements as
 # it doesn't need to hold the entire `filter=1` output in memory at once.
@@ -42,7 +42,12 @@ neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, pr
 
 	# Other stuff related to calculation of the neighbourhood regions.	
 	if (is.null(flank)) { flank <- formals(enrichedPairs)$flank }
+	if (is.null(exclude)) { exclude <- formals(enrichedPairs)$exclude }
 	flank <- as.integer(flank)
+	exclude <- as.integer(exclude)
+	if (flank <= 0L) { stop("flank width must be a positive integer") }
+	if (exclude < 0L) { stop("exclude width must be a positive integer") }
+	if (flank <= exclude) { stop("exclude width must be less than the flank width") }
 	if (is.null(prior.count)) { prior.count <- formals(enrichedPairs)$prior.count } 
 	prior.count <- as.double(prior.count)    
 
@@ -55,7 +60,7 @@ neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, pr
 				chr.limits=frag.by.chr, discard=discard, cap=cap)
 			
 			# Aggregating counts in C++ to obtain count combinations for each bin pair.
-			out <- .Call(cxx_count_background, pairs, new.pts$id, flank, filter, 
+			out <- .Call(cxx_count_background, pairs, new.pts$id, flank, exclude, filter, 
 				bin.by.chr$first[[target]], bin.by.chr$last[[target]], bin.by.chr$first[[anchor]], bin.by.chr$last[[anchor]],
 				maxit, tol, offsets, disp, prior.count)
 			if (is.character(out)) { stop(out) }
