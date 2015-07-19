@@ -110,10 +110,8 @@ try {
 	if (discarded > 0) {
 		for (int pr=0; pr<npairs; ++pr) {  // Computing the coverage.
 			if (ISNA(wptr[pr])) { continue; }
-			const int& cura=aptr[pr];
-			const int& curt=tptr[pr];
-			covptr[cura]+=wptr[pr]; 
-			if (cura!=curt) { covptr[curt]+=wptr[pr]; }
+			covptr[aptr[pr]]+=wptr[pr]; 
+			covptr[tptr[pr]]+=wptr[pr];
         }
 
 		int* ordering=new int [numfrags];
@@ -166,10 +164,8 @@ try {
 	for (int it=0; it<iterations; ++it) {
 		for (int pr=0; pr<npairs; ++pr) {  // Computing the coverage (ignoring locals, if necessary).
 			if (ISNA(wptr[pr])) { continue; }
-			const int& cura=aptr[pr];
-			const int& curt=tptr[pr];
-			covptr[cura]+=wptr[pr]; 
-			if (cura!=curt) { covptr[curt]+=wptr[pr]; }
+			covptr[aptr[pr]]+=wptr[pr]; 
+			covptr[tptr[pr]]+=wptr[pr];
         }
 		
 		/* Computing the 'aditional bias' vector, to take the mean across all fragments.
@@ -207,6 +203,16 @@ try {
 			}
 		}
     }
+
+	/* Recalculating the contact probabilities, using the estimated biases.
+	 * This gets normalized values for the Winsorized elements as well.
+	 * However, probabilities are no longer that, 
+	 */
+	if (todrop > 0) { 
+		for (int pr=0; pr<npairs; ++pr) {  
+			wptr[pr] = acptr[pr]/biaptr[aptr[pr]]/biaptr[tptr[pr]];
+    	}
+	}
 } catch (std::exception& e) {
 	UNPROTECT(1);
 	throw;

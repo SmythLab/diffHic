@@ -4,7 +4,7 @@
 suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 suppressPackageStartupMessages(require(edgeR))
 	
-comp<- function(npairs, nfrags, nlibs, lambda=5, dispersion=0.05, winsorize=0.02, discard=0.02, locality=1) {
+comp<- function(npairs, nfrags, nlibs, lambda=5, winsorize=0.02, discard=0.02, locality=1) {
 	all.pairs <- rbind(t(combn(nfrags, 2)), cbind(1:nfrags, 1:nfrags))
 	all.pairs <- data.frame(anchor.id=all.pairs[,2], target.id=all.pairs[,1])	
 	npairs <- min(npairs, nrow(all.pairs))
@@ -18,16 +18,19 @@ comp<- function(npairs, nfrags, nlibs, lambda=5, dispersion=0.05, winsorize=0.02
 	# Constructing the values.	
 	actual.mat<-matrix(0, nfrags, nfrags)
 	is.filled <- matrix(FALSE, nfrags, nfrags)
-	ave.count <- exp(mglmOneGroup(counts, offset=numeric(nlibs), dispersion=dispersion))
+	ave.count <- exp(mglmOneGroup(counts, offset=numeric(nlibs)))
 	for (x in 1:nrow(data)) { 
 		if (ave.count[x] < 1e-6) { next } # As zeros get removed.
 		a<-data@anchors[x]
 		t<-data@targets[x]
-		actual.mat[a,t] <- ave.count[x]
-		is.filled[a,t] <- TRUE
 		if (a!=t) { 
+			actual.mat[a,t] <- ave.count[x]
+			is.filled[a,t] <- TRUE
 			actual.mat[t,a] <- ave.count[x] 
 			is.filled[t,a] <- TRUE
+		} else {
+			actual.mat[a,t] <- 2*ave.count[x]
+			is.filled[a,t] <- TRUE
 		}
 	}
 
@@ -63,7 +66,7 @@ comp<- function(npairs, nfrags, nlibs, lambda=5, dispersion=0.05, winsorize=0.02
 	# Running the reference, and checking that the right number of low fragments are removed.
 	# Can't do it directly, because sorting might not be consistent between R and C++.
 	iters <- 50
-	test <- correctedContact(data, dispersion=dispersion, winsor=winsorize, ignore=discard, 
+	test <- correctedContact(data, winsor=winsorize, ignore=discard, 
 			iterations=iters, exclude.local=locality)
 	to.discard <- is.na(test$bias)
 	frag.sum <- rowSums(actual.mat) 

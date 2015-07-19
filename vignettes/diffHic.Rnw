@@ -13,16 +13,17 @@
 
 \begin{document}
 
-\title{Introducing the diffHic package}
+\title{Introducing the \texttt{diffHic} package}
 \author{Aaron Lun}
 \date{First edition 2 March 2015\\[0.05in]
-Last revised 3 March 2015}
+Last revised 17 July 2015}
 \maketitle
 
 The \texttt{diffHic} package is designed for the detection of differential interactions from Hi-C data.
 It partitions the genome into bins, and counts the number of read pairs mapping to each pair of bins.
 Each bin pair is then tested for significant differences between libraries, using the methods in the \texttt{edgeR} package. 
 \texttt{diffHic} can be applied to any Hi-C data set containing multiple biological conditions, though the inclusion of biological replicates in the experimental design is strongly recommended.
+Capture Hi-C, \textit{in situ} Hi-C and DNase Hi-C experiments are also supported.
 
 On a technical level, the \texttt{diffHic} package provides methods for read alignment and pre-processing into HDF5 files for counting.
 It provides methods for filtering and normalization prior to the statistical analysis.

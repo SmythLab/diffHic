@@ -1,4 +1,5 @@
-correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.02, winsor.high=0.02, average=TRUE, dispersion=0.05)
+correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.02, winsor.high=0.02, 
+	average=TRUE, dist.correct=FALSE)
 # This performs the iterative correction method of Mirny et al. (2012) to
 # identify the true contact probability of each patch of the interaction
 # space. The idea is to use the true contact probability as a filter
@@ -9,20 +10,24 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 #
 # written by Aaron Lun
 # some time ago	
-# last modified 20 March 2015
+# last modified 18 July 2015
 {
 	if (!average & ncol(data)>1L) {
-		collected.truth <- collected.bias <- collected.max <- list()
+		collected.truth <- collected.bias <- collected.max <- collected.trend <- list()
 		for (lib in 1:ncol(data)) { 
 			out <- Recall(data[,lib], iterations=iterations, exclude.local=exclude.local, ignore.low=ignore.low, 
-				winsor.high=winsor.high, average=FALSE, dispersion=dispersion)
+				winsor.high=winsor.high, average=FALSE, dist.correct=dist.correct)
 			collected.truth[[lib]] <- out$truth
 			collected.bias[[lib]] <- out$bias
 			collected.max[[lib]] <- out$max
+			collected.trend[[lib]] <- out$trend
 		}
-		return(list(truth=do.call(cbind, collected.truth), 
+
+		output <- list(truth=do.call(cbind, collected.truth), 
 			bias=do.call(cbind, collected.bias),
-			max=do.call(cbind, collected.max)))
+			max=do.call(cbind, collected.max))
+		if (dist.correct) { output$trend <- do.call(cbind, collected.trend) }
+		return(output) 
 	}
 
 	# Checking arguments.
@@ -34,24 +39,35 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 	if (winsor.high >= 1) { stop("proportion of high coverage interactions to winsorize should be less than 1") }
 	exclude.local <- as.integer(exclude.local)
     
-	is.local <- !is.na(getDistance(data))
-   	log.lib <- log(data$totals)
-	if (length(log.lib)>1L) {
-		ave.counts <- exp(edgeR::mglmOneGroup(counts(data), offset=log.lib - mean(log.lib), dispersion=dispersion))
+	# Computing average counts, with or without distance correction.
+	if (dist.correct) { 
+		temp <- data
+		temp$totals <- 1e6 # need library size to be reflected in fitted value of trend.
+		trended <- filterTrended(temp, prior.count=0)
+		ave.counts <- 2^(trended$abundance - trended$threshold)
+		is.local <- !is.na(trended$log.distance)
 		nzero <- !is.na(ave.counts)
 	} else {
-		nzero <- counts(data) != 0L
-		ave.counts <- as.double(counts(data))
+		is.local <- !is.na(getDistance(data))
+   		log.lib <- log(data$totals)
+		if (length(log.lib)>1L) {
+			ave.counts <- exp(edgeR::mglmOneGroup(counts(data), offset=log.lib - mean(log.lib)))
+			nzero <- !is.na(ave.counts)
+		} else {
+			nzero <- counts(data) != 0L
+			ave.counts <- as.double(counts(data))
+		}
 	}
 
 	out<-.Call(cxx_iterative_correction, ave.counts[nzero], anchors(data, id=TRUE)[nzero], targets(data, id=TRUE)[nzero], 
 		is.local[nzero], length(regions(data)), iterations, exclude.local, ignore.low, winsor.high)
  	if (is.character(out)) { stop(out) }
-	full.truth <- rep(NA, length(nzero))
+	full.truth <- rep(0, length(nzero))
 	full.truth[nzero] <- out[[1]]
 	out[[1]] <- full.truth
 	
 	names(out) <- c("truth", "bias", "max")
+	if (dist.correct) { out$trend <- trended$threshold }
 	return(out)
 }
 

@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-12-14 r67167) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,7 +23,7 @@ Type 'q()' to quit R.
 > suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 > suppressPackageStartupMessages(require(edgeR))
 > 	
-> comp<- function(npairs, nfrags, nlibs, lambda=5, dispersion=0.05, winsorize=0.02, discard=0.02, locality=1) {
+> comp<- function(npairs, nfrags, nlibs, lambda=5, winsorize=0.02, discard=0.02, locality=1) {
 + 	all.pairs <- rbind(t(combn(nfrags, 2)), cbind(1:nfrags, 1:nfrags))
 + 	all.pairs <- data.frame(anchor.id=all.pairs[,2], target.id=all.pairs[,1])	
 + 	npairs <- min(npairs, nrow(all.pairs))
@@ -37,16 +37,19 @@ Type 'q()' to quit R.
 + 	# Constructing the values.	
 + 	actual.mat<-matrix(0, nfrags, nfrags)
 + 	is.filled <- matrix(FALSE, nfrags, nfrags)
-+ 	ave.count <- exp(mglmOneGroup(counts, offset=numeric(nlibs), dispersion=dispersion))
++ 	ave.count <- exp(mglmOneGroup(counts, offset=numeric(nlibs)))
 + 	for (x in 1:nrow(data)) { 
 + 		if (ave.count[x] < 1e-6) { next } # As zeros get removed.
 + 		a<-data@anchors[x]
 + 		t<-data@targets[x]
-+ 		actual.mat[a,t] <- ave.count[x]
-+ 		is.filled[a,t] <- TRUE
 + 		if (a!=t) { 
++ 			actual.mat[a,t] <- ave.count[x]
++ 			is.filled[a,t] <- TRUE
 + 			actual.mat[t,a] <- ave.count[x] 
 + 			is.filled[t,a] <- TRUE
++ 		} else {
++ 			actual.mat[a,t] <- 2*ave.count[x]
++ 			is.filled[a,t] <- TRUE
 + 		}
 + 	}
 + 
@@ -82,7 +85,7 @@ Type 'q()' to quit R.
 + 	# Running the reference, and checking that the right number of low fragments are removed.
 + 	# Can't do it directly, because sorting might not be consistent between R and C++.
 + 	iters <- 50
-+ 	test <- correctedContact(data, dispersion=dispersion, winsor=winsorize, ignore=discard, 
++ 	test <- correctedContact(data, winsor=winsorize, ignore=discard, 
 + 			iterations=iters, exclude.local=locality)
 + 	to.discard <- is.na(test$bias)
 + 	frag.sum <- rowSums(actual.mat) 
@@ -195,12 +198,12 @@ Type 'q()' to quit R.
 > 
 > # Trying with no special attention.
 > comp(50, 20, 1, discard=0, winsor=0, locality=-1)
-[1] 14.785235  1.315092  6.763417 11.012796  7.758946  4.203576
+[1] 13.016640  1.346375  7.350337 10.195861  6.932015  4.199896
 > comp(50, 50, 1, discard=0, winsor=0, locality=-1)
-[1] 1.945631e-05 1.966686e+01 2.732566e-04 0.000000e+00 6.076916e-05
-[6] 6.514706e+00
+[1] 1.945077e-05 1.754996e+01 2.764390e-04 0.000000e+00 6.075174e-05
+[6] 7.745099e+00
 > comp(50, 20, 2, discard=0, winsor=0, locality=-1)
-[1] 6.769012 2.291995 2.505494 6.310373 3.699439 6.502240
+[1] 6.680250 3.036901 2.545979 6.006799 3.768523 6.211862
 > comp(50, 20, 2, discard=0, winsor=0, locality=1000)
 [1] 10.195305  2.220565 10.871631 10.509848  5.077755  3.727807
 > comp(100, 20, 2, discard=0, winsor=0, locality=1000)
@@ -211,4 +214,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 11.241   0.160  11.406 
+  6.499   0.128   6.639 

@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.10}{\itemize{
+\section{Version 1.1.11}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -33,6 +33,9 @@ Added compartmentalize() function to identify genomic compartments.
 \item 
 Added domainDirections() function to help identify domains.
 
+\item
+Modified correctedContact() to allow distance correction and report factorized probabilities directly.
+
 \item 
 Modified marginCounts() function for proper single-end-like treatment of Hi-C data.
 
@@ -47,7 +50,6 @@ Modified consolidatePairs() to accept index vectors for greater modularity.
 
 \item 
 Added reference argument for large bin pairs, in filterDirect() and filterTrended().
-
 
 \item 
 Updated documentation, tests and user's guide.
