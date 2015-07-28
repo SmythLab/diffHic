@@ -88,7 +88,7 @@ head(stuff$truth)
 head(stuff$bias)
 plot(stuff$max)
 
-# Different behaviour with average=FALSE.
+# Different behavior with average=FALSE.
 stuff <- correctedContact(data, average=FALSE)
 head(stuff$truth)
 head(stuff$bias)

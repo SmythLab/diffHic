@@ -15,7 +15,7 @@
 	if (is.null(paired)) { paired <- FALSE }
 	else if (paired) { nr <- length(restrict)/2L }
 
-	for (ix in 1:ni) {
+	for (ix in seq_len(ni)) {
 		all.data <- loadChromos(y[ix])
 		current <- split(all.data$targets, all.data$anchors)
 

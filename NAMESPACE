@@ -12,7 +12,7 @@ export(diffHicUsersGuide,
     correctedContact, normalizeCNV, matchMargins,
     getDistance, getArea,
 	filterDirect, filterTrended, 
-	filterPeaks, enrichedPairs, neighbourCounts,
+	filterPeaks, enrichedPairs, neighborCounts,
     boxPairs, clusterPairs, consolidatePairs,
 	compartmentalize, domainDirections,
     plotPlaid, rotPlaid, plotDI, rotDI)

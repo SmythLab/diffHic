@@ -206,7 +206,7 @@ Type 'q()' to quit R.
 [1]  0.49749966  0.64114534 -0.04439412 -0.07275634  0.18737014  0.46174548
 > 
 > ###################################################################################################
-> # Same sort of simulation, but direct from read data, for neighbourCounts testing.
+> # Same sort of simulation, but direct from read data, for neighborCounts testing.
 > 
 > chromos<-c(chrA=51, chrB=31)
 > source("simcounts.R")
@@ -220,7 +220,7 @@ Type 'q()' to quit R.
 + 	simgen(dir2, npairs2, chromos)
 + 	param <- pairParam(fragments=cuts)
 + 
-+ 	out <- neighbourCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
++ 	out <- neighborCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
 + 		exclude=exclude)
 + 
 + 	ref <- squareCounts(c(dir1, dir2), width=width, param, filter=1)

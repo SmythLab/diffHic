@@ -9,8 +9,8 @@ filterPeaks(data, enrichment, min.enrich=log2(1.5), min.count=5, min.diag=2L, ..
 }
 
 \arguments{
-\item{data}{a \code{DIList} object produced by \code{\link{squareCounts}}}
-\item{enrichment}{a numeric vector of enrichment values, produced by \code{\link{enrichedPairs}}}
+\item{data}{a \code{DIList} object produced by \code{\link{squareCounts}} or \code{\link{neighborCounts}}}
+\item{enrichment}{a numeric vector of enrichment values, produced by \code{\link{enrichedPairs}} or \code{\link{neighborCounts}}}
 \item{min.enrich}{a numeric scalar indicating the minimum enrichment score for a peak}
 \item{min.count}{a numeric scalar indicating the minimum average count for a peak}
 \item{min.diag}{an integer scalar specifying the minimum diagonal in the interaction space with which to consider a peak}
@@ -24,7 +24,7 @@ A logical vector indicating whether or not each bin pair is to be considered as 
 \details{
 Filtering on the local enrichment scores identifies high-intensity islands in the interaction space.
 However, this alone is not sufficient to identify sensible peaks.
-Filtering on the absolute average counts prevents the calling of low-abundance bin pairs with high enrichment scores due to empty neighbourhoods.
+Filtering on the absolute average counts prevents the calling of low-abundance bin pairs with high enrichment scores due to empty neighborhoods.
 Filtering on the diagonals prevents calling of high-abundance short-range interactions that are usually uninteresting.
 If either \code{min.count} or \code{min.diag} are \code{NULL}, no filtering will be performed on the average counts and diagonals, respectively.
 }
@@ -35,7 +35,8 @@ Aaron Lun
 
 \seealso{
 \code{\link{squareCounts}},
-\code{\link{enrichedPairs}}
+\code{\link{enrichedPairs}},
+\code{\link{neighborCounts}}
 }
 
 \examples{

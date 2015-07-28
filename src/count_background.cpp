@@ -1,5 +1,5 @@
 #include "read_count.h"
-#include "neighbours.h"
+#include "neighbors.h"
 
 typedef std::pair<int, int> floater;
 const double MULT=1000000;
@@ -18,7 +18,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 
 	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
 	const int f=asInteger(filter);
-	if (!isInteger(back_width) || LENGTH(back_width)!=1) { throw std::runtime_error("width of neighbourhood regions must be an integer scalar"); }
+	if (!isInteger(back_width) || LENGTH(back_width)!=1) { throw std::runtime_error("width of neighborhood regions must be an integer scalar"); }
 	const int bwidth=asInteger(back_width);
 	if (!isInteger(exclude_width) || LENGTH(exclude_width)!=1) { throw std::runtime_error("exclusion width must be an integer scalar"); }
 	const int xwidth=asInteger(exclude_width);
@@ -58,12 +58,12 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 	std::deque<int> waschanged, counts, anchors, targets;
 	std::deque<floater> averages;
 
-	// Stuff required to compute the neighbourhood.
+	// Stuff required to compute the neighborhood.
 	std::deque<int> ref_targets, ref_anchors;
 	std::deque<floater> ref_ave;
 	size_t nmodes=(intra ? 4 : 3), mode;
-	std::deque<std::deque<floater> > neighbourave(nmodes);
-    std::deque<std::deque<int> > neighbourarea(nmodes);
+	std::deque<std::deque<floater> > neighborave(nmodes);
+    std::deque<std::deque<int> > neighborarea(nmodes);
 	basic * base_ptr=NULL;
 	size_t saved_dex=0; // Points to the entry in 'anchors' to be interrogated.
 	int ref_matching_dex=0; // Points to entry in 'ref_anchors' matching anchor for previous 'saved_dex'.
@@ -105,8 +105,8 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 
 			// Matching size.
 			for (mode=0; mode<nmodes; ++mode) { 
-				neighbourarea[mode].resize(anchors.size());
-				neighbourave[mode].resize(averages.size()); 
+				neighborarea[mode].resize(anchors.size());
+				neighborave[mode].resize(averages.size()); 
 			} 
 		}
 
@@ -121,7 +121,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 			int fullsize=ref_anchors.size();
 			bool halfdone=false;
 
-			// Computing the neighbourhood count for all bin pairs with anchors of 'anchors[saved_dex]'.
+			// Computing the neighborhood count for all bin pairs with anchors of 'anchors[saved_dex]'.
 			for (mode=0; mode<nmodes; ++mode) { 
 				leftdex=rightdex=0;
 				switch (mode) {
@@ -163,7 +163,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 						leftbound=base_ptr->left;
 						rightbound=base_ptr->right;
 
-						// Identifying all reference elements associated with the neighbourhood of this saved_copy_dex at the current level.
+						// Identifying all reference elements associated with the neighborhood of this saved_copy_dex at the current level.
 						while (rightdex < fullsize && (ref_anchors[rightdex] < desired_anchor || 
 									(ref_anchors[rightdex]==desired_anchor && ref_targets[rightdex] < rightbound))) { 
 							current_average.first+=ref_ave[rightdex].first;
@@ -177,13 +177,13 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 							++leftdex;
 						}
 		
-						neighbourave[mode][saved_copy_dex].first+=current_average.first;
-						neighbourave[mode][saved_copy_dex].second+=current_average.second;
-						neighbourarea[mode][saved_copy_dex]+=rightbound-leftbound;
+						neighborave[mode][saved_copy_dex].first+=current_average.first;
+						neighborave[mode][saved_copy_dex].second+=current_average.second;
+						neighborarea[mode][saved_copy_dex]+=rightbound-leftbound;
 					}
 				} while (base_ptr->bump_level());
 				
-				// Resetting to do the second half of certain neighbourhoods.
+				// Resetting to do the second half of certain neighborhoods.
 				if (halfdone) { 
 					--mode;
 					continue;
@@ -210,7 +210,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 
 				/* The 'matching_dex' gets pulled down as well. It's possible that the next 'saved_anchor'
 				 * skips a couple of ref_anchors, so the number dropped might include 'matching_dex'. In
-				 * that case, we just start from zero during the neighbourhood calculations.
+				 * that case, we just start from zero during the neighborhood calculations.
 				 */
 				ref_matching_dex-=n_to_drop;
 				if (ref_matching_dex < 0) { ref_matching_dex=0; }
@@ -250,9 +250,9 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 			foptr[vecdex]=double(averages[vecdex].first)+double(averages[vecdex].second)/MULT;
 			maxaverage=0;
 			for (mode=0; mode<nmodes; ++mode) {
-				backaverage=double(neighbourave[mode][vecdex].first)+double(neighbourave[mode][vecdex].second)/MULT;
-				if (neighbourarea[mode][vecdex]) { 
-					backaverage/=neighbourarea[mode][vecdex];
+				backaverage=double(neighborave[mode][vecdex].first)+double(neighborave[mode][vecdex].second)/MULT;
+				if (neighborarea[mode][vecdex]) { 
+					backaverage/=neighborarea[mode][vecdex];
 					if (backaverage > maxaverage) { maxaverage=backaverage; }
 				}
 			}

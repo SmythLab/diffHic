@@ -29,7 +29,7 @@ The aim is to identify the parent bin pair in which each input bin pair is neste
 All input \code{DIList} objects in the ellipsis must be constructed carefully.
 In particular, the value of \code{width} in \code{\link{squareCounts}} must be such that \code{reference} is an exact multiple of each \code{width}.
 This is necessary to ensure complete nesting.
-Otherwise, the behaviour of the function will not be clearly defined.
+Otherwise, the behavior of the function will not be clearly defined.
 
 In the output, one vector will be present in \code{indices} for each input \code{DIList} in the ellipsis.
 In each vector, each entry represents an index for a single input bin pair in the corresponding \code{DIList}.

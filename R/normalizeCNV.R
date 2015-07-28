@@ -7,7 +7,7 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 #
 # written by Aaron Lun
 # created 11 September 2014
-# last modified 3 March 2015
+# last modified 22 July 2015
 {
 	cont.cor <- 0.5
 	cont.cor.scaled <- cont.cor * data$totals/mean(data$totals)
@@ -24,7 +24,7 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 	mt.adjc <- mab[matched$tmatch,,drop=FALSE]
 
 	offsets <- matrix(0, nrow=nrow(data), ncol=ncol(data))
-	for (lib in 1:ncol(data)) {
+	for (lib in seq_len(ncol(data))) {
 		ma.fc <- ma.adjc[,lib]
 		mt.fc <- mt.adjc[,lib]
 
@@ -74,7 +74,7 @@ matchMargins <- function(data, margins)
 	}
 	all.indices <- integer(length(regions(data)))
 	id <- anchors(margins, id=TRUE)
-	all.indices[id] <- 1:length(id)
+	all.indices[id] <- seq_along(id)
 	amatch <- all.indices[anchors(data, id=TRUE)]
 	if (any(amatch==0L)) { stop("non-empty anchor in data that is not in margins") }
 	tmatch <- all.indices[targets(data, id=TRUE)]

@@ -7,7 +7,7 @@ clusterPairs <- function(..., tol, upper=1e6)
 #
 # written by Aaron Lun
 # created 6 December 2013
-# last modified 4 June 2015
+# last modified 22 July 2015
 {
 	tol <- as.integer(tol)
 	stopifnot(tol>=0L) # Minimum overlap not supported.
@@ -15,7 +15,7 @@ clusterPairs <- function(..., tol, upper=1e6)
 
 	all.data <- list(...)
 	achrs <- tchrs <- astarts <- aends <- tstarts <- tends <- list()
-	for (x in 1:length(all.data)) { 
+	for (x in seq_along(all.data)) {
 		data <- all.data[[x]]
 		region <- regions(data)
 		allchrs <- as.character(seqnames(region))
@@ -52,7 +52,7 @@ clusterPairs <- function(..., tol, upper=1e6)
 	# Now, running through.
 	all.ids <- integer(n)
 	bonus <- 0L
-	for (i in 1:length(upnext)) {
+	for (i in seq_along(upnext)) {
 		current <- is.new[i]:upnext[i]			
 		curas <- astarts[current]	
 		curae <- aends[current]	
@@ -63,7 +63,7 @@ clusterPairs <- function(..., tol, upper=1e6)
 		out <- .Call(cxx_cluster_2d, curas[po], curts[po], curae[po], curte[po], tol, FALSE)
 		if (is.character(out)) { stop(out) }
 		out[po] <- out
-		if (length(upper)) { 
+		if (length(upper)) {
 			out <- .Call(cxx_split_clusters, out, curas, curts, curae, curte, upper)
 			if (is.character(out)) { stop(out) }
 			xo <- order(out)
@@ -79,10 +79,9 @@ clusterPairs <- function(..., tol, upper=1e6)
 	all.ids[ro] <- all.ids	
 	indices <- list()
 	last <- 0
-	for (x in 1:length(all.data)) { 
+	for (x in seq_along(all.data)) {
 		currows <- nrow(all.data[[x]])
-		if (!currows) { next } 
-		indices[[x]] <- all.ids[last + 1:currows]
+		indices[[x]] <- all.ids[last + seq_len(currows)]
 		last <- last + currows
 	}
 	names(indices) <- names(all.data)

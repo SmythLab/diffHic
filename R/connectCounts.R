@@ -6,7 +6,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 #
 # written by Aaron Lun
 # a long time ago.
-# last modified 29 April 2015
+# last modified 22 July 2015
 {
 	nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") } 
@@ -48,7 +48,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 			second.regions <- as.integer(second.regions)
 			if (second.regions < 0) { stop("bin size must be a positive integer") }
 			binned <- .getBinID(fragments, second.regions)
-			to.add.query <- 1:length(fragments)
+			to.add.query <- seq_along(fragments)
 			to.add.subject <- binned$id
 			second.regions <- binned$region
 		}
@@ -64,10 +64,10 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 		frag.ids <- frag.ids[o]
 		reg.ids <- reg.ids[o]
 
-		regions$original <- c(1:n.first, 1:n.second)
+		regions$original <- c(seq_len(n.first), seq_len(n.second))
 	} else {
 		is.second <- NULL
-		regions$original <- 1:length(regions)
+		regions$original <- seq_along(regions)
 	}
 
 	# Ordering regions, consistent with the previous definitions of anchor/targets.
@@ -80,25 +80,25 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	regions <- regions[o]
 
 	ranked <- integer(nregs)
-	ranked[o] <- 1:length(o)
+	ranked[o] <- seq_along(o)
 	reg.ids <- ranked[reg.ids]
 	by.frag <- .retrieveHits(frag.ids, length(fragments))
 
 	# Setting up output containers.
-    full.sizes <- integer(nlibs)
+	full.sizes <- integer(nlibs)
 	out.counts <- list(matrix(0L, 0, nlibs))
 	out.right <- out.left <- list(integer(0))
 	idex<-1L
 
 	chrs <- seqlevels(fragments)
 	my.chrs <- unique(runValue(seqnames(regions)))
-    overall <- .loadIndices(files, chrs, restrict)
+	overall <- .loadIndices(files, chrs, restrict)
 
 	for (anchor in names(overall)) {
 		current<-overall[[anchor]]
 		for (target in names(current)) {
 
-           	pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+			pairs <- .baseHiCParser(current[[target]], files, anchor, target,
 				chr.limits=frag.by.chr, discard=discard, cap=cap)
 			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }	

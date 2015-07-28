@@ -4,7 +4,7 @@
 
 \title{Construct a plaid plot of interactions}
 
-\description{Plot interactions between two sequences in a plaid format with informative colouring.}
+\description{Plot interactions between two sequences in a plaid format with informative coloring.}
 
 \usage{
 plotPlaid(file, param, first.region, second.region=first.region, 
@@ -36,7 +36,7 @@ The \code{plotPlaid} function constructs a plaid plot on the current graphics de
 The intervals of the \code{first.region} and \code{second.region} are represented by the x- and y-axes, respectively.
 Each region is partitioned into bins of size \code{width}.
 Each bin pair is represented by a box in the plotting space, where each side of the box represents a bin.
-The colour of the box depends on the number of read pairs mapped between the corresponding bins.
+The color of the box depends on the number of read pairs mapped between the corresponding bins.
 
 The resolution of colors can be controlled by varying \code{max.count}. 
 All boxes with counts above \code{max.count} will be assigned the maximum intensity.

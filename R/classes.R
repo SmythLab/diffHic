@@ -310,8 +310,10 @@ setMethod("show", signature("pairParam"), function(object) {
 			cat("Read extraction is limited to", nr, ifelse(nr==1L, "chromosome\n", "chromosomes\n"))
 		} else {
 			nr <- length(object@restrict)/2
+			seq.it.nr <- seq_len(nr)
 			cat("Read extraction is limited to pairs between:\n", 
-				paste0("\t'", object@restrict[1:nr], "' and '", object@restrict[nr+1:nr], "'\n"), sep="")
+				paste0("\t'", object@restrict[seq.it.nr], "' and '",
+				object@restrict[nr+seq.it.nr], "'\n"), sep="")
 		}
 	}
 

@@ -5,7 +5,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 #
 # written by Aaron Lun
 # created 30 May 2013
-# last modified 29 April 2015
+# last modified 22 July 2015
 {
 	# Preparing cuts; start positions, end positions, index in 'fragments', segmented by chromosome.
 	# Anchor/target order is defined by the order of chromosomes in 'fragments'; earlier chromosomes
@@ -18,7 +18,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 
 	curends<-end(fragments)
 	curstarts<-start(fragments)
-	for (x in 1:length(chrs)) {
+	for (x in seq_along(chrs)) {
 		curdex <- frag.data$first[x]:frag.data$last[x]
 		scuts[[x]] <- curstarts[curdex]
 		ecuts[[x]] <- curends[curdex]
@@ -32,7 +32,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 	# Checking consistency between SAM chromosome lengths and the ones in the cuts.
 	chromosomes<-scanBamHeader(bam)[[1]]$targets
 	if (!all(names(chromosomes) %in% chrs)) { stop("missing chromosomes in cut site list") }
-	for (x in 1:length(chrs)) {
+	for (x in seq_along(chrs)) {
 		if (chromosomes[[chrs[x]]]!=tail(ecuts[[x]], 1)) {
 			stop("length of ", chrs[x], " is not consistent between BAM file and fragment ranges")
 		}
@@ -114,7 +114,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 		if (!nrow(nonempty)) { next }
 		pairdata <- collated[[2]]
 
-		for (i in 1:nrow(nonempty)) {
+		for (i in seq_len(nrow(nonempty))) {
 			anchor <- chrs[nonempty[i,1]]
 			target <- chrs[nonempty[i,2]]
 			if (is.null(allfiles[[anchor]])) { allfiles[[anchor]] <- list() }

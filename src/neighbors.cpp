@@ -1,4 +1,4 @@
-#include "neighbours.h"
+#include "neighbors.h"
 
 basic::basic(int w, int t, bool i, int x=0) : level(0), width(w), tlen(t), intra(i), exclude(x) {
 	if (width < 0 || exclude < 0) { throw std::runtime_error("width values must be non-negative"); }

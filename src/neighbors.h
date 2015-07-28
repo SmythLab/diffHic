@@ -1,5 +1,5 @@
-#ifndef NEIGHBOURS_H
-#define NEIGHBOURS_H
+#ifndef NEIGHBORS_H
+#define NEIGHBORS_H
 
 #include "diffhic.h"
 
@@ -10,8 +10,9 @@ struct basic {
 	virtual bool bump_level ()=0; 
 	int row, left, right;
 protected:
-	int level, width, tlen, exclude;
+	int level, width, tlen;
 	bool intra;
+	int exclude;
 	void restrain ();
 };
 

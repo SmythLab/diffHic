@@ -1,5 +1,5 @@
 #include "diffhic.h"
-#include "neighbours.h"
+#include "neighbors.h"
 
 SEXP quadrant_bg (SEXP anchor, SEXP target, 
 		SEXP abundance_int, SEXP abundance_dec, SEXP mult,

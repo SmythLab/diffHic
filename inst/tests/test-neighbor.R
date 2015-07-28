@@ -166,7 +166,7 @@ comp(200, c(chrA=10, chrB=5, chrC=20), 3, exclude=1)
 comp(200, c(chrA=20, chrB=5), 3, exclude=1)
 
 ###################################################################################################
-# Same sort of simulation, but direct from read data, for neighbourCounts testing.
+# Same sort of simulation, but direct from read data, for neighborCounts testing.
 
 chromos<-c(chrA=51, chrB=31)
 source("simcounts.R")
@@ -180,7 +180,7 @@ comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, exclude=0, p
 	simgen(dir2, npairs2, chromos)
 	param <- pairParam(fragments=cuts)
 
-	out <- neighbourCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
+	out <- neighborCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
 		exclude=exclude)
 
 	ref <- squareCounts(c(dir1, dir2), width=width, param, filter=1)

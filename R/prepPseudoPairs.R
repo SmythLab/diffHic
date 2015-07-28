@@ -6,7 +6,7 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE,
 #
 # written by Aaron Lun
 # created 27 March 2015
-# last modified 29 April 2015
+# last modified 22 July 2015
 {
 	fragments <- param$fragments
 	n.per.chr <- runLength(seqnames(fragments))
@@ -25,7 +25,7 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE,
 	# Checking consistency between SAM chromosome lengths and the ones in the cuts.
 	chromosomes<-scanBamHeader(bam)[[1]]$targets
 	if (!all(names(chromosomes) %in% chrs)) { stop("missing chromosomes in cut site list") }
-	for (x in 1:length(chrs)) {
+	for (x in seq_along(chrs)) {
 		if (chromosomes[[chrs[x]]]!=end(fragments)[last.in.chr[x]]) {
 			stop("length of ", chrs[x], " is not consistent between BAM file and fragment ranges")
 		}
@@ -69,7 +69,7 @@ segmentGenome <- function(bs, size=500)
 
 	everything <- list()
 	for (chr in names(ref.len)) {
-		bin.dex <- 1:ceiling(ref.len[[chr]]/size)
+		bin.dex <- seq_len(ceiling(ref.len[[chr]]/size))
 		current <- GRanges(chr, IRanges((bin.dex - 1L)*size + 1L, bin.dex*size))
 		if (end(current)[length(current)] > ref.len[[chr]]) { 
 			end(current)[length(current)] <- ref.len[[chr]]

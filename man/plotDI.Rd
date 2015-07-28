@@ -4,7 +4,7 @@
 
 \title{Construct a plaid plot of differential interactions}
 
-\description{Plot differential interactions in a plaid format with informative colouring.}
+\description{Plot differential interactions in a plaid format with informative coloring.}
 
 \usage{
 plotDI(data, fc, first.region, second.region=first.region, 
@@ -37,7 +37,7 @@ The intervals of \code{first.region} and \code{second.region} are represented by
 Each bin pair is represented by a box in the plotting space, where each side of the box represents a bin.
 Plotting space that is not covered by any bin pair is shown in \code{background}.
 
-The colour of the box depends on the magnitude and sign of the log-fold change in \code{fc}.
+The color of the box depends on the magnitude and sign of the log-fold change in \code{fc}.
 Positive log-FCs will range from white to \code{col.up}, whereas negative log-FCs will range from white to \code{col.down}.
 The chosen color is proportional to the magnitude of the log-FC, and the most extreme colors are only obtained at the maximum absolute log-FC in \code{fc}.
 The maximum value can be capped at \code{zlim} for better resolution of small log-FCs.

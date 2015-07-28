@@ -129,7 +129,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 # Helper functions.
 
 .plotDiag <- function(xranges, yranges, colors, diag=FALSE, do.label=FALSE, labels=NULL, label.args=list()) {
-	for (it in 1:2) {
+	for (it in seq_len(2)) {
 		# Adding boxes (and text in those boxes, if desired).
 		rect(xleft=start(xranges)-0.5, xright=end(xranges)+0.5, ybottom=start(yranges)-0.5, ytop=end(yranges)+0.5, border=NA, col=colors)
 		if (!is.null(labels)) { do.call(text, c(list(x=mid(ranges(xranges)), y=mid(ranges(yranges)), labels=labels), label.args)) }

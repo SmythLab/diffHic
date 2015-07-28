@@ -1,13 +1,14 @@
-neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL, prior.count=NULL)
+neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL, prior.count=NULL)
 # This does the same thing as squareCounts, except that it simultaneously computes the 
 # filter statistic for each extracted bin pair. This has lower memory requirements as
 # it doesn't need to hold the entire `filter=1` output in memory at once.
 #
 # written by Aaron Lun
 # created 21 May 2015
+# last modified 22 July 2015
 {
 	nlibs <- length(files)
-	if (nlibs==0) { 
+	if (nlibs==0L) {
 		stop("number of libraries must be positive")
 	} else if (width < 0) { 
 		stop("width must be a non-negative integer")
@@ -40,7 +41,7 @@ neighbourCounts <- function(files, param, width=50000, filter=1L, flank=NULL, ex
 	tol <- formals(mglmOneGroup)$tol
 	disp <- 0.05
 
-	# Other stuff related to calculation of the neighbourhood regions.	
+	# Other stuff related to calculation of the neighborhood regions.	
 	if (is.null(flank)) { flank <- formals(enrichedPairs)$flank }
 	if (is.null(exclude)) { exclude <- formals(enrichedPairs)$exclude }
 	flank <- as.integer(flank)

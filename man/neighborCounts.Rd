@@ -1,12 +1,12 @@
-\name{neighbourCounts}
-\alias{neighbourCounts}
+\name{neighborCounts}
+\alias{neighborCounts}
 
 \title{Load Hi-C interaction counts}
 
 \description{Collate count combinations for interactions between pairs of bins across multiple Hi-C libraries.}
 
 \usage{
-neighbourCounts(files, param, width=50000, filter=1L, flank=NULL, 
+neighborCounts(files, param, width=50000, filter=1L, flank=NULL, 
     exclude=NULL, prior.count=NULL)
 }
 
@@ -15,8 +15,8 @@ neighbourCounts(files, param, width=50000, filter=1L, flank=NULL,
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{width}{an integer scalar specifying the width of each square in base pairs}
 	\item{filter}{an integer scalar specifying the minimum count for each square}
-	\item{flank}{an integer scalar, specifying the number of bins to consider as the local neighbourhood}
-	\item{exclude}{an integer scalar, specifying the number of bins to exclude from the neighbourhood}
+	\item{flank}{an integer scalar, specifying the number of bins to consider as the local neighborhood}
+	\item{exclude}{an integer scalar, specifying the number of bins to exclude from the neighborhood}
 	\item{prior.count}{a numeric scalar indicating the prior count to use in computing the log-fold increase}
 }
 
@@ -42,7 +42,7 @@ fout <- "output.h5"
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
-y <- neighbourCounts(fout, param, width=50, filter=2, 
+y <- neighborCounts(fout, param, width=50, filter=2, 
     flank=5, prior.count=2)
 y$interaction
 y$enrichment

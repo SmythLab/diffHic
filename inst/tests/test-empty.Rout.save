@@ -1,0 +1,154 @@
+
+R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Tests for zero-inputs into various diffHic functions.
+> 
+> suppressPackageStartupMessages(require(diffHic))
+> 
+> # Don't worry about cases involving empty files; 
+> # that just shouldn't be a practical concern.
+> 
+> ghost <- DIList(matrix(0, nrow=0, ncol=1), anchors=integer(0),
++ 	targets=integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)))
+> 
+> getDistance(ghost)
+logical(0)
+> getDistance(ghost, type="gap")
+logical(0)
+> getDistance(ghost, type="span")
+logical(0)
+> 
+> getArea(ghost)
+numeric(0)
+> getArea(ghost, bp=TRUE)
+numeric(0)
+> 
+> f.out <- "empty.h5"
+> param <- pairParam(GRanges("chrA", IRanges(1:5, 1:5)))
+> savePairs(data.frame(anchor.id=integer(0), target.id=integer(0)), file=f.out, param=param)
+> 
+> loadChromos(f.out) # While we're here, let's see what happens.
+[1] anchors targets
+<0 rows> (or 0-length row.names)
+> unlink(f.out)
+> 
+> filterDirect(ghost)
+$abundances
+numeric(0)
+
+$threshold
+[1] 19.93157
+
+Warning message:
+In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = .makeEmpty(data,  :
+  insufficient inter-chromosomal pairs for reliable threshold estimation
+> filterDirect(ghost, reference=ghost)
+$abundances
+numeric(0)
+
+$threshold
+[1] NaN
+
+$ref
+$ref$abundances
+numeric(0)
+
+$ref$threshold
+[1] 19.93157
+
+
+Warning message:
+In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = .makeEmpty(data,  :
+  insufficient inter-chromosomal pairs for reliable threshold estimation
+> 
+> filterTrended(ghost)
+$abundances
+numeric(0)
+
+$threshold
+logical(0)
+
+$log.distance
+numeric(0)
+
+Warning message:
+In filterTrended(ghost) :
+  too many missing regions in the intra-chromosomal interaction space to fill in
+> try(filterTrended(ghost, reference=ghost)) # This will fail, as interpolation is impossible.
+Error in approx(x = ref$log.distance, y = ref$threshold, xout = actual.dist,  : 
+  need at least two non-NA values to interpolate
+In addition: Warning message:
+In filterTrended(ghost, reference = ghost) :
+  too many missing regions in the intra-chromosomal interaction space to fill in
+> 
+> filterPeaks(ghost, integer(0))
+logical(0)
+> 
+> enrichedPairs(ghost, abundances=numeric(0))
+numeric(0)
+> 
+> try(compartmentalize(ghost)) # This will fail, as interpolation is impossible.
+Error in approxfun(x = trended$log.distance, y = trended$threshold, rule = 2) : 
+  need at least two non-NA values to interpolate
+In addition: Warning message:
+In filterTrended(data) :
+  too many missing regions in the intra-chromosomal interaction space to fill in
+> try(compartmentalize(ghost, dist.correct=FALSE)) # This will also fail, due to non-unique k-means.
+Error in kmeans(mat, centers = centers, ...) : 
+  more cluster centers than distinct data points.
+> 
+> correctedContact(ghost)
+$truth
+numeric(0)
+
+$bias
+[1] NA NA NA NA NA
+
+$max
+ [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[39] 0 0 0 0 0 0 0 0 0 0 0 0
+
+> 
+> try(normalizeCNV(ghost, ghost)) # locfit isn't as robust as loessFit
+Error in locfit(i.fc ~ cov.fun, maxk = maxk, ..., lfproc = locfit.robust) : 
+  fewer than one row in the data
+> 
+> matchMargins(ghost, ghost)
+[1] amatch tmatch
+<0 rows> (or 0-length row.names)
+> 
+> asDGEList(ghost)
+An object of class "DGEList"
+$counts
+     Sample1
+
+$samples
+        group lib.size norm.factors
+Sample1     1        0            1
+
+> 
+> normalize(ghost)
+[1] 1
+> normalize(ghost, type="loess")
+     [,1]
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 14.324   0.602  15.193 

@@ -39,7 +39,7 @@ getArea <- function(data, bp=TRUE)
 # 
 # written by Aaron Lun
 # created 30 July 2014
-# last modified 29 April 2015
+# last modified 22 July 2015
 {
 	ax <- anchors(data, id=TRUE)
 	tx <- targets(data, id=TRUE)
@@ -71,11 +71,11 @@ getArea <- function(data, bp=TRUE)
 		if (any(is.partial)) { 
 			right.edge <- right.edge[is.partial]
 			left.edge <- left.edge[is.partial]
-			by.chr <- split(1:sum(is.partial), as.character(seqnames(reg)[ax][is.partial]))
+			by.chr <- split(seq_len(sum(is.partial)), as.character(seqnames(reg)[ax][is.partial]))
 			fragments <- exptData(data)$param$fragments
 			fdata <- .splitByChr(fragments)
 
-			for (x in 1:length(fdata$chr)) {
+			for (x in seq_along(fdata$chr)) {
 				current.chr <- fdata$chr[x]
 				curdex <- by.chr[[current.chr]]
 				if (is.null(curdex)) { next }
@@ -83,7 +83,7 @@ getArea <- function(data, bp=TRUE)
 				indices <- fdata$first[x]:fdata$last[x]
 				right.olap <- match(right.edge[curdex], end(fragments)[indices])
 				left.olap <- match(left.edge[curdex], start(fragments)[indices])
- 	    		if (any(is.na(right.olap)) || any(is.na(left.olap))) { stop("region boundaries should correspond to restriction fragment boundaries") }
+				if (any(is.na(right.olap)) || any(is.na(left.olap))) { stop("region boundaries should correspond to restriction fragment boundaries") }
 		
 				n.overlap <- right.olap - left.olap + 1	
 				returned[is.partial][curdex] <- returned[is.partial][curdex] - n.overlap*(n.overlap-1)/2

@@ -8,9 +8,7 @@ totalCounts <- function(files, param)
 # last modified 20 March 2015
 {
 	nlibs <- length(files)
-	if (nlibs==0) { 
-		stop("number of libraries must be positive")
-	} 
+	if (nlibs==0L) { stop("number of libraries must be positive") }
 	fragments <- param$fragments
 	frag.by.chr <- .splitByChr(fragments)
  	chrs <- seqlevels(fragments) 

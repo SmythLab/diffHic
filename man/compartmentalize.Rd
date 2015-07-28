@@ -6,7 +6,7 @@
 
 \usage{
 compartmentalize(data, centers=2, dist.correct=TRUE, 
-    cov.correct=TRUE, robust.cov=5, inter=FALSE, ...)
+    cov.correct=TRUE, robust.cov=5, ...)
 }
 
 \arguments{
@@ -15,7 +15,6 @@ compartmentalize(data, centers=2, dist.correct=TRUE,
 \item{dist.correct}{a logical scalar, indicating whether abundances should be corrected for distance biases}
 \item{cov.correct}{a logical scalar, indicating whether abundances should be corrected for coverage biases}
 \item{robust.cov}{a numeric scalar, specifying the multiple of MADs beyond which coverage outliers are removed}
-\item{inter}{a logical scalar, indicating whether inter-chromosomal space should be used during clustering}
 \item{...}{other arguments to pass to \code{\link{kmeans}}}
 }
 
@@ -28,6 +27,7 @@ Typically, one compartment is gene-rich and is defined as ``open'', while the ot
 Compartment identification is done by setting up a contact matrix where each row/rolumn represents a bin and each matrix entry contains the frequency of contacts between bins.
 Bins (i.e., rows) with similar interaction profiles (i.e., entries across columns) are clustered together with the k-means method.
 Those with the same ID in the output \code{compartment} vector are in the same compartment.
+Note that clustering is done separately for each chromosome, so bins with the same ID across different chromosomes cannot be interpreted as being in the same compartment.
 
 If \code{dist.correct=TRUE}, frequencies are normalized to mitigate the effect of distance and to improve the visibility of long-range interactions.
 This is done by computing the residuals of the distance-dependent trend - see \code{\link{filterTrended}} for more details.
@@ -35,14 +35,18 @@ If \code{cov.correct=TRUE}, frequencies are also normalized to eliminate coverag
 This is done by computing the average coverage of each row/column, and dividing each matrix entry by the square root averages of the relevant row and column.
 
 Extremely low-coverage regions such as telomeres and centromeres can confound k-means clustering.
-To protect against this, all bins with (distance-corrected) coverages that are more than \code{robust.cov} MAD's away from the median coverage of each chromosome are identified and removed.
+To protect against this, all bins with (distance-corrected) coverages that are more than \code{robust.cov} MADs away from the median coverage of each chromosome are identified and removed.
 These bins will be marked with \code{NA} in the returned \code{compartment} for that chromosome.
 To turn off robustification, set \code{robust.cov} to \code{NA}.
 
-When \code{inter=FALSE}, clustering is performed for each chromosome separately, using a series of intra-chromosomal contact matrices.
-This saves memory and performs well, given that most information is contained in the intra-chromosomal space.
-If \code{inter} is set to \code{TRUE}, clustering is performed for the entire genome, including the interaction space between different chromosomes, i.e., the inter-chromomsal space.
-This may be useful for matching compartments of the same type between chromosomes, but will use a lot more memory.
+% This differs from correctedContact() robustification, where a proportion of low coverage bins is always ignored.
+% The proportion-based approach is used for consistency with published methods, but is a too aggresssive here.
+% One can imagine situations where there are no outliers, yet a proportion-based method will still remove something.
+
+% Clustering is performed for each chromosome separately, using a series of intra-chromosomal contact matrices.
+% This saves memory and performs well, given that most information is contained in the intra-chromosomal space.
+% If \code{inter} is set to \code{TRUE}, clustering is performed for the entire genome, including the interaction space between different chromosomes, i.e., the inter-chromomsal space.
+% This may be useful for matching compartments of the same type between chromosomes, but will use a lot more memory.
 
 By default, \code{centers} is set to 2 to model the open and closed compartments.
 While a larger value can be used to obtain more clusters, care is required as the interpretation of the resulting compartments becomes more difficult.
@@ -50,11 +54,11 @@ If desired, users can also apply their own clustering methods on the \code{matri
 }
 
 \value{
-If \code{inter=FALSE}, a named list of lists is returned where each internal list corresponds to a chromosome in \code{data} and contains \code{compartment}, an integer vector of compartment IDs for all bins in that chromosome; and \code{matrix}, a numeric matrix of (normalized) contact frequencies for the intra-chromosomal space. 
+A named list of lists is returned where each internal list corresponds to a chromosome in \code{data} and contains \code{compartment}, an integer vector of compartment IDs for all bins in that chromosome; and \code{matrix}, a numeric matrix of (normalized) contact frequencies for the intra-chromosomal space. 
 Entries in \code{compartment} and rows/columns in \code{matrix} are named according to the matching index of \code{regions(data)}.
 
-If \code{inter=TRUE}, a list is returned that contains \code{compartment}, an integer vector of IDs for all bins in the genome; and \code{matrix}, a contact matrix spanning the entire interaction space.
-Each entry of \code{compartment} and each row/column in \code{matrix} corresponds to an entry of \code{regions(data)}.
+% If \code{inter=TRUE}, a list is returned that contains \code{compartment}, an integer vector of IDs for all bins in the genome; and \code{matrix}, a contact matrix spanning the entire interaction space.
+% Each entry of \code{compartment} and each row/column in \code{matrix} corresponds to an entry of \code{regions(data)}.
 }
 
 \seealso{
@@ -85,14 +89,14 @@ dim(out$chrA$matrix)
 head(out$chrB$compartment)
 dim(out$chrB$matrix)
 
-out2 <- compartmentalize(data, inter=TRUE)
-head(out2$compartment)
-out2$matrix[1,]
-
 test <- compartmentalize(data, cov.correct=FALSE)
 test <- compartmentalize(data, dist.correct=FALSE)
 test <- compartmentalize(data, robust.cov=NA)
 }
+
+%out2 <- compartmentalize(data, inter=TRUE)
+%head(out2$compartment)
+%out2$matrix[1,]
 
 \keyword{clustering}
 

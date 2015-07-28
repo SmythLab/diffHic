@@ -5,7 +5,7 @@ marginCounts <- function(files, param, width=50000)
 #
 # written by Aaron Lun
 # Some time ago.
-# last modified 20 March 2015
+# last modified 22 July 2015
 {
 	nlibs <- length(files)
 	width <- as.integer(width)
@@ -17,17 +17,17 @@ marginCounts <- function(files, param, width=50000)
 	discard <- .splitDiscards(param$discard)
 	cap <- param$cap
 
-    if (width < 0) { stop("width must be a non-negative integer") }
-    new.pts <- .getBinID(fragments, width)
-    bin.by.chr <- .splitByChr(new.pts$region)
+	if (width < 0) { stop("width must be a non-negative integer") }
+	new.pts <- .getBinID(fragments, width)
+	bin.by.chr <- .splitByChr(new.pts$region)
 
-    total.counts <- matrix(0L, length(new.pts$region), nlibs)
+	total.counts <- matrix(0L, length(new.pts$region), nlibs)
 	full.sizes <- integer(nlibs)
 	chrs <- seqlevels(fragments)
 
-    # Running through each pair of chromosomes.
-    overall <- .loadIndices(files, chrs, restrict)
-    for (anchor in names(overall)) {
+	# Running through each pair of chromosomes.
+	overall <- .loadIndices(files, chrs, restrict)
+	for (anchor in names(overall)) {
 		current <- overall[[anchor]]
 		first.anchor <- bin.by.chr$first[[anchor]]
 		last.anchor <- bin.by.chr$last[[anchor]]
@@ -35,16 +35,16 @@ marginCounts <- function(files, param, width=50000)
 		keep.a <- first.anchor:last.anchor
 
 		for (target in names(current)) {
-   			first.target <- bin.by.chr$first[[target]]
+			first.target <- bin.by.chr$first[[target]]
 			last.target <- bin.by.chr$last[[target]]
 			ntbins <- last.target - first.target + 1L
 			keep.t <- first.target:last.target
- 
-      		pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+
+			pairs <- .baseHiCParser(current[[target]], files, anchor, target,
 				chr.limits=frag.by.chr, discard=discard, cap=cap)
 
 			# Aggregating them for each library.
-			for (lib in 1:nlibs) { 
+			for (lib in seq_len(nlibs)) {
 				a.counts <- tabulate(new.pts$id[pairs[[lib]]$anchor.id]-first.anchor+1L, nbins=nabins)
 				total.counts[keep.a,lib] <- total.counts[keep.a,lib] + a.counts
 				t.counts <- tabulate(new.pts$id[pairs[[lib]]$target.id]-first.target+1L, nbins=ntbins)

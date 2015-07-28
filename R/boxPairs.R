@@ -5,7 +5,7 @@ boxPairs <- function(..., reference, minbox=FALSE)
 #
 # written by Aaron Lun
 # created 3 June 2014
-# last modified 4 June 2015
+# last modified 22 July 2015
 {
 	all.hits <- list(...)
 	nk <- length(all.hits)
@@ -23,7 +23,8 @@ boxPairs <- function(..., reference, minbox=FALSE)
 	# Collating all results in terms of parents.
 	all.a <- all.t <- all.mode <- all.idx <- list()
 	num.pairs <- list()
-	for (x in 1:nk) {
+	seq.it.nk <- seq_len(nk)
+	for (x in seq.it.nk) {
 		current <- all.hits[[x]]
 		ncur <- nrow(current)
 		olap <- findOverlaps(regions(current), parents, type="within", select="first")
@@ -32,7 +33,7 @@ boxPairs <- function(..., reference, minbox=FALSE)
 		all.a[[x]] <- olap[anchors(current, id=TRUE)]
 		all.t[[x]] <- olap[targets(current, id=TRUE)]
 		all.mode[[x]] <- rep(x, ncur)
-		all.idx[[x]] <- 1:ncur
+		all.idx[[x]] <- seq_len(ncur)
 		num.pairs[[x]] <- ncur
 	}
 	all.a <- unlist(all.a)
@@ -50,10 +51,10 @@ boxPairs <- function(..., reference, minbox=FALSE)
 
 	is.diff <- c(TRUE, diff(all.a)!=0L | diff(all.t)!=0L)
 	now.index <- cumsum(is.diff)
-	by.mode <- split(1:length(is.diff), all.mode)
+	by.mode <- split(seq_along(is.diff), all.mode)
 	
 	indices <- list()
-	for (x in 1:nk) {
+	for (x in seq.it.nk) {
 		chosen <- by.mode[[as.character(x)]]
 		current.out <- integer(length(chosen))
 		current.out[all.idx[chosen]] <- now.index[chosen]
@@ -64,7 +65,7 @@ boxPairs <- function(..., reference, minbox=FALSE)
 	# Selecting the boundaries to report.
 	if (minbox) {
 		a.chrs <- a.starts <- a.ends <- t.chrs <- t.starts <- t.ends <- list()
-		for (x in 1:nk) { 
+		for (x in seq.it.nk) {
 			current <- all.hits[[x]]
 			aid <- anchors(current, id=TRUE)
 			tid <- targets(current, id=TRUE)

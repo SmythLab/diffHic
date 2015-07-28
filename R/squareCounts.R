@@ -5,10 +5,10 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 #
 # written by Aaron Lun
 # some time ago
-# last modified 29 April 2015
+# last modified 22 July 2015
 {
 	nlibs <- length(files)
-	if (nlibs==0) { 
+	if (nlibs==0L) {
 		stop("number of libraries must be positive")
 	} else if (width < 0) { 
 		stop("width must be a non-negative integer")
@@ -99,7 +99,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	frag.data <- .splitByChr(fragments)
 	nfrags <- list() 
 	
-	for (x in 1:length(frag.data$chr)) {
+	for (x in seq_along(frag.data$chr)) {
 		curindex <- frag.data$first[x]:frag.data$last[x]
 		curf <- fragments[curindex]
 		mids <- (start(curf)+end(curf))/2
@@ -109,7 +109,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 
 		processed <- rle(bin.id)
 		ns <- length(processed$value)
-		processed$values <- 1:ns
+		processed$values <- seq_len(ns)
 		nfrags[[x]] <- processed$length
 		out.ids[curindex] <- inverse.rle(processed)+last
 		
@@ -138,7 +138,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	tdisc <- discard[[target]]
 	do.cap <- !is.na(cap)
 
-	for (x in 1:length(ok)) {
+	for (x in seq_along(ok)) {
 		if (!ok[x]) { 
 			overall[[x]] <- data.frame(anchor.id=integer(0), target.id=integer(0))
 		} else {
@@ -192,7 +192,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 # Splits the discard GRanges into a list of constituent chromosomes,
 # along with IRanges for everything. This allows easy access tot he
 {
-	if (is.null(discard) || length(discard)==0) { return(NULL) }
+	if (is.null(discard) || length(discard)==0L) { return(NULL) }
 	discard <- sort(discard)
 	all.chrs <- as.character(runValue(seqnames(discard)))
 	all.len <- runLength(seqnames(discard))
@@ -200,7 +200,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	chr.starts <- c(1L, chr.ends[-length(chr.ends)]+1L)
 
 	output <- list()
-	for (i in 1:length(all.chrs)) {
+	for (i in seq_along(all.chrs)) {
 		chr <- all.chrs[i]
 		ix <- chr.starts[i]:chr.ends[i]
 		output[[chr]] <- reduce(ranges(discard[ix]))

@@ -30,7 +30,7 @@ This is accommodated in \code{diffHic} by partitioning the genome into small pse
 Reads are then assigned into these pseudo-fragments using \code{prepPseudoPairs}.
 The rest of the analysis pipeline can then be used in the same manner as that for standard Hi-C.
 
-The behaviour of \code{prepPseudoPairs} is almost identical to that for \code{\link{preparePairs}}, if the latter were asked to assign reads into pseudo-fragments.
+The behavior of \code{prepPseudoPairs} is almost identical to that for \code{\link{preparePairs}}, if the latter were asked to assign reads into pseudo-fragments.
 However, for \code{prepPseudoPairs}, no reporting or removal of self-circles or dangling ends is performed, as these have no meaning for artificial fragments.
 Also, invalidity of chimeras is determined by checking whether the 3' end is more than \code{chim.span} away from the mate read, rather than checking for localization in different fragments.
 
