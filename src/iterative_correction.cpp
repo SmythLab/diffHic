@@ -204,14 +204,13 @@ try {
 		}
     }
 
-	/* Recalculating the contact probabilities, using the estimated biases.
-	 * This gets normalized values for the Winsorized elements as well.
-	 * However, probabilities are no longer that, 
+	/* Recalculating the contact probabilities, using the estimated biases, 
+	 * to get normalized values for Winsorized or discarded bin pairs.
+	 * Discarded bins can't be salvaged, though.
 	 */
-	if (todrop > 0) { 
-		for (int pr=0; pr<npairs; ++pr) {  
-			wptr[pr] = acptr[pr]/biaptr[aptr[pr]]/biaptr[tptr[pr]];
-    	}
+	for (int pr=0; pr<npairs; ++pr) {  
+		if (ISNA(biaptr[aptr[pr]]) || ISNA(biaptr[tptr[pr]])) { continue; }
+		wptr[pr] = acptr[pr]/biaptr[aptr[pr]]/biaptr[tptr[pr]];
 	}
 } catch (std::exception& e) {
 	UNPROTECT(1);

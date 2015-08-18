@@ -1,0 +1,11 @@
+citEntry(
+	entry = "article",
+   	author= "Aaron T L Lun and Gordon K Smyth",
+   	title ="diff{H}ic: a {B}ioconductor package to detect differential genomic interactions in {H}i-{C} data",
+   	journal="BMC Bioinformatics", 
+   	year="2015",
+   	volume="16",
+   	pages="258",
+	textVersion = "Lun ATL and Smyth GK (2015). diffHic: a Bioconductor package to detect differential genomic interactions in Hi-C data. BMC Bioinformatics 16, 258."
+)
+

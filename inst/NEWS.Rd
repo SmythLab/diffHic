@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.12}{\itemize{
+\section{Version 1.1.14}{\itemize{
 \item
 Added library size specification to DIList methods normalize(), asDGEList().
 
@@ -53,6 +53,9 @@ Added reference argument for large bin pairs, in filterDirect() and filterTrende
 
 \item 
 Updated documentation, tests and user's guide.
+
+\item
+Added diffHic paper entry to CITATION.
 }}
 
 \section{Version 1.0.0}{\itemize{

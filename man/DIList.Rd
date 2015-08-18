@@ -151,7 +151,7 @@ In the code snippets below, \code{x} is a DIList object.
 		Each entry is extracted from \code{fill}, where \code{fill} is a numeric vector with one value per interaction in \code{x}.
  	   	By default, the average abundance of each interaction in \code{x} is used as the entry.
 		For intra-chromosomal spaces, both sides of the diagonal are filled.
-		Multiple chromosomes can also be specified in \code{first} or \code{second}. 
+		Multiple chromosomes can also be specified in \code{first} or \code{second} (all chromosomes are used by default). 
 		Each row and column is named according to the matching index of \code{regions(x)}.
 	}
 }

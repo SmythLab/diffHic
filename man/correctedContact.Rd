@@ -59,6 +59,7 @@ Low-abundance bins can also be removed with \code{ignore.low} to avoid instabili
 Local bin pairs can be excluded as these are typically irrelevant to long-range interactions. 
 They are also typically very high-abundance and may have excessive weight during correction, if not removed. 
 This can be done by removing all bin pairs where the difference between the anchor and target indices is less than \code{exclude.local}.
+Setting \code{exclude.local=NA} will only use inter-chromosomal bin pairs for correction.
 
 If \code{dist.correct=TRUE}, abundances will be adjusted for distance-dependent effects.
 This is done by computing residuals from the fitted distance-abundance trend, using the \code{filterTrended} function.
