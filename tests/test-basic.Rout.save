@@ -228,7 +228,8 @@ Sample1     a       17            2
 > # Playing around with some bin counts.
 > stuff <- correctedContact(data)
 > head(stuff$truth)
-[1]        NA 0.6123523 0.6123523        NA 0.2041633 0.2041633
+[1] 1.517032e+04 6.123523e-01 6.123523e-01 8.162749e-01 2.041633e-01
+[6] 2.041633e-01
 > 
 > data.large <- squareCounts(fout, param, width=100, filter=1)
 > boxed <- boxPairs(larger=data.large, smaller=data)
@@ -248,4 +249,4 @@ Sample1     a       17            2
 > 
 > proc.time()
    user  system elapsed 
-  6.643   0.128   6.783 
+ 15.676   0.682  16.646 
