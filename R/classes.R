@@ -223,6 +223,11 @@ setMethod("normOffsets", signature("DIList"), function(object, lib.sizes, ...) {
 	normOffsets(counts(object), lib.sizes=lib.sizes, ...)
 })
 
+setMethod("normalize", signature("DIList"), function(object, lib.sizes, ...) {
+    .Deprecated(new="normOffsets", old="normalize")
+	normOffsets(object, lib.sizes=lib.sizes, ...)
+})
+
 ########################################################################################
 # Defining the pairParam class.
 

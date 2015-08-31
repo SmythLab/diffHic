@@ -3,6 +3,8 @@
 \alias{asDGEList,DIList-method}
 \alias{normOffsets}
 \alias{normOffsets,DIList-method}
+\alias{normalize}
+\alias{normalize,DIList-method}
 
 \title{Statistical wrappers for DIList objects}
 
@@ -12,6 +14,7 @@ Convenience wrappers for statistical routines operating on DIList objects.
 
 \usage{
 \S4method{normOffsets}{DIList}(object, lib.sizes, ...)
+\S4method{normalize}{DIList}(object, lib.sizes, ...) # deprecated, use normOffsets
 \S4method{asDGEList}{DIList}(object, lib.sizes, ...)
 }
 
