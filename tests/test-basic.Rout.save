@@ -202,13 +202,13 @@ Sample1     a       17            2
 +     totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
 +     regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
 > 
-> normalize(dummy)
+> normOffsets(dummy)
 [1] 1.0797832 0.8315380 0.9929251 1.1216694
-> normalize(dummy, logratio=0)
+> normOffsets(dummy, logratio=0)
 [1] 1.0811624 0.8302083 0.9910453 1.1241609
-> normalize(dummy, lib.sizes=c(10, 20, 15, 25))
+> normOffsets(dummy, lib.sizes=c(10, 20, 15, 25))
 [1] 1.6546731 0.8295975 1.1041603 0.6597634
-> head(normalize(dummy, type="loess"))
+> head(normOffsets(dummy, type="loess"))
              [,1]          [,2]         [,3]         [,4]
 [1,] -0.001441205  0.0009288939  0.004926866 -0.004414554
 [2,]  0.005400644  0.0041595563 -0.006896160 -0.002664040
@@ -216,7 +216,7 @@ Sample1     a       17            2
 [4,]  0.005334707  0.0035367045 -0.005104467 -0.003766944
 [5,] -0.003505621  0.0163064678 -0.001889799 -0.010911049
 [6,]  0.004070284  0.0090487766 -0.008279824 -0.004839236
-> head(normalize(dummy, type="loess", span=0.5))
+> head(normOffsets(dummy, type="loess", span=0.5))
               [,1]          [,2]         [,3]          [,4]
 [1,] -0.0024209796  0.0006743125  0.003720243 -0.0019735760
 [2,]  0.0063348114  0.0041435478 -0.006281532 -0.0041968270

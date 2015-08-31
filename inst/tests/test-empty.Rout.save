@@ -143,9 +143,9 @@ $samples
 Sample1     1        0            1
 
 > 
-> normalize(ghost)
+> normOffsets(ghost)
 [1] 1
-> normalize(ghost, type="loess")
+> normOffsets(ghost, type="loess")
      [,1]
 > 
 > 

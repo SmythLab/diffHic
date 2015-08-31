@@ -1,6 +1,6 @@
 Package: diffHic
-Version: 1.1.14
-Date: 2015/08/18
+Version: 1.1.15
+Date: 2015/08/29
 Title: Differential analyis of Hi-C data
 Author: Aaron Lun <alun@wehi.edu.au>
 Maintainer: Aaron Lun <alun@wehi.edu.au>

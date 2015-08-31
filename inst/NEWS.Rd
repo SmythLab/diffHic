@@ -2,9 +2,12 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.14}{\itemize{
+\section{Version 1.1.15}{\itemize{
 \item
-Added library size specification to DIList methods normalize(), asDGEList().
+Renamed normalize() to normOffsets().
+
+\item
+Added library size specification to DIList methods normOffsets(), asDGEList().
 
 \item 
 Fixed bugs under pathological settings in plotPlaid(), plotDI(), rotPlaid(), rotDI().

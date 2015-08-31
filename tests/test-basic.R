@@ -54,11 +54,11 @@ dummy <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=
     totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
     regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
 
-normalize(dummy)
-normalize(dummy, logratio=0)
-normalize(dummy, lib.sizes=c(10, 20, 15, 25))
-head(normalize(dummy, type="loess"))
-head(normalize(dummy, type="loess", span=0.5))
+normOffsets(dummy)
+normOffsets(dummy, logratio=0)
+normOffsets(dummy, lib.sizes=c(10, 20, 15, 25))
+head(normOffsets(dummy, type="loess"))
+head(normOffsets(dummy, type="loess", span=0.5))
 
 # Playing around with some bin counts.
 stuff <- correctedContact(data)

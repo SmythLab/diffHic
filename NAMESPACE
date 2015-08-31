@@ -24,7 +24,7 @@ exportClasses(
 
 exportMethods(
     anchors, targets, counts, regions, 
-	asDGEList, normalize, reform 
+	asDGEList, normOffsets, reform
 )
 
 # Requires several imports.

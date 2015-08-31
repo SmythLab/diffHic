@@ -1,8 +1,8 @@
 \name{DIList-wrappers}
 \alias{asDGEList}
 \alias{asDGEList,DIList-method}
-\alias{normalize}
-\alias{normalize,DIList-method}
+\alias{normOffsets}
+\alias{normOffsets,DIList-method}
 
 \title{Statistical wrappers for DIList objects}
 
@@ -11,7 +11,7 @@ Convenience wrappers for statistical routines operating on DIList objects.
 }
 
 \usage{
-\S4method{normalize}{DIList}(object, lib.sizes, ...)
+\S4method{normOffsets}{DIList}(object, lib.sizes, ...)
 \S4method{asDGEList}{DIList}(object, lib.sizes, ...)
 }
 
@@ -26,13 +26,13 @@ Counts are extracted from the matrix in the \code{DIList} object.
 If not specified in \code{lib.sizes}, library sizes are taken from the \code{totals} field in the column data of \code{object}.
 Warnings will be generated if this field is not present.
 
-In the \code{normalize} method, the extracted counts and library sizes are supplied to \code{\link{normalizeCounts}}.
+In the \code{normOffsets} method, the extracted counts and library sizes are supplied to \code{\link{normOffsets,matrix-method}}.
 Similarly, the \code{asDGEList} method wraps the \code{\link{DGEList}} constructor.
 In both cases, any arguments in \code{...} are also passed to the wrapped functions.
 }
 
 \value{
-For \code{normalize}, either a numeric matrix or vector is returned; see \code{\link{normalizeCounts}}.
+For \code{normOffsets}, either a numeric matrix or vector is returned; see \code{\link{normOffsets,matrix-method}}.
 
 For \code{asDGEList}, a \code{DGEList} object is returned.
 }
@@ -48,10 +48,10 @@ asDGEList(blah)
 asDGEList(blah, lib.sizes=c(1,2)) # Manually set to some other value.
 asDGEList(blah, group=c("a", "b")) 
 
-normalize(blah)  
-normalize(blah, lib.sizes=c(1,2)) # Manually set to some other value. 
-normalize(blah, logratioTrim=0)
-normalize(blah, type="loess")
+normOffsets(blah)
+normOffsets(blah, lib.sizes=c(1,2)) # Manually set to some other value.
+normOffsets(blah, logratioTrim=0)
+normOffsets(blah, type="loess")
 
 c(blah, blah)
 c(blah[1:2,], blah[3:4,], add.totals=FALSE)
@@ -59,7 +59,7 @@ c(blah[1:2,], blah[3:4,], add.totals=FALSE)
 
 \seealso{
 \code{\link{DGEList}},
-\code{\link{normalizeCounts}},
+\code{\link{normOffsets}},
 \code{\link{squareCounts}}
 }
 

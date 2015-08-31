@@ -43,6 +43,6 @@ matchMargins(ghost, ghost)
 
 asDGEList(ghost)
 
-normalize(ghost)
-normalize(ghost, type="loess")
+normOffsets(ghost)
+normOffsets(ghost, type="loess")
 
