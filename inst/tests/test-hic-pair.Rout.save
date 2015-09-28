@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-12-14 r67167) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -741,7 +741,7 @@ Loading required package: Biostrings
 > preparePairs(hic.file, param, tmpdir, dedup=FALSE)
 $pairs
    total   marked filtered   mapped 
-      30        0        3       27 
+      30        7        3       27 
 
 $same.id
    dangling self.circle 
@@ -1000,4 +1000,4 @@ other.2                 7         7     30           2     13
 > 
 > proc.time()
    user  system elapsed 
- 15.659   0.347  16.092 
+ 34.377   1.379  41.804 

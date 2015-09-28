@@ -2,12 +2,12 @@
 #include <cctype>
 
 /***********************************************************************
- * Finds the fragment to which each read (or segment thereof) belongs. 
+ * Finds the fragment to which each read (or segment thereof) belongs.
  ***********************************************************************/
 
 class base_finder {
 public:
-	base_finder() {} 
+	base_finder() {}
 	virtual size_t nchrs() const { return pos.size(); }
 	virtual int find_fragment(const int&, const int&, const bool&, const int&) const = 0;
 protected:
@@ -44,13 +44,13 @@ fragment_finder::fragment_finder(SEXP starts, SEXP ends) {
 }
 
 int fragment_finder::find_fragment(const int& c, const int& p, const bool& r, const int& l) const {
-	// Binary search to obtain the fragment index with 5' end coordinates. 
+	// Binary search to obtain the fragment index with 5' end coordinates.
 	int index=0;
 	if (r) {
 		int pos5=p+l-1;
 		const int* eptr=pos[c].end_ptr;
 		index= std::lower_bound(eptr, eptr+pos[c].num, pos5)-eptr;
-		if (index==pos[c].num) { 
+		if (index==pos[c].num) {
 			warning("read aligned off end of chromosome");
 			--index;
 		} else if (pos[c].start_ptr[index] > pos5) {
@@ -59,15 +59,15 @@ int fragment_finder::find_fragment(const int& c, const int& p, const bool& r, co
 		}
 	} else {
 		/* If forward strand, we search relative to the start position of each fragment. If the
- 		 * end of the identified fragment is less than the position, the read probably just 
- 		 * slipped below the start position of the true fragment and is partially sitting 
+ 		 * end of the identified fragment is less than the position, the read probably just
+ 		 * slipped below the start position of the true fragment and is partially sitting
  		 * in the spacer for filled-in genomes. We then simply kick up the index.
  		 */
 		const int* sptr=pos[c].start_ptr;
 		index=std::upper_bound(sptr, sptr+pos[c].num, p)-sptr-1;
-		if (pos[c].end_ptr[index] < p) { 
+		if (pos[c].end_ptr[index] < p) {
 			warning("read starts in spacer region for a filled genome");
-			++index; 
+			++index;
 		}
 	}
 	return index;
@@ -87,32 +87,32 @@ void parse_cigar (const char* cigar, int& alen, int& offset, const bool& reverse
             numero+=int((*cigar)-'0');
         } else {
             switch (*cigar) {
-				/* If we've already got some non-clipped values, it means that we're now looking at
-			     * the right hand side  of the alignment. Which we don't really need if the read is
-			     * forward (as we only want the stuff on the left, as it's equal to the 5' offset).
-			     * So we can just return.
-				 */
-                case 'H': 
-					if (alen && !reverse) { return; }					
-					offset+=numero;
-					break;				
-				case 'S':
-					if (alen && !reverse) { return; }					
-                    break;
+		/* If we've already got some non-clipped values, it means that we're now looking at
+		 * the right hand side  of the alignment. Which we don't really need if the read is
+		 * forward (as we only want the stuff on the left, as it's equal to the 5' offset).
+		 * So we can just return.
+		 */
+                case 'H':
+			if (alen && !reverse) { return; }					
+			offset+=numero;
+			break;				
+		case 'S':
+			if (alen && !reverse) { return; }					
+                	break;
                 /* We want the length of the alignment relative to the reference, so we ignore insertions
                  * which are only present in the query. We also ignore padded deletions, as they're talking
-                 * about something else. We consider deletions from the reference and skipped regions as being  
-                 * part of the query. 
-                 * 
+                 * about something else. We consider deletions from the reference and skipped regions as being 
+                 * part of the query.
+                 *
                  * Note the lack of breaks. It's deliberate, because in all non-clipping cases, we want to check
-                 * whether we need to reset the offset (if we're looking for the offset on the right of the 
-                 * alignment i.e. the 5' offset on the reverse read). 
+                 * whether we need to reset the offset (if we're looking for the offset on the right of the
+                 * alignment i.e. the 5' offset on the reverse read).
                  */
                 case 'D': case 'M': case 'X': case '=': case 'N':
-                    alen+=numero;
+                	alen+=numero;
                 default:
-					if (reverse) { offset=0; }
-                    break;
+			if (reverse) { offset=0; }
+                	break;
             }
             numero=0;
         }
@@ -127,7 +127,7 @@ void parse_cigar (const char* cigar, int& alen, int& offset, const bool& reverse
 
 enum status { ISPET, ISMATE, NEITHER };
 
-struct segment { 
+struct segment {
 	int offset, alen, fragid, chrid, pos;
 	bool reverse;
 	bool operator<(const segment& rhs) const { return offset < rhs.offset; }
@@ -139,13 +139,13 @@ int get_status (const segment& left, const segment& right) {
 	const segment& rs=(left.reverse ? left : right);
 	if (fs.pos <= rs.pos) {
 		if (fs.pos + fs.alen > rs.pos + rs.alen) { return NEITHER; }
-		return ISPET; 
-	} 
+		return ISPET;
+	}
 	if (fs.pos < rs.pos+rs.alen) { return NEITHER; }
 	return ISMATE;
 }
 
-struct valid_pair { 
+struct valid_pair {
 	int anchor, target, apos, tpos, alen, tlen;
 };
 
@@ -173,8 +173,8 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 	if (!isString(cigar)) { throw std::runtime_error("CIGAR strings must be a character vector"); }
 	if (!isInteger(mapqual)) { throw std::runtime_error("mapping quality must be an integer vector"); }
 	const int nreads=LENGTH(chrs);
-	if (LENGTH(pos)!=nreads || LENGTH(flag)!=nreads || LENGTH(cigar)!=nreads || LENGTH(mapqual)!=nreads) { 
-		throw std::runtime_error("lengths of vectors of read information are not consistent"); 
+	if (LENGTH(pos)!=nreads || LENGTH(flag)!=nreads || LENGTH(cigar)!=nreads || LENGTH(mapqual)!=nreads) {
+		throw std::runtime_error("lengths of vectors of read information are not consistent");
 	}
 	if (!isLogical(chimera_strict) || LENGTH(chimera_strict)!=1) { throw std::runtime_error("chimera removal specification should be a logical scalar"); }
 	const int npairs=LENGTH(pairlen);
@@ -212,16 +212,15 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 		if (pindex==npairs) { throw std::runtime_error("ran out of pairs before running out of reads"); }
 		const int& curpl=plptr[pindex];
 		++pindex;
-		if (curpl==1) { 
-			++single;
-			++index;
-			continue;
-		}
 		limit=index+curpl;
-	    if (limit > nreads) { throw std::runtime_error("ran out of reads before running out of pairs"); }
+		if (limit > nreads) { throw std::runtime_error("ran out of reads before running out of pairs"); }
+
+		// Various flags that will be needed.
+		bool isdup=false, isunmap=false, ischimera=false,
+		     isfirst=false, hasfirst=false, hassecond=false,
+		     curdup=false, curunmap=false;
 
 		// Running through and collecting read segments.
-		bool isdup=false, isunmap=false, ischimera=false, skipdup=false, skipunmap=false;
 		while (index < limit) {
 			const int& curflag=fptr[index];
 			current.reverse=(curflag & 0x10);
@@ -230,20 +229,24 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 			parse_cigar(CHAR(STRING_ELT(cigar, index)), current.alen, current.offset, current.reverse);
 
 			// Checking how we should proceed; whether we should bother adding it or not.
-			skipdup=(rm_dup && curflag & 0x400);
-			skipunmap=(curflag & 0x4 || (rm_min && qptr[index] < minq));
+			curdup=(curflag & 0x400);
+			curunmap=(curflag & 0x4 || (rm_min && qptr[index] < minq));
 			if (current.offset==0) {
-				if (skipdup) { isdup=true; }
-				if (skipunmap) { isunmap=true; }
+				if (curdup) { isdup=true; }
+				if (curunmap) { isunmap=true; }
 			} else {
 				ischimera=true;
 			}
 
+			// Checking what it is.
+			isfirst = (curflag & 0x40);
+			if (isfirst) { hasfirst=true; }
+			else { hassecond=true; }
+
 			// Checking which deque to put it in, if we're going to keep it.
-			if (! skipdup && ! skipunmap) { 
-				current.fragid=ffptr->find_fragment(current.chrid, current.pos, current.reverse, current.alen);
-				std::deque<segment>& current_reads=(curflag & 0x40 ? read1 : read2); 
-				if (current.offset==0) { 
+			if (! (curdup && rm_dup) && ! curunmap) {
+				std::deque<segment>& current_reads=(isfirst ? read1 : read2);
+				if (current.offset==0) {
 					current_reads.push_front(current);
 				} else {
 					current_reads.push_back(current);
@@ -252,17 +255,38 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 			++index;
 		}
 
-		/* Adding to statistics, depending on what is going on. In particular, we
-		 * skip the read set if the first of either read has any hard 5' clipping. This
- 		 * means that it's not truly 5' terminated (e.g. the actual 5' end was unmapped,
- 		 * duplicate removed or whatever). Also skipping for any number of other reasons.
- 		 */
+		// Skipping if it's a singleton; otherwise, reporting it as part of the total read pairs.
+		if (! (hasfirst && hassecond)) {
+			++single;
+			continue;
+		}
 		++total;
+
+		// Adding to other statistics.
 		if (ischimera) { ++total_chim; }
 		if (isdup) { ++dupped; }
 		if (isunmap) { ++filtered; }
-		if (isunmap || isdup || read1.empty() || read2.empty() || read1.front().offset || read2.front().offset) { continue;  }
+
+		/* Skipping if unmapped, marked (and we're removing them), and if the first alignment
+		 * of either read has any hard 5' clipping. This means that it's not truly 5' terminated
+		 * (e.g. the actual 5' end was unmapped, duplicate removed or whatever). Note that
+		 * not skipping UNMAP or DUP does not imply non-empty sets, as UNMAP/DUP are only set
+		 * for 0-offset alignments; if this isn't in the file, these flags won't get set, but
+		 * the sets can still be empty if non-zero-offset alignments are present and filtered
+		 * (to escape the singles clause above). Thus, we need to check non-emptiness explicitly.
+ 		 */
+		if (isunmap || (rm_dup && isdup) || read1.empty() || read2.empty() || read1.front().offset || read2.front().offset) { continue; }
 		++mapped;
+
+		// Assigning fragment IDs, if everything else is good.
+		for (size_t i1=0; i1<read1.size(); ++i1) {
+			segment& current=read1[i1];
+			current.fragid=ffptr->find_fragment(current.chrid, current.pos, current.reverse, current.alen);
+		}
+		for (size_t i2=0; i2<read2.size(); ++i2) {
+			segment& current=read2[i2];
+			current.fragid=ffptr->find_fragment(current.chrid, current.pos, current.reverse, current.alen);
+		}
 
 		// Determining the type of construct if they have the same ID.
 		switch ((*check_self_status)(read1.front(), read2.front())) {
@@ -281,15 +305,15 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 			++mapped_chim;
  		   	++multi_chim;	
 			bool invalid=false;
-			if (read1.size()==1 && read2.size()==1) { 
+			if (read1.size()==1 && read2.size()==1) {
 				--multi_chim;
-			} else if (read1.size() > 2 || read2.size() > 2) { 
-				invalid=true; 
+			} else if (read1.size() > 2 || read2.size() > 2) {
+				invalid=true;
 			} else {
 				invalid=(*icptr)(read1, read2);
 			}
-			if (invalid) { 
-				++inv_chimeras; 
+			if (invalid) {
+				++inv_chimeras;
 				if (rm_invalid) { continue; }
 			}
 		}
@@ -298,12 +322,12 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 		bool anchor=false;
 		if (read1.front().chrid > read2.front().chrid) {
  		   anchor=true;
-	   	} else if (read1.front().chrid==read2.front().chrid) { 
+	   	} else if (read1.front().chrid==read2.front().chrid) {
 			if (read1.front().fragid > read2.front().fragid) {
-				anchor=true; 
+				anchor=true;
 			} else if (read1.front().fragid == read2.front().fragid) {
-				if (read1.front().pos > read2.front().pos) { 
-					anchor=true; 
+				if (read1.front().pos > read2.front().pos) {
+					anchor=true;
 				}
 			}
 		}
@@ -313,13 +337,13 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 		curpair.anchor=anchor_seg.fragid;
 		curpair.target=target_seg.fragid;
 		curpair.apos=anchor_seg.pos;
-		curpair.alen=anchor_seg.alen; 
-		if (anchor_seg.reverse) { curpair.alen*=-1; } 
+		curpair.alen=anchor_seg.alen;
+		if (anchor_seg.reverse) { curpair.alen*=-1; }
 		curpair.tpos=target_seg.pos;
 		curpair.tlen=target_seg.alen;
 		if (target_seg.reverse) { curpair.tlen*=-1; }
 
-		if (curpair.alen==0 || curpair.tlen==0) { throw std::runtime_error("alignment lengths of zero should not be present"); } 
+		if (curpair.alen==0 || curpair.tlen==0) { throw std::runtime_error("alignment lengths of zero should not be present"); }
 		collected[anchor_seg.chrid][target_seg.chrid].push_back(curpair);
 	}
 
@@ -327,7 +351,7 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 	if (pindex!=npairs) { throw std::runtime_error("ran out of reads before running out of pairs"); }
 
 	SEXP total_output=PROTECT(allocVector(VECSXP, 6));
-	try { 
+	try {
 		// Checking how many are not (doubly) empty.
 		std::deque<std::pair<int, int> > good;
 		for (size_t i=0; i<nc; ++i) {
@@ -349,7 +373,7 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 
 			// Filling up those non-empty pairs of chromosomes.
 			std::deque<valid_pair>& curpairs=collected[good[i].first][good[i].second];
-			SET_VECTOR_ELT(output, i, allocMatrix(INTSXP, curpairs.size(), 6)); 
+			SET_VECTOR_ELT(output, i, allocMatrix(INTSXP, curpairs.size(), 6));
 			int* axptr=INTEGER(VECTOR_ELT(output, i));
 			int* txptr=axptr+curpairs.size();
 			int* apxptr=txptr+curpairs.size();
@@ -399,9 +423,9 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 	}
 	UNPROTECT(1);
 	return total_output;
-} 
+}
 
-SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP pairlen, SEXP chrs, SEXP pos, 
+SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP pairlen, SEXP chrs, SEXP pos,
 		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) try {
 	fragment_finder ff(start_list, end_list);
 	check_invalid_chimera invchim;
@@ -423,7 +447,7 @@ private:
 	int bin_width;
 };
 
-simple_finder::simple_finder(SEXP n_per_chr, SEXP bwidth) { 
+simple_finder::simple_finder(SEXP n_per_chr, SEXP bwidth) {
 	if (!isInteger(bwidth)|| LENGTH(bwidth)!=1) { throw std::runtime_error("bin width must be an integer scalar"); }
 	bin_width=asInteger(bwidth);
 	if (!isInteger(n_per_chr)) { throw std::runtime_error("number of fragments per chromosome must be an integer vector"); }
@@ -433,9 +457,9 @@ simple_finder::simple_finder(SEXP n_per_chr, SEXP bwidth) {
 }
 
 int simple_finder::find_fragment(const int& c, const int& p, const bool& r, const int& l) const {
-	if (r) { 
+	if (r) {
 		int index=int((p+l-2)/bin_width); // -1, to get position of last base; -1 again, to get into the right bin.
-		if (index >= pos[c].num) { 
+		if (index >= pos[c].num) {
 			warning("read aligned off end of chromosome");
 			--index;
 		}
@@ -444,13 +468,13 @@ int simple_finder::find_fragment(const int& c, const int& p, const bool& r, cons
 	return int((p-1)/bin_width);
 }
 
-int no_status_check (const segment& left, const segment& right) { 
-	/* Fragment IDs have no concept in DNase Hi-C, so automatic 
-	 * detection of self-circles/dangling ends is impossible. 
+int no_status_check (const segment& left, const segment& right) {
+	/* Fragment IDs have no concept in DNase Hi-C, so automatic
+	 * detection of self-circles/dangling ends is impossible.
 	 */
-	(void)left; 
+	(void)left;
 	(void)right; // Just to avoid unused warnings, but maintain compatibility.
-	return NEITHER; 
+	return NEITHER;
 }
 
 struct check_invalid_freed_chimera : public check_invalid_chimera {
@@ -478,11 +502,11 @@ private:
 		if (fs.pos + fs.alen > rs.pos + rs.alen) { return false; }
 		if (rs.pos + rs.alen - fs.pos > maxspan) { return false; }
 		return true;
-	} 
+	}
 };
 
-SEXP report_hic_binned_pairs (SEXP num_in_chrs, SEXP bwidth, SEXP pairlen, SEXP chrs, SEXP pos, 
-		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP chimera_span, 
+SEXP report_hic_binned_pairs (SEXP num_in_chrs, SEXP bwidth, SEXP pairlen, SEXP chrs, SEXP pos,
+		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP chimera_span,
 		SEXP minqual, SEXP do_dedup) try {
 	simple_finder ff(num_in_chrs, bwidth);
 	check_invalid_freed_chimera invchim(chimera_span);

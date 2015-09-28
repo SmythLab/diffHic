@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.15}{\itemize{
+\section{Version 1.1.16}{\itemize{
 \item
 Renamed normalize() to normOffsets().
 
@@ -53,6 +53,9 @@ Modified consolidatePairs() to accept index vectors for greater modularity.
 
 \item 
 Added reference argument for large bin pairs, in filterDirect() and filterTrended().
+
+\item 
+Slight change to preparePairs() diagnostic reports when dedup=FALSE, and for unpaired reads.
 
 \item 
 Updated documentation, tests and user's guide.

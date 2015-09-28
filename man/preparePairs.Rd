@@ -85,7 +85,7 @@ See \code{\link{getPairData}} for more details on \code{length}, \code{orientati
 
 An integer vector is also returned from the function, containing various diagnostics:
 \describe{
-	\item{\code{pairs}:}{an integer vector containing \code{total}, the total number of read pairs; \code{marked}, read pairs with at least one marked 5' end; \code{filtered}, read pairs lost due to low MAPQ scores for the 5' end(s); \code{mapped}, read pairs considered as successfully mapped (i.e., not marked or filtered)}
+	\item{\code{pairs}:}{an integer vector containing \code{total}, the total number of read pairs; \code{marked}, read pairs with at least one marked 5' end; \code{filtered}, read pairs where the MAPQ score for either 5' end is below \code{minq}; \code{mapped}, read pairs considered as successfully mapped (i.e., not filtered, and also not marked if \code{dedup=TRUE})}
 	\item{\code{same.id}:}{an integer vector containing \code{dangling}, the number of read pairs that are dangling ends; and \code{self.circles}, the number of read pairs forming self-circles}
 	\item{\code{singles}:}{an integer scalar specifying the number of reads without a mate}
 	\item{\code{chimeras}:}{an integer vector containing \code{total}, the total number of read pairs with one chimeric read; \code{mapped}, chimeric read pairs with both 5' ends mapped; \code{multi}, mapped chimeric pairs with at least one successfully mapped 3' segment; and \code{invalid}, read pairs where the 3' location of one read disagrees with the 5' location of the mate}
