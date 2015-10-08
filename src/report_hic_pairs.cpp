@@ -133,36 +133,85 @@ struct segment {
 	bool operator<(const segment& rhs) const { return offset < rhs.offset; }
 };
 
-int get_status (const segment& left, const segment& right) {
-	if (right.chrid!=left.chrid || right.fragid!=left.fragid || right.reverse==left.reverse) { return NEITHER; }
+// These internal codes need to be negative, as fragment lengths are positive in return value.
+#define internal_neither -1 
+#define internal_ismate -2
+
+int get_pet_dist (const segment& left, const segment& right) {
+	if (right.chrid!=left.chrid || right.reverse==left.reverse) { return internal_neither; }
 	const segment& fs=(left.reverse ? right : left);
 	const segment& rs=(left.reverse ? left : right);
 	if (fs.pos <= rs.pos) {
-		if (fs.pos + fs.alen > rs.pos + rs.alen) { return NEITHER; }
-		return ISPET;
+		if (fs.pos + fs.alen > rs.pos + rs.alen) { return internal_neither; }
+		return rs.pos + rs.alen - fs.pos; // Assuming that alignment lengths are positive.
 	}
-	if (fs.pos < rs.pos+rs.alen) { return NEITHER; }
-	return ISMATE;
+	if (fs.pos < rs.pos+rs.alen) { return internal_neither; }
+	return internal_ismate;
+}
+
+status get_status (const segment& left, const segment& right) {
+	if (right.fragid!=left.fragid) { return NEITHER; }
+	switch (get_pet_dist(left, right)) { 
+		case internal_neither: return NEITHER;
+		case internal_ismate: return ISMATE;
+		default: return ISPET;
+	}
 }
 
 struct valid_pair {
 	int anchor, target, apos, tpos, alen, tlen;
 };
 
+/***********************************************
+ * Something to identify invalidity of chimeric read pairs.
+ ***********************************************/
+
 struct check_invalid_chimera {
-	check_invalid_chimera() {};
-	virtual bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const {
-		if (read1.size()==2 && ISPET!=get_status(read2[0], read1[1])) { return true; }
-		if (read2.size()==2 && ISPET!=get_status(read1[0], read2[1])) { return true; }
+	virtual ~check_invalid_chimera() {};
+	virtual bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const = 0;
+};
+
+struct check_invalid_by_fragid : public check_invalid_chimera {
+	check_invalid_by_fragid() {};
+	~check_invalid_by_fragid() {};
+	bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const {
+		if (read1.size()==2 && get_status(read2[0], read1[1])!=ISPET) { return true; }
+		if (read2.size()==2 && get_status(read1[0], read2[1])!=ISPET) { return true; }
 		return false;
-	}
+	};
+};
+
+struct check_invalid_by_dist : public check_invalid_chimera {
+	check_invalid_by_dist(SEXP span) {
+		if (!isInteger(span) || LENGTH(span)!=1) { throw std::runtime_error("maximum chimeric span must be a positive integer"); }
+		maxspan=asInteger(span);
+	};
+	~check_invalid_by_dist() {};
+	bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const {
+		if (read1.size()==2) {
+			int temp=get_pet_dist(read2[0], read1[1]);
+			if (temp < 0 || temp > maxspan) { return true; }
+		}
+		if (read2.size()==2) {
+			int temp=get_pet_dist(read1[0], read2[1]);
+			if (temp < 0 || temp > maxspan) { return true; }
+		}
+		/* Doesn't account for cases where the 5' end is nested inside the 3' end and the mate.
+		 * These are physically impossible from a single linear DNA molecule. I suppose we can
+		 * forgive this, because it could form from interactions betwen homologous chromosomes.
+ 		 */
+		return false;
+	};
+	int get_span() const { return maxspan; }
+private:
+	int maxspan;
 };
 
 /************************
  * Main loop.
  ************************/
 
-SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(const segment&, const segment&), const check_invalid_chimera * const icptr,
+SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)(const segment&, const segment&), const check_invalid_chimera * const icptr,
 		SEXP pairlen, SEXP chrs, SEXP pos, SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) {
 
 	// Checking input values.
@@ -426,10 +475,17 @@ SEXP internal_loop (const base_finder * const ffptr, int (*check_self_status)(co
 }
 
 SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP pairlen, SEXP chrs, SEXP pos,
-		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) try {
+		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP chimera_span, 
+		SEXP minqual, SEXP do_dedup) try {
 	fragment_finder ff(start_list, end_list);
-	check_invalid_chimera invchim;
-	return internal_loop(&ff, &get_status, &invchim,
+	
+	check_invalid_by_fragid invfrag; // Bit clunky to define both, but easiest to avoid nested try/catch.
+	check_invalid_by_dist invdist(chimera_span);
+	const check_invalid_chimera* invchim=NULL;
+	if (invdist.get_span()==NA_INTEGER) { invchim=&invfrag; } 
+	else { invchim=&invdist; }
+	
+	return internal_loop(&ff, &get_status, invchim,
 		pairlen, chrs, pos, flag, cigar, mapqual, chimera_strict, minqual, do_dedup);
 } catch (std::exception& e) {
 	return mkString(e.what());
@@ -468,7 +524,7 @@ int simple_finder::find_fragment(const int& c, const int& p, const bool& r, cons
 	return int((p-1)/bin_width);
 }
 
-int no_status_check (const segment& left, const segment& right) {
+status no_status_check (const segment& left, const segment& right) {
 	/* Fragment IDs have no concept in DNase Hi-C, so automatic
 	 * detection of self-circles/dangling ends is impossible.
 	 */
@@ -477,39 +533,11 @@ int no_status_check (const segment& left, const segment& right) {
 	return NEITHER;
 }
 
-struct check_invalid_freed_chimera : public check_invalid_chimera {
-	check_invalid_freed_chimera(SEXP span) {
-		if (!isInteger(span) || LENGTH(span)!=1) { throw std::runtime_error("maximum chimeric span must be a positive integer"); }
-		maxspan=asInteger(span);
-	}
-	bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const {
-		bool invalid=false;
-		if (read1.size()==2) { invalid=!is_pet(read2[0], read1[1]); }
-		if (read2.size()==2 && !invalid) { invalid=!is_pet(read1[0], read2[1]); }
-		/* Doesn't account for cases where the 5' end is nested inside the 3' end and the mate.
-		 * These are physically impossible from a single linear DNA molecule. I suppose we can
-		 * forgive this, because it could form from interactions betwen homologous chromosomes.
- 		 */
-		return invalid;
-	}
-private:
-	int maxspan;
-	int is_pet (const segment& left, const segment& right) const {
-		if (right.chrid!=left.chrid || right.reverse==left.reverse) { return false; }
-		const segment& fs=(left.reverse ? right : left);
-		const segment& rs=(left.reverse ? left : right);
-		if (fs.pos > rs.pos) { return false; }
-		if (fs.pos + fs.alen > rs.pos + rs.alen) { return false; }
-		if (rs.pos + rs.alen - fs.pos > maxspan) { return false; }
-		return true;
-	}
-};
-
 SEXP report_hic_binned_pairs (SEXP num_in_chrs, SEXP bwidth, SEXP pairlen, SEXP chrs, SEXP pos,
 		SEXP flag, SEXP cigar, SEXP mapqual, SEXP chimera_strict, SEXP chimera_span,
 		SEXP minqual, SEXP do_dedup) try {
 	simple_finder ff(num_in_chrs, bwidth);
-	check_invalid_freed_chimera invchim(chimera_span);
+	check_invalid_by_dist invchim(chimera_span);
 	return internal_loop(&ff, &no_status_check, &invchim,
 		pairlen, chrs, pos, flag, cigar, mapqual, chimera_strict, minqual, do_dedup);
 } catch (std::exception& e) {

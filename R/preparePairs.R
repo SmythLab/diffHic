@@ -1,4 +1,4 @@
-preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, minq=NA)
+preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, yield=1e7, ichim=TRUE, chim.dist=NA)
 # This function prepares Hi-C data by stripping out all valid pairs from the BAM file and
 # returning a table describing the interacting fragments of that pair. Diagnnostic data is
 # also returned describing various bits and pieces of hiC quality.
@@ -41,12 +41,13 @@ preparePairs <- function(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, mi
 	# Enforcing input types.
 	minq <- as.integer(minq)
 	ichim <- as.logical(ichim)
+	chim.dist <- as.integer(chim.dist)
 	dedup <- as.logical(dedup)
 
 	# Setting up the calling function.
 	FUN <- function(read.pair.len, cur.chrs, out) { 
 		.Call(cxx_report_hic_pairs, scuts, ecuts, read.pair.len, cur.chrs, out$pos,
-			out$flag, out$cigar, out$mapq, !ichim, minq, dedup)
+			out$flag, out$cigar, out$mapq, !ichim, chim.dist, minq, dedup)
 	}
 
 	# Returning collated results.

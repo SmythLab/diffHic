@@ -476,6 +476,9 @@ printfun(tmpdir, named=named)
 # So, a gain of +7 to marked, a loss of -7 to mapped, a loss of -1 to each of
 # dangling and self.circles, a loss of -4 to chimeric$mapped, -5 to
 # chimeric$multi and -2 to chimeric$invalid. 
+#
+# Note that this will be considered the reference to which all downstream
+# tests are compared, as dedup=FALSE is the default setting.
 
 tmpdir2<-file.path(dir, "gunk2")
 preparePairs(hic.file, param, tmpdir2)
@@ -515,6 +518,25 @@ printfun(tmpdir2, named=named)
 preparePairs(hic.file, param, tmpdir2, minq=100)
 named <- list(c("chimeric.invalid.5", "good.2", "chimeric.invalid.4", "good.4"),
 	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.3", "chimeric.invalid.7"),
+	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+printfun(tmpdir2, named=named)
+
+# Defining invalid chimeras based on distance instead of fragment ID. chimeric.good.1
+# becomes an invalid chimera, as the distance between the 3' segment and the mate is
+# 30 bp. This results in a +1 increase for invalid.chim.
+
+preparePairs(hic.file, param, tmpdir2, chim.dist=20, ichim=FALSE)
+named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
+	c("good.8", "good.5"),
+	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+printfun(tmpdir2, named=named)
+
+# chimeric.invalid.6 now becomes a valid chimera, as each pair of 5' end and 3' mate end
+# is now a proper pair (inward-facing and less than chim.dist). -1 for invalid.chim.
+
+preparePairs(hic.file, param, tmpdir2, chim.dist=2000, ichim=FALSE)
+named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
+	c("good.8", "good.5", "chimeric.good.1"),
 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
 printfun(tmpdir2, named=named)
 

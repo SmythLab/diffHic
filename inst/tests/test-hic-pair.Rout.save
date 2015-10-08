@@ -822,6 +822,9 @@ other.2                 7         7     30           2     13
 > # So, a gain of +7 to marked, a loss of -7 to mapped, a loss of -1 to each of
 > # dangling and self.circles, a loss of -4 to chimeric$mapped, -5 to
 > # chimeric$multi and -2 to chimeric$invalid. 
+> #
+> # Note that this will be considered the reference to which all downstream
+> # tests are compared, as dedup=FALSE is the default setting.
 > 
 > tmpdir2<-file.path(dir, "gunk2")
 > preparePairs(hic.file, param, tmpdir2)
@@ -990,6 +993,105 @@ other.2                 7         7     30           2     13
 
 
 > 
+> # Defining invalid chimeras based on distance instead of fragment ID. chimeric.good.1
+> # becomes an invalid chimera, as the distance between the 3' segment and the mate is
+> # 30 bp. This results in a +1 increase for invalid.chim.
+> 
+> preparePairs(hic.file, param, tmpdir2, chim.dist=20, ichim=FALSE)
+$pairs
+   total   marked filtered   mapped 
+      30        7        3       20 
+
+$same.id
+   dangling self.circle 
+          2           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       8       7       6 
+
+> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
++ 	c("good.8", "good.5"),
++ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> printfun(tmpdir2, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+good.1                     2         1     80           1     80
+good.2                     2         1     60           2     54
+good.3                     4         1     40           3    160
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+
+
+$chrB
+$chrB$chrA
+       anchor.id target.id length orientation insert
+good.8         5         2     10           2     NA
+good.5         5         3     30           2     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
+> # chimeric.invalid.6 now becomes a valid chimera, as each pair of 5' end and 3' mate end
+> # is now a proper pair (inward-facing and less than chim.dist). -1 for invalid.chim.
+> 
+> preparePairs(hic.file, param, tmpdir2, chim.dist=2000, ichim=FALSE)
+$pairs
+   total   marked filtered   mapped 
+      30        7        3       20 
+
+$same.id
+   dangling self.circle 
+          2           1 
+
+$singles
+[1] 2
+
+$chimeras
+  total  mapped   multi invalid 
+     12       8       7       4 
+
+> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
++ 	c("good.8", "good.5", "chimeric.good.1"),
++ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> printfun(tmpdir2, named=named)
+$chrA
+$chrA$chrA
+                   anchor.id target.id length orientation insert
+good.1                     2         1     80           1     80
+good.2                     2         1     60           2     54
+good.3                     4         1     40           3    160
+chimeric.invalid.4         4         2     20           1     66
+good.4                     4         2     80           0    114
+chimeric.invalid.6         4         3     10           1     10
+
+
+$chrB
+$chrB$chrA
+                anchor.id target.id length orientation insert
+good.8                  5         2     10           2     NA
+good.5                  5         3     30           2     NA
+chimeric.good.1         6         1     35           0     NA
+
+$chrB$chrB
+                anchor.id target.id length orientation insert
+good.7                  6         5     25           2     64
+good.6                  7         5     35           3     84
+chimeric.good.3         7         6     10           1     10
+other.2                 7         7     30           2     13
+
+
+> 
 > ###################################################################################################
 > # This tests whether they are counted properly. 
 > 
@@ -1000,4 +1102,4 @@ other.2                 7         7     30           2     13
 > 
 > proc.time()
    user  system elapsed 
- 34.377   1.379  41.804 
+ 34.507   1.556  43.501 

@@ -133,3 +133,30 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
 	return(list(abundances=ave.ab, threshold=trend.threshold, log.distance=log.dist)) 
 }
 
+filterDiag <- function(data, by.dist=0, by.diag=0L, dist, ...)
+# Filters diagonal elements, with options for supplying
+# your own distance if you've already computed it.
+# Can be extended to near-diagonal elements with by.dist or by.diag,
+# which compute based on distance and bin-based diagonal, respectively.
+#
+# written by Aaron Lun
+# created 6 October 2015
+{
+	if (missing(dist)) { 
+		dist <- getDistance(data, ...) 
+	} else {
+		dist <- as.numeric(dist)
+		stopifnot(length(dist)==nrow(data)) 
+	}
+	by.dist <- as.numeric(by.dist)
+	keep <- dist > by.dist 
+
+	by.diag <- as.integer(by.diag)
+	if (by.diag) { 
+		diag.level <- anchors(data, id=TRUE) - targets(data, id=TRUE)
+		keep <- keep & diag.level > by.diag
+	}
+
+	keep <- keep | is.na(dist) 
+	return(keep)
+}

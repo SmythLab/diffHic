@@ -6,7 +6,7 @@
 \description{Identifies the interacting pair of restriction fragments corresponding to each read pair in a Hi-C library.}
 
 \usage{
-preparePairs(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, minq=NA)
+preparePairs(bam, param, file, dedup=TRUE, minq=NA, yield=1e7, ichim=TRUE, chim.dist=NA)
 }
 
 \arguments{
@@ -14,9 +14,10 @@ preparePairs(bam, param, file, dedup=TRUE, yield=1e7, ichim=TRUE, minq=NA)
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{file}{a character string specifying the path to an output index file}
 	\item{dedup}{a logical scalar indicating whether marked duplicate reads should be removed}
+	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
 	\item{yield}{a numeric scalar specifying the number of reads to extract at every iteration}
 	\item{ichim}{a logical scalar indicating whether invalid chimeras should be counted}
-	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
+	\item{chim.dist}{an integer scalar specifying the maximum distance between segments for a valid chimeric read pair}
 }
 
 \section{Converting to restriction fragment indices}{
@@ -39,13 +40,19 @@ This definition avoids the need to consider both permutations of indices in a pa
 \section{Handling of read pairs}{
 For pairs with chimeric reads, the alignment of the 5' end of the read is used to identify the interacting fragments.  
 Invalid chimeras arise when the position of the 3' segment of a chimeric read is not consistent with that of the mate read.  
-These are generally indicative of mapping errors but can also form due to non-specific ligation events. 
+Invalid chimeric pairs are generally indicative of mapping errors but can also form due to non-specific ligation events. 
 While they can be explicitly removed, setting \code{ichim=TRUE} is recommended to avoid excessive filtering of reads when alignment of short chimeric segments is inaccurate.
+
+By default, invalid chimeras are defined as all pairs where the 3' segment and the mate do not map onto the same restriction fragment in an inward-facing orientation.
+Alternatively, a distance-based threshold can be used by setting \code{chim.dist} to some reasonable value, e.g., 1000 bp. 
+Chimeras are only considered invalid if the distance between the segment and mate is greater than \code{chim.dist} (or if the alignments are not inward-facing).
+This may be more relevant in situations involving inefficient cleavage, where the mapping locations are broadly consistent but do not fall in the same restriction fragment.
 
 Self-circles are outward-facing read pairs mapped to the same restriction fragment.
 These are formed from inefficient cross-linking and are generally uninformative.
 Dangling ends are inward-facing read pairs mapped to the same fragment, and are generated from incomplete ligation of blunt ends.
 Both constructs are detected and discarded within the function.
+Note that this does not consider dangling ends or self-circles formed from incompletely digested fragments, which must be removed with \code{\link{prunePairs}}.
 
 % Also note that overlapping pairs of self-circles are retained, as are dangling ends where one end extends past the other.
 % This because they are neither valid self-circles or dangling ends.

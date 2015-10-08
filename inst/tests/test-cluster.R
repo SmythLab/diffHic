@@ -66,6 +66,7 @@ clustercomp <- function(data, tol, maxw, split=FALSE, data2=NULL) {
 	np <- nrow(data)
 	expanded <- resize(region, fix="center", width(region)+tol*2)
 	allap <- findOverlaps(expanded, region)
+#	nested <- findOverlaps(region, region, type="within")
 	impossible <- np+1L
 	myids <- rep(impossible, np)
 	last.id <- 1L
@@ -75,6 +76,14 @@ clustercomp <- function(data, tol, maxw, split=FALSE, data2=NULL) {
 		keep.a <- subjectHits(allap)[queryHits(allap)==cura]
 		curt <- data@targets[x]
 		keep.t <- subjectHits(allap)[queryHits(allap)==curt]
+
+#		has.nested.a<- subjectHits(nested)[queryHits(nested)==cura & subjectHits(nested)!=cura] 
+#		has.nested.t <- subjectHits(nested)[queryHits(nested)==curt & subjectHits(nested)!=curt] 
+#		anchors.nested <- data@anchors %in% has.nested.a
+#		targets.nested <- data@targets %in% has.nested.t
+#		if (any(anchors.nested & data@targets %in% keep.t)) { cat("Hooray, nested anchor!\n") }
+#		if (any(data@anchors %in% keep.a & targets.nested)) { cat("Hooray, nested target!\n") }
+#		if (any(anchors.nested & targets.nested)) { cat("Hooray, nested both!\n") }
 
 		partners <- which(data@anchors %in% keep.a & data@targets %in% keep.t)
 		partners <- partners[partners>=x]
