@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.1.17}{\itemize{
+\section{Version 1.2.0}{\itemize{
 \item
 Renamed normalize() to normOffsets().
 
