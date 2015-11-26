@@ -57,10 +57,10 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 	# Getting the colour (and returning it, if necessary).
 	my.col<-col2rgb(col)[,1]
 	colfun <- function(count) { .get.new.col(my.col, pmin(1, count/max.count)) }
-	if (!nrow(current))	{ return(invisible(colfun)) }
 
 	# Collating read pairs into counts.
    	retain <- keep.frag[current$anchor.id] & keep.frag[current$target.id]
+	if (!any(retain)) { return(invisible(colfun)) }
 	bin.indices <- out.id[keep.frag]
 	out<-.Call(cxx_count_patch, list(current[retain,]), out.id, 1L, 
 			bin.indices[1L], tail(bin.indices, 1L)) # First and last bin indices on interval of interest.

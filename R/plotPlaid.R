@@ -84,7 +84,6 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	# Setting up the color function.		
 	my.col<-col2rgb(col)[,1]
 	colfun <- function(count) { .get.new.col(my.col, pmin(1, count/max.count)) }
-	if (!nrow(current))	{ return(invisible(colfun)) }
 
 	# Getting the read pairs around the area of interest, and collating them into counts.
    	if (flipped) {
@@ -95,6 +94,8 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 		filter.t <- keep.frag.second
    	}	   
    	retain <- filter.a[current$anchor.id] & filter.t[current$target.id]
+	if (!any(retain)) { return(invisible(colfun)) }
+
 	if (first.chr==second.chr) { 
 		# Pick up reflection around diagonal (it's hard to conclusively define 
 		# the anchor/target range acround the diagonal, so we just include everything).
@@ -147,6 +148,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 }
 
 .get.new.col <- function(old.colour, strength) {
+	if (!length(strength)) { return(character(0)) }
 	old.colour <- as.integer(old.colour)
 	remnant <- 255 - old.colour
 	adj <- outer(remnant, 1-strength) + old.colour
