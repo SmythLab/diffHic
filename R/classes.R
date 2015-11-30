@@ -106,7 +106,7 @@ setMethod("$", signature("DIList"), function(x, name) {
 	x@colData[[name]]
 })
 
-# Borrowing these from GenomicRanges.
+# Borrowing these from SummarizedExperiment.
 setMethod("colData", signature("DIList"), function(x, ...) {
 	x@colData
 })
