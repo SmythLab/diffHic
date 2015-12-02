@@ -19,7 +19,7 @@ Type 'q()' to quit R.
 
 > # Tests for zero-inputs into various diffHic functions.
 > 
-> suppressPackageStartupMessages(require(diffHic))
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 > 
 > # Don't worry about cases involving empty files; 
 > # that just shouldn't be a practical concern.
@@ -151,4 +151,4 @@ Sample1     1        0            1
 > 
 > proc.time()
    user  system elapsed 
- 14.324   0.602  15.193 
+  5.856   0.163   6.012 

@@ -1,6 +1,6 @@
 # Tests for zero-inputs into various diffHic functions.
 
-suppressPackageStartupMessages(require(diffHic))
+suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 
 # Don't worry about cases involving empty files; 
 # that just shouldn't be a practical concern.

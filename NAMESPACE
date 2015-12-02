@@ -35,4 +35,8 @@ import(Rsamtools,GenomicRanges,Biostrings,BSgenome,rhdf5,
 	SummarizedExperiment)
 	
 importFrom("BiocGenerics", counts)
+importFrom("grDevices", "col2rgb", "rgb")
+importFrom("graphics", "box", "par", "plot", "polygon", "rect", "text")
+importFrom("stats", "approx", "approxfun", "fitted", "kmeans")
+importFrom("utils", "read.table", "write.table")
 
