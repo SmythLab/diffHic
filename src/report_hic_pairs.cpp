@@ -268,29 +268,30 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
 		bool isdup=false, isunmap=false, ischimera=false,
 		     isfirst=false, hasfirst=false, hassecond=false,
 		     curdup=false, curunmap=false;
+        bool firstunmap=true, secondunmap=true;
+        int nsegments=0;
 
 		// Running through and collecting read segments.
 		while (index < limit) {
+            ++nsegments;
 			const int& curflag=fptr[index];
 			current.reverse=(curflag & 0x10);
 			current.chrid=cptr[index];
 			current.pos=pptr[index];
 			parse_cigar(CHAR(STRING_ELT(cigar, index)), current.alen, current.offset, current.reverse);
 
-			// Checking how we should proceed; whether we should bother adding it or not.
-			curdup=(curflag & 0x400);
-			curunmap=(curflag & 0x4 || (rm_min && qptr[index] < minq));
-			if (current.offset==0) {
-				if (curdup) { isdup=true; }
-				if (curunmap) { isunmap=true; }
-			} else {
-				ischimera=true;
-			}
-
-			// Checking what it is.
+            // Checking what it is.
 			isfirst = (curflag & 0x40);
 			if (isfirst) { hasfirst=true; }
 			else { hassecond=true; }
+
+			// Checking how we should proceed; whether we should bother adding it or not.
+			curdup=(curflag & 0x400);
+			curunmap=(curflag & 0x4 || (rm_min && qptr[index] < minq));
+			if (current.offset==0 && (curflag & 0x4)==0) {
+				if (curdup) { isdup=true; }
+				if (!curunmap) { (isfirst ? firstunmap : secondunmap)=false; }
+			} 
 
 			// Checking which deque to put it in, if we're going to keep it.
 			if (! (curdup && rm_dup) && ! curunmap) {
@@ -312,8 +313,10 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
 		++total;
 
 		// Adding to other statistics.
+        ischimera=(nsegments > 2);
 		if (ischimera) { ++total_chim; }
 		if (isdup) { ++dupped; }
+        isunmap=(firstunmap | secondunmap);
 		if (isunmap) { ++filtered; }
 
 		/* Skipping if unmapped, marked (and we're removing them), and if the first alignment
