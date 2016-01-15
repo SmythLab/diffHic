@@ -2,6 +2,14 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
+\section{Version 1.3.3}{\itemize{
+\item 
+Bug fix to plotPlaid() when the interaction space is empty.
+
+\item
+Bug fix to preparePairs() for correct reporting of reads with unmapped chimeric segments.
+}}
+
 \section{Version 1.2.0}{\itemize{
 \item
 Renamed normalize() to normOffsets().
