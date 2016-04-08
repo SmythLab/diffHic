@@ -5,9 +5,11 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 #
 # written by Aaron Lun
 # created 26 May 2015
-# last modified 25 July 2015
+# last modified 8 December 2015
 {
-	is.intra <- !is.na(getDistance(data))
+    .check_StrictGI(data)
+
+	is.intra <- intrachr(data)
 	data <- data[is.intra,]
 	if (dist.correct) {
 		trended <- filterTrended(data)
@@ -21,7 +23,7 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 	# Going chromosome-by-chromosome.
 	stored <- list()
 	for (chr in seqlevels(regions(data))) {
-		mat <- as.matrix(data, first=chr, fill=contacts)
+		mat <- inflate(data, rows=chr, columns=chr, fill=contacts)
 		stored[[chr]] <- .compartChr(mat, data, dist2trend, robust.cov, cov.correct, centers, ...)
 	}
 
@@ -35,19 +37,24 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 	return(stored)
 }
 
-.compartChr <- function(mat, data, dist2trend, robust.cov, cov.correct, centers, ...) {
+.compartChr <- function(cm, data, dist2trend, robust.cov, cov.correct, centers, ...) {
+	all.a <- anchors(cm, type="row", id=TRUE)
+	mat <- as.matrix(cm)
+	colnames(mat) <- rownames(mat) <- all.a
+
 	# Filling NA's (i.e., zero's). Using mid-distance, interpolating to get the trend.
-	lost <- which(is.na(mat), arr.ind=TRUE)
+	lost.ind <- which(is.na(mat))
+    lost <- arrayInd(lost.ind, dim(mat))
 	seq.id <- as.integer(seqnames(regions(data)))
 	mid.pts <- mid(ranges(regions(data)))
 	lost.dist <- abs(mid.pts[lost[,1]] - mid.pts[lost[,2]])
-	lost.dist <- log10(lost.dist + exptData(data)$width)
-	mat[is.na(mat)] <- .makeEmpty(data) - dist2trend(lost.dist)
+	lost.dist <- log10(lost.dist + metadata(data)$width)
+	mat[lost.ind] <- .makeEmpty(data) - dist2trend(lost.dist)
 
 	# Correcting for coverage biases, by subtracting half the average coverage from both rows
 	# and columns. This is equivalent to dividing by square root of coverage, which works pretty
 	# well in place of a more rigorous iterative approach (check out Rao's supplementaries).
-	rwm <- log2(rowMeans(2^mat))
+	rwm <- log2(Matrix::rowMeans(2^mat))
 	if (cov.correct) {
 		mat <- mat - rwm/2
 		mat <- t(t(mat) - rwm/2)
@@ -79,8 +86,9 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 		comp <- temp
 	}
 
-	names(comp) <- rownames(mat)
-	return(list(compartment=comp, matrix=mat))
+	names(comp) <- all.a
+    as.matrix(cm) <- mat
+	return(list(compartment=comp, matrix=cm))
 }
 
 

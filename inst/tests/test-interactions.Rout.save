@@ -1,7 +1,7 @@
 
-R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+R Under development (unstable) (2015-11-22 r69685) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -31,7 +31,7 @@ Type 'q()' to quit R.
 + 	as.integer((mids-0.1)/dist)+1L
 + }
 > 
-> refnames<-c("count1", "count2", "anchor", "target")
+> refnames<-c("count1", "count2", "anchor1", "anchor2")
 > 
 > # We set up the comparison function to check our results. 
 > 
@@ -45,10 +45,10 @@ Type 'q()' to quit R.
 + 	# We need to determine who's who.
 + 	x1 <- h5ls(dir1)
 + 	x1 <- x1[x1$otype=="H5I_DATASET",]
-+ 	x1 <- data.frame(anchor=basename(x1$group), target=x1$name)
++ 	x1 <- data.frame(anchor1=basename(x1$group), anchor2=x1$name)
 + 	x2 <- h5ls(dir2)
 + 	x2 <- x2[x2$otype=="H5I_DATASET",]
-+ 	x2 <- data.frame(anchor=basename(x2$group), target=x2$name)
++ 	x2 <- data.frame(anchor1=basename(x2$group), anchor2=x2$name)
 + 	allbins<-binid(cuts, dist)
 + 
 + 	for (k in 1:length(chromos)) {
@@ -70,20 +70,20 @@ Type 'q()' to quit R.
 + 			x <- list()
 + 			for (m in 1:2) { 
 + 				x.current <- get(paste0("x", m))
-+ 				if (any(x1$anchor==cur.k & x1$target==cur.l)) { 
++ 				if (any(x1$anchor1==cur.k & x1$anchor2==cur.l)) { 
 + 					x[[m]] <- h5read(get(paste0("dir", m)), file.path(cur.k, cur.l))
 + 				} else {
-+ 					x[[m]] <- data.frame(anchor.id=integer(0),target.id=integer(0), count=integer(0))
++ 					x[[m]] <- data.frame(anchor1.id=integer(0),anchor2.id=integer(0), count=integer(0))
 + 				}
 + 			}
 + 
-+ 			max.anchor<-chromos[[k]]
++ 			max.anchor1<-chromos[[k]]
 + 			anti.a<-collected[k]
-+ 			max.target<-chromos[[l]]
++ 			max.anchor2<-chromos[[l]]
 + 			anti.t<-collected[l]
 + 			
 + 			for (g in 1:length(x)) {
-+ 				mat <- matrix(0L, nrow=max.anchor, ncol=max.target)
++ 				mat <- matrix(0L, nrow=max.anchor1, ncol=max.anchor2)
 + 				for (i in 1:nrow(x[[g]])) {
 + 					a<-x[[g]][i,1]-anti.a
 + 					t<-x[[g]][i,2]-anti.t
@@ -113,19 +113,19 @@ Type 'q()' to quit R.
 + 			counts1<-split(mat1, kbin)
 + 			counts2<-split(mat2, kbin)
 + 			current.counts<-list()
-+ 			current.anchor<-current.target<-list()
++ 			current.anchor1<-current.anchor2<-list()
 + 			current.area <- list()
 + 			idex<-1L
 + 
 + 			for (g in 1:length(counts1)) {
-+ 				subcounts1<-split(matrix(counts1[[g]], nrow=max.target, byrow=TRUE), lbin)
-+ 				subcounts2<-split(matrix(counts2[[g]], nrow=max.target, byrow=TRUE), lbin)
++ 				subcounts1<-split(matrix(counts1[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
++ 				subcounts2<-split(matrix(counts2[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
 + 				for (i in 1:length(subcounts1)) {
 + 					count.pair<-c(sum(subcounts1[[i]]), sum(subcounts2[[i]]))
 + 					if (sum(count.pair)<filter) { next }
 + 					current.counts[[idex]]<-count.pair
-+ 					current.anchor[[idex]]<-c(astart[g], aend[g])
-+ 					current.target[[idex]]<-c(tstart[i], tend[i])
++ 					current.anchor1[[idex]]<-c(astart[g], aend[g])
++ 					current.anchor2[[idex]]<-c(tstart[i], tend[i])
 + 					if (k==l && g==i) { 
 + 						current.area[[idex]] <- krle$length[g] * (krle$length[g] + 1)/2
 + 					} else {
@@ -137,8 +137,8 @@ Type 'q()' to quit R.
 + 		
 + 			# Aggregating all data.
 + 			if (length(current.counts)) {
-+ 				tempa<-do.call(rbind, current.anchor)
-+ 				tempt<-do.call(rbind, current.target)
++ 				tempa<-do.call(rbind, current.anchor1)
++ 				tempt<-do.call(rbind, current.anchor2)
 + 				out<-data.frame(do.call(rbind, current.counts), paste0(cur.k, ":", tempa[,1], "-", tempa[,2]),
 + 						paste0(cur.l, ":", tempt[,1], "-", tempt[,2]), stringsAsFactors=FALSE)
 + 				overall[[odex]]<-out
@@ -172,10 +172,10 @@ Type 'q()' to quit R.
 + 	param <- pairParam(fragments=cuts, restrict=restrict, cap=cap)
 + 	y<-squareCounts(c(dir1, dir2), param=param, width=dist, filter=filter)
 + 
-+ 	ar <- anchors(y)
-+ 	tr <- targets(y)
++ 	ar <- anchors(y, type="first")
++ 	tr <- anchors(y, type="second")
 + 	if (nrow(y)) {
-+ 		overall<-data.frame(counts(y), paste0(as.character(seqnames(ar)), ":", start(ar), "-", end(ar)),
++ 		overall<-data.frame(assay(y), paste0(as.character(seqnames(ar)), ":", start(ar), "-", end(ar)),
 + 			paste0(as.character(seqnames(tr)), ":", start(tr), "-", end(tr)), stringsAsFactors=FALSE)
 + 	} else {
 + 		overall <- data.frame(integer(0), integer(0), character(0), character(0), numeric(0),
@@ -191,7 +191,7 @@ Type 'q()' to quit R.
 + 		stop("mismatches in library sizes") 
 + 	}
 + 	if (!identical(overall, ref$table)) { stop("mismatches in counts or region coordinates") }
-+ 	if (filter<=1L && !identical(as.integer(colSums(counts(y))+0.5), y$totals)) { 
++ 	if (filter<=1L && !identical(as.integer(colSums(assay(y))+0.5), y$totals)) { 
 + 		stop("sum of counts from binning should equal totals without filtering") }
 + 
 + 	return(head(overall))
@@ -202,7 +202,7 @@ Type 'q()' to quit R.
 > 
 > set.seed(1001)
 > comp(20, 20, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:49971-60398 chrA:40170-49970
 2      0      1      chrB:1-9712 chrA:49971-60398
 3      0      1 chrB:20142-29586 chrA:30282-40169
@@ -210,7 +210,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:29587-37648 chrA:60399-64050
 6      0      2 chrA:49971-60398 chrA:30282-40169
 > comp(20, 20, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1     chrA:1-10543     chrA:1-10543
 2      0      1 chrA:10540-20834 chrA:10540-20834
 3      0      1 chrA:20831-30051 chrA:20831-30051
@@ -218,7 +218,7 @@ Type 'q()' to quit R.
 5      0      1      chrB:1-9537 chrA:10540-20834
 6      0      1      chrB:1-9537 chrA:30048-40163
 > comp(20, 20, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:50864-60358 chrA:50864-60358
 2      0      1     chrB:1-10259 chrA:39767-50865
 3      0      1 chrB:20079-29372 chrA:10542-20017
@@ -226,7 +226,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:29371-39832 chrA:20016-30205
 6      0      2 chrA:30204-39768 chrA:20016-30205
 > comp(20, 20, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2     chrB:1-10166 chrA:20247-30376
 2      0      3     chrA:1-10218     chrA:1-10218
 3      0      3 chrB:20443-29716 chrA:10219-20246
@@ -234,14 +234,14 @@ Type 'q()' to quit R.
 5      1      1 chrA:10219-20246     chrA:1-10218
 6      1      1 chrA:20247-30376     chrA:1-10218
 > comp(20, 20, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      3 chrA:49349-60061 chrA:30643-39694
 2      2      3  chrB:9533-20516      chrB:1-9532
 3      3      2  chrB:9533-20516  chrB:9533-20516
 4      3      3 chrB:30523-38045  chrB:9533-20516
 5      3      4 chrB:20517-30522      chrB:1-9532
 > comp(20, 20, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10340-15166  chrA:4682-10339
 2      0      1 chrA:15167-20172 chrA:10340-15166
 3      0      1 chrA:25409-29667 chrA:10340-15166
@@ -249,7 +249,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:39627-44357 chrA:25409-29667
 6      0      1 chrA:44358-49941 chrA:44358-49941
 > comp(20, 20, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10866-14435      chrA:1-4471
 2      0      1 chrA:25266-30032      chrA:1-4471
 3      0      1 chrA:30031-35640 chrA:10866-14435
@@ -257,7 +257,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:35639-40093 chrA:35639-40093
 6      0      1 chrA:35639-40093  chrA:4470-10867
 > comp(20, 20, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:45666-49665 chrA:40527-45665
 2      0      2 chrB:15087-19860 chrA:14861-19990
 3      0      2 chrB:19861-25428 chrB:15087-19860
@@ -265,10 +265,10 @@ Type 'q()' to quit R.
 5      0      2 chrB:35143-40343 chrB:25429-29412
 6      0      2 chrB:35143-40343  chrB:9749-15086
 > comp(20, 20, dist=5000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > comp(20, 20, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10672-11877   chrA:1505-3032
 2      0      1 chrA:22203-22914 chrA:10672-11877
 3      0      1 chrA:24483-26232 chrA:22915-24482
@@ -276,17 +276,17 @@ Type 'q()' to quit R.
 5      0      1 chrA:26233-28060  chrA:9746-10671
 6      0      1 chrA:28061-29044 chrA:24483-26232
 > comp(20, 20, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrB:35459-36343   chrB:8065-9157
 2      1      1 chrB:22298-24173 chrA:57688-59186
 3      2      0 chrB:33627-35458   chrB:2829-4615
 > comp(20, 20, dist=1000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > # Repeating a couple of times.
 > comp(20, 40, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:30793-40342 chrA:20320-30792
 2      0      1 chrA:40343-49151 chrA:40343-49151
 3      0      1 chrA:49152-59588  chrA:9566-20319
@@ -294,7 +294,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:59589-65302  chrA:9566-20319
 6      0      1      chrB:1-9766 chrA:30793-40342
 > comp(20, 40, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:30353-39771 chrA:30353-39771
 2      0      1     chrB:1-10394 chrA:39768-50538
 3      0      1 chrB:19952-30389 chrA:30353-39771
@@ -302,7 +302,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:30386-38386  chrA:9872-19477
 6      0      1 chrB:30386-38386 chrB:30386-38386
 > comp(20, 40, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10354-19388 chrA:10354-19388
 2      0      1 chrA:29214-40018 chrA:19387-29215
 3      0      1 chrA:29214-40018 chrA:29214-40018
@@ -310,7 +310,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:30482-37106 chrA:19387-29215
 6      0      1 chrB:30482-37106 chrA:40017-49425
 > comp(20, 40, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:20823-30029 chrA:10672-20822
 2      0      2 chrA:20823-30029 chrA:20823-30029
 3      0      2 chrA:30030-39770 chrA:30030-39770
@@ -318,7 +318,7 @@ Type 'q()' to quit R.
 5      0      2     chrB:1-10188     chrA:1-10671
 6      0      2 chrB:10189-19726 chrA:39771-50327
 > comp(20, 40, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      4 chrB:10276-19584  chrA:9680-20422
 2      2      3 chrB:29467-39976 chrB:10276-19584
 3      2      3 chrB:29467-39976 chrB:19585-29466
@@ -326,7 +326,7 @@ Type 'q()' to quit R.
 5      2      5  chrA:9680-20422      chrA:1-9679
 6      2      5 chrB:10276-19584 chrB:10276-19584
 > comp(20, 40, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:20181-24495      chrA:1-4498
 2      0      1 chrA:40196-45189 chrA:24496-29971
 3      0      1 chrA:40196-45189  chrA:4499-10214
@@ -334,7 +334,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:49916-54967 chrA:15018-20180
 6      0      1 chrA:49916-54967 chrA:20181-24495
 > comp(20, 40, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:15702-19654      chrA:1-5210
 2      0      1 chrA:24402-30637      chrA:1-5210
 3      0      1 chrA:24402-30637 chrA:19653-24403
@@ -342,7 +342,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:40175-44943 chrA:24402-30637
 6      0      1 chrA:40175-44943 chrA:30636-35016
 > comp(20, 40, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:30094-35109 chrA:10232-14491
 2      0      2 chrB:15354-20189 chrA:35110-40209
 3      0      2 chrB:15354-20189   chrB:5515-9393
@@ -350,11 +350,11 @@ Type 'q()' to quit R.
 5      0      2 chrB:20190-25495  chrA:4177-10231
 6      0      2 chrB:25496-29138 chrB:15354-20189
 > comp(20, 40, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      4 chrB:35011-39220 chrB:24821-29872
 2      3      2 chrB:35011-39220      chrB:1-5270
 > comp(20, 40, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10520-12386   chrA:5166-5903
 2      0      1 chrA:14616-15897   chrA:3229-5165
 3      0      1 chrA:19692-21290 chrA:19141-19691
@@ -362,7 +362,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:25737-27373 chrA:21291-23269
 6      0      1 chrA:25737-27373   chrA:3229-5165
 > comp(20, 40, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:37713-39156 chrA:25830-26669
 2      0      2 chrA:57111-58919 chrA:44365-45767
 3      0      2   chrB:8826-9881   chrB:2763-4144
@@ -370,11 +370,11 @@ Type 'q()' to quit R.
 5      1      1 chrB:31655-33255 chrB:13935-15671
 6      1      1 chrB:35683-37403 chrB:27115-27740
 > comp(20, 40, dist=1000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > comp(10, 40, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:49608-52813     chrA:1-10318
 2      0      1 chrA:49608-52813 chrA:10319-20085
 3      0      1 chrA:49608-52813 chrA:40274-49607
@@ -382,7 +382,7 @@ Type 'q()' to quit R.
 5      0      1     chrB:1-10321 chrA:29743-40273
 6      0      1 chrB:10322-20262     chrA:1-10318
 > comp(10, 40, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10663-20386 chrA:10663-20386
 2      0      1 chrA:30449-39650 chrA:10663-20386
 3      0      1 chrA:39647-49748 chrA:39647-49748
@@ -390,7 +390,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:49745-59923 chrA:49745-59923
 6      0      1 chrA:59920-62512     chrA:1-10666
 > comp(10, 40, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:20490-30133 chrA:20490-30133
 2      0      1 chrA:40128-49611      chrA:1-9371
 3      0      1 chrA:40128-49611 chrA:30132-40129
@@ -398,7 +398,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:49610-59671  chrA:9370-20491
 6      0      1 chrA:59670-66235 chrA:40128-49611
 > comp(10, 40, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:29313-40686 chrA:20069-29312
 2      0      2 chrA:40687-49932     chrA:1-10272
 3      0      2 chrA:40687-49932 chrA:20069-29312
@@ -406,7 +406,7 @@ Type 'q()' to quit R.
 5      0      2 chrA:49933-60372 chrA:49933-60372
 6      0      2      chrB:1-9850     chrA:1-10272
 > comp(10, 40, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      5 chrA:39977-49843 chrA:39977-49843
 2      0      5 chrB:10051-20236     chrB:1-10050
 3      0      5 chrB:20237-29961 chrA:39977-49843
@@ -414,7 +414,7 @@ Type 'q()' to quit R.
 5      1      4 chrA:19895-30906 chrA:10530-19894
 6      1      7 chrB:20237-29961     chrB:1-10050
 > comp(10, 40, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:15402-20029   chrA:5289-9782
 2      0      1 chrA:15402-20029  chrA:9783-15401
 3      0      1 chrA:24669-30062   chrA:5289-9782
@@ -422,7 +422,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:34503-39725 chrA:30063-34502
 6      0      1 chrA:39726-45631 chrA:20030-24668
 > comp(10, 40, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10026-14892      chrA:1-5162
 2      0      1 chrA:14891-20717      chrA:1-5162
 3      0      1 chrA:20716-25275      chrA:1-5162
@@ -430,7 +430,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:20716-25275 chrA:14891-20717
 6      0      1 chrA:25274-29796 chrA:14891-20717
 > comp(10, 40, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:15210-19518 chrA:10288-15209
 2      0      2 chrA:19519-25147 chrA:10288-15209
 3      0      2 chrA:19519-25147 chrA:15210-19518
@@ -438,10 +438,10 @@ Type 'q()' to quit R.
 5      0      2 chrA:29104-35748      chrA:1-5291
 6      0      2 chrA:29104-35748  chrA:5292-10287
 > comp(10, 40, dist=5000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > comp(10, 40, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10658-11251      chrA:1-1346
 2      0      1 chrA:11252-13002   chrA:1347-1846
 3      0      1 chrA:14467-16324   chrA:3866-4977
@@ -449,21 +449,21 @@ Type 'q()' to quit R.
 5      0      1 chrA:23982-25680   chrA:6858-7686
 6      0      1 chrA:26202-27153 chrA:23300-23981
 > comp(10, 40, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:44001-45267    chrA:866-2763
 2      0      2 chrA:63743-65570 chrA:29274-30111
 3      0      2 chrB:12660-13951   chrA:8829-9737
 4      1      1 chrA:39144-40652 chrA:32038-33011
 5      1      1 chrB:24771-25943 chrB:21708-22948
 > comp(10, 40, dist=1000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > ###################################################################################################
 > # Another example, a bit more extreme with more overlaps.
 > 
 > comp(50, 50, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1      chrA:1-9307      chrA:1-9307
 2      0      1 chrA:60213-64360      chrA:1-9307
 3      0      1  chrA:9308-19091  chrA:9308-19091
@@ -471,7 +471,7 @@ Type 'q()' to quit R.
 5      0      2      chrB:1-9140 chrA:50522-60212
 6      0      2  chrB:9141-19531 chrA:60213-64360
 > comp(50, 50, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:59662-65657 chrA:19868-30810
 2      0      1 chrA:59662-65657 chrA:30807-40709
 3      0      1     chrB:1-10267 chrA:30807-40709
@@ -479,7 +479,7 @@ Type 'q()' to quit R.
 5      0      2 chrA:50151-59665     chrA:1-10583
 6      0      7 chrA:50151-59665 chrA:40706-50154
 > comp(50, 50, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:20384-30235 chrA:20384-30235
 2      0      1 chrB:30706-39436 chrA:20384-30235
 3      0      2 chrA:30234-39786 chrA:20384-30235
@@ -487,7 +487,7 @@ Type 'q()' to quit R.
 5      0      3 chrA:59509-67711 chrA:39785-50360
 6      0      3 chrB:10254-20266 chrA:30234-39786
 > comp(50, 50, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      4 chrA:39730-50725      chrA:1-9789
 2      1      1 chrB:30042-40424 chrA:50726-60026
 3      1      2 chrA:39730-50725 chrA:39730-50725
@@ -495,7 +495,7 @@ Type 'q()' to quit R.
 5      1      2      chrB:1-9105  chrA:9790-20126
 6      1      2 chrB:19548-30041 chrA:39730-50725
 > comp(50, 50, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      7 chrA:40551-49669      chrA:1-9797
 2      2      3 chrB:30366-38396 chrA:49670-60585
 3      2      4 chrA:49670-60585 chrA:40551-49669
@@ -503,7 +503,7 @@ Type 'q()' to quit R.
 5      2      7 chrB:30366-38396  chrB:9739-20187
 6      2     10 chrB:30366-38396      chrB:1-9738
 > comp(50, 50, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10360-14700      chrA:1-4444
 2      0      1 chrA:14701-19658 chrA:10360-14700
 3      0      1 chrA:25526-29948 chrA:14701-19658
@@ -511,7 +511,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:29949-34734      chrA:1-4444
 6      0      1 chrA:34735-39460 chrA:10360-14700
 > comp(50, 50, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:14750-19470   chrA:4802-9308
 2      0      1 chrA:29981-34773 chrA:19469-25248
 3      0      1 chrA:29981-34773 chrA:29981-34773
@@ -519,7 +519,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:34772-39346 chrA:25247-29982
 6      0      1 chrA:39345-45076   chrA:4802-9308
 > comp(50, 50, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:15400-20062 chrA:15400-20062
 2      0      2 chrA:34884-39953 chrA:24832-30032
 3      0      2 chrA:39954-45528 chrA:34884-39953
@@ -527,7 +527,7 @@ Type 'q()' to quit R.
 5      0      2      chrB:1-4911 chrA:60128-65033
 6      0      2 chrB:25377-29951 chrA:15400-20062
 > comp(50, 50, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      4  chrA:9528-14741      chrA:1-4874
 2      1      4 chrB:10275-15016      chrB:1-5491
 3      1      4 chrB:20242-24755 chrB:10275-15016
@@ -535,7 +535,7 @@ Type 'q()' to quit R.
 5      2      5 chrB:24756-30671 chrB:24756-30671
 6      3      2 chrB:30672-34576   chrA:4875-9527
 > comp(50, 50, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10153-10931   chrA:1858-3702
 2      0      1 chrA:10153-10931   chrA:5517-6430
 3      0      1 chrA:10153-10931   chrA:6431-8246
@@ -543,7 +543,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:20936-22203 chrA:16730-18059
 6      0      1 chrA:22204-23608   chrA:5517-6430
 > comp(50, 50, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:37017-38241 chrA:25199-25991
 2      1      1 chrA:48602-49331 chrA:11394-12204
 3      1      1 chrB:13473-15190 chrB:11655-13472
@@ -551,11 +551,11 @@ Type 'q()' to quit R.
 5      1      1 chrB:24301-26051 chrB:16981-17606
 6      1      1   chrB:2660-3893 chrA:43939-45412
 > comp(50, 50, dist=1000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > comp(30, 70, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:29735-39310  chrA:9480-20216
 2      0      1 chrA:49638-60278 chrA:20217-29734
 3      0      1 chrA:49638-60278 chrA:49638-60278
@@ -563,7 +563,7 @@ Type 'q()' to quit R.
 5      0      1     chrB:1-10241 chrA:60279-63915
 6      0      1 chrB:10242-19417 chrA:60279-63915
 > comp(30, 70, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1  chrA:9634-19725  chrA:9634-19725
 2      0      1 chrB:29684-38415 chrA:19722-29421
 3      0      2 chrA:29418-39725 chrA:19722-29421
@@ -571,7 +571,7 @@ Type 'q()' to quit R.
 5      0      3 chrA:49546-60078 chrA:29418-39725
 6      0      3 chrB:19644-29687 chrA:19722-29421
 > comp(30, 70, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:60516-63758 chrA:29770-40348
 2      0      1 chrA:60516-63758 chrA:40347-50731
 3      0      1 chrB:10433-20051 chrA:20183-29771
@@ -579,7 +579,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:30730-38877 chrA:40347-50731
 6      0      2 chrA:29770-40348  chrA:9565-20184
 > comp(30, 70, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:19861-29957      chrA:1-9727
 2      0      2  chrB:9613-20144  chrA:9728-19860
 3      0      3 chrA:19861-29957 chrA:19861-29957
@@ -587,7 +587,7 @@ Type 'q()' to quit R.
 5      0      4 chrA:39888-50212 chrA:19861-29957
 6      0      4 chrB:29336-40135 chrA:39888-50212
 > comp(30, 70, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      7 chrB:10132-20031 chrB:10132-20031
 2      0      8 chrA:30073-39951  chrA:9575-19801
 3      1      4     chrB:1-10131      chrA:1-9574
@@ -595,7 +595,7 @@ Type 'q()' to quit R.
 5      1      4 chrB:30238-39203      chrA:1-9574
 6      1      5 chrB:30238-39203 chrA:30073-39951
 > comp(30, 70, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor          target
+  count1 count2          anchor1         anchor2
 1      0      1      chrA:1-5003     chrA:1-5003
 2      0      1 chrA:15746-19715  chrA:5004-9660
 3      0      1 chrA:15746-19715 chrA:9661-15745
@@ -603,7 +603,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:19716-25611  chrA:5004-9660
 6      0      1 chrA:25612-29215     chrA:1-5003
 > comp(30, 70, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10790-14866  chrA:5558-10791
 2      0      1 chrA:14865-20158      chrA:1-5559
 3      0      1 chrA:20157-24569      chrA:1-5559
@@ -611,7 +611,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:24568-29674 chrA:14865-20158
 6      0      1 chrA:24568-29674  chrA:5558-10791
 > comp(30, 70, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:24650-30280      chrA:1-4579
 2      0      2 chrA:24650-30280 chrA:14949-20508
 3      0      2 chrA:30281-34359 chrA:14949-20508
@@ -619,7 +619,7 @@ Type 'q()' to quit R.
 5      0      2 chrA:34360-39699  chrA:4580-10176
 6      0      2 chrA:45337-50512 chrA:10177-14948
 > comp(30, 70, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      5 chrB:20156-24568 chrB:14745-20155
 2      1      7 chrB:20156-24568      chrB:1-4729
 3      2      3 chrB:10838-14744      chrB:1-4729
@@ -627,7 +627,7 @@ Type 'q()' to quit R.
 5      2      3 chrB:24569-29028      chrB:1-4729
 6      2      3  chrB:4730-10837      chrB:1-4729
 > comp(30, 70, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:11578-12674  chrA:8568-10086
 2      0      1 chrA:12675-14117   chrA:2820-4034
 3      0      1 chrA:14118-15283 chrA:14118-15283
@@ -635,7 +635,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:16817-18248 chrA:10087-11577
 6      0      1 chrA:16817-18248 chrA:11578-12674
 > comp(30, 70, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:38812-40366   chrA:3353-4475
 2      0      2 chrB:26685-28586 chrA:44822-45454
 3      0      2 chrB:26685-28586   chrB:2047-3979
@@ -643,14 +643,14 @@ Type 'q()' to quit R.
 5      0      2 chrB:30284-31432 chrB:22232-23226
 6      0      2 chrB:32687-34599  chrB:8923-10183
 > comp(30, 70, dist=1000, cuts=simcuts(chromos), filter=5)
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > ###################################################################################################
 > # A final example which is the pinnacle of extremity.
 > 
 > comp(200, 100, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      0 chrA:40440-50387 chrA:40440-50387
 2      2      1 chrA:60241-70217 chrA:60241-70217
 3      3      1      chrB:1-9897 chrA:60241-70217
@@ -658,7 +658,7 @@ Type 'q()' to quit R.
 5      3      5  chrB:9898-19733 chrA:19427-29929
 6      4      1      chrB:1-9897 chrA:29930-40439
 > comp(200, 100, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1  chrB:9374-19800 chrA:59356-62908
 2      0      2 chrA:59356-62908 chrA:29298-40192
 3      1      0 chrA:59356-62908 chrA:10458-19929
@@ -666,7 +666,7 @@ Type 'q()' to quit R.
 5      1      0 chrB:30612-39949 chrA:59356-62908
 6      2      0 chrA:59356-62908     chrA:1-10461
 > comp(200, 100, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:39487-49854 chrA:39487-49854
 2      1      1 chrA:59819-68104 chrA:59819-68104
 3      1      2 chrA:20129-30074 chrA:20129-30074
@@ -674,7 +674,7 @@ Type 'q()' to quit R.
 5      2      4 chrB:29719-38407 chrA:59819-68104
 6      3      0      chrB:1-9819 chrA:59819-68104
 > comp(200, 100, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      3  chrA:9872-20530  chrA:9872-20530
 2      4      0 chrB:19860-29947 chrA:30231-39751
 3      4      5 chrA:30231-39751      chrA:1-9871
@@ -682,7 +682,7 @@ Type 'q()' to quit R.
 5      5      3 chrB:29948-39514 chrA:49875-60212
 6      5      7 chrB:29948-39514  chrA:9872-20530
 > comp(200, 100, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      3      3  chrA:9764-20779  chrA:9764-20779
 2      4      1      chrA:1-9763      chrA:1-9763
 3      4      1 chrA:60851-65054  chrA:9764-20779
@@ -690,7 +690,7 @@ Type 'q()' to quit R.
 5      4      2      chrB:1-9439 chrA:60851-65054
 6      4      3 chrA:29875-40041 chrA:29875-40041
 > comp(200, 100, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:14509-20360 chrA:10242-14508
 2      0      1 chrA:20361-24935 chrA:20361-24935
 3      0      1 chrA:30230-34793 chrA:20361-24935
@@ -698,7 +698,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:49133-55809 chrA:20361-24935
 6      0      1 chrA:55810-59822 chrA:34794-40356
 > comp(200, 100, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10267-14546      chrA:1-5502
 2      0      1 chrA:25722-30368  chrA:5501-10268
 3      0      1 chrA:34692-40172 chrA:20840-25723
@@ -706,7 +706,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:49401-54981 chrA:10267-14546
 6      0      1  chrA:5501-10268  chrA:5501-10268
 > comp(200, 100, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:14461-19472 chrA:14461-19472
 2      0      2 chrA:29604-35663 chrA:14461-19472
 3      0      2 chrA:40238-44314 chrA:14461-19472
@@ -714,7 +714,7 @@ Type 'q()' to quit R.
 5      0      2 chrB:24790-30007      chrA:1-4197
 6      0      2 chrB:24790-30007 chrA:55235-59903
 > comp(200, 100, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      3 chrA:34456-39988      chrA:1-5383
 2      2      3 chrA:49466-55705   chrA:5384-9752
 3      2      3   chrB:5027-9723 chrA:14971-20778
@@ -722,7 +722,7 @@ Type 'q()' to quit R.
 5      2      4 chrB:14083-20427 chrA:39989-44702
 6      3      2 chrA:49466-55705      chrA:1-5383
 > comp(200, 100, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:11233-13044  chrA:9402-11232
 2      0      1 chrA:13045-14677      chrA:1-1836
 3      0      1 chrA:14678-16288   chrA:6520-8141
@@ -730,7 +730,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:17840-19347 chrA:16289-17839
 6      0      1 chrA:19348-20341 chrA:13045-14677
 > comp(200, 100, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:14732-15916   chrA:1768-3219
 2      0      2 chrA:22117-23165 chrA:17662-19398
 3      0      2 chrA:30648-31199 chrA:30648-31199
@@ -738,11 +738,11 @@ Type 'q()' to quit R.
 5      0      2 chrA:39887-40951 chrA:25676-27137
 6      0      2       chrB:1-985       chrA:1-620
 > comp(200, 100, dist=1000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      3 chrB:13663-15246 chrB:12681-13662
 > 
 > comp(250, 200, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:59703-63936 chrA:49924-59702
 2      1      1 chrA:59703-63936  chrA:9771-20073
 3      1      1 chrB:30383-35456 chrA:59703-63936
@@ -750,7 +750,7 @@ Type 'q()' to quit R.
 5      1      3 chrB:20753-30382 chrA:59703-63936
 6      2      1 chrA:59703-63936      chrA:1-9770
 > comp(250, 200, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      0 chrA:60049-65934 chrA:60049-65934
 2      1      4 chrB:10712-19526 chrA:60049-65934
 3      3      2     chrB:1-10715 chrA:60049-65934
@@ -758,7 +758,7 @@ Type 'q()' to quit R.
 5      3      8 chrA:40391-50074 chrA:40391-50074
 6      4      5 chrB:10712-19526 chrA:29598-40394
 > comp(250, 200, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:60599-65374 chrA:60599-65374
 2      1      2 chrB:10434-19732 chrA:60599-65374
 3      1      6 chrA:60599-65374     chrA:1-10097
@@ -766,7 +766,7 @@ Type 'q()' to quit R.
 5      2      4 chrB:29789-37592 chrA:60599-65374
 6      2      6 chrB:19731-29790 chrA:60599-65374
 > comp(250, 200, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      5  chrA:9768-19472  chrA:9768-19472
 2      3      9 chrB:30741-38364      chrA:1-9767
 3      4      4 chrB:30741-38364  chrA:9768-19472
@@ -774,7 +774,7 @@ Type 'q()' to quit R.
 5      5      5 chrB:30741-38364 chrB:30741-38364
 6      7      6 chrA:39322-50138 chrA:39322-50138
 > comp(250, 200, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      4      9  chrB:9919-19770      chrA:1-9323
 2      5      2 chrA:30572-40190 chrA:30572-40190
 3      5      6 chrA:50414-60333 chrA:50414-60333
@@ -782,7 +782,7 @@ Type 'q()' to quit R.
 5      5      8  chrB:9919-19770 chrA:40191-50413
 6      5     11 chrB:29838-38538 chrA:40191-50413
 > comp(250, 200, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:45382-50394 chrA:45382-50394
 2      0      1      chrB:1-4231 chrA:45382-50394
 3      0      1   chrB:4232-9994 chrA:45382-50394
@@ -790,7 +790,7 @@ Type 'q()' to quit R.
 5      0      2 chrB:30640-35234 chrA:29506-35012
 6      0      4 chrB:24526-30639 chrA:55069-60304
 > comp(250, 200, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1      chrA:1-4511      chrA:1-4511
 2      0      1 chrA:40125-44678   chrA:4510-9757
 3      0      1 chrA:44677-49548   chrA:4510-9757
@@ -798,7 +798,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:10730-15160 chrA:49547-54692
 6      0      1 chrB:29943-35253 chrA:24620-29283
 > comp(250, 200, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:59935-63496 chrA:55735-59934
 2      0      2 chrB:14774-19201 chrA:44683-49800
 3      0      2 chrB:25846-29147 chrB:25846-29147
@@ -806,7 +806,7 @@ Type 'q()' to quit R.
 5      0      3 chrB:35603-40210 chrA:19878-25825
 6      0      4 chrA:35173-40831 chrA:30141-35172
 > comp(250, 200, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      4 chrA:24296-30108 chrA:14984-19609
 2      1      4 chrB:15236-19796 chrA:10189-14983
 3      2      3 chrA:24296-30108 chrA:10189-14983
@@ -814,7 +814,7 @@ Type 'q()' to quit R.
 5      2      3 chrA:40450-45277 chrA:40450-45277
 6      2      3 chrA:50436-54488 chrA:40450-45277
 > comp(250, 200, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10951-11934       chrA:1-782
 2      0      1 chrA:10951-11934   chrA:5696-7606
 3      0      1 chrA:11935-13264   chrA:2198-3464
@@ -822,7 +822,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:14023-15179 chrA:10951-11934
 6      0      1 chrA:14023-15179   chrA:2198-3464
 > comp(250, 200, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:14026-14585   chrA:3563-4870
 2      0      2 chrA:20637-21868 chrA:20637-21868
 3      0      2 chrA:23553-25293 chrA:19475-20636
@@ -830,7 +830,7 @@ Type 'q()' to quit R.
 5      0      2 chrA:40325-41356 chrA:23553-25293
 6      0      2 chrA:46005-46791   chrA:7745-9401
 > comp(250, 200, dist=1000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      5 chrB:11587-13365   chrB:2066-2993
 2      2      3 chrB:11587-13365   chrB:8094-8998
 3      2      3 chrB:13892-15001 chrB:11587-13365
@@ -838,7 +838,7 @@ Type 'q()' to quit R.
 5      4      2 chrB:24315-25472 chrB:11587-13365
 > 
 > comp(500, 200, dist=10000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      7      3 chrA:49930-59646 chrA:49930-59646
 2     10      2      chrA:1-9615      chrA:1-9615
 3     10      6  chrB:9897-20003      chrA:1-9615
@@ -846,7 +846,7 @@ Type 'q()' to quit R.
 5     11      3 chrA:30296-39368 chrA:30296-39368
 6     13      3      chrB:1-9896      chrA:1-9615
 > comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=4))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      5      1      chrA:1-9619      chrA:1-9619
 2      9      2 chrB:30343-38564      chrA:1-9619
 3     10      3 chrA:29783-39746 chrA:29783-39746
@@ -854,7 +854,7 @@ Type 'q()' to quit R.
 5     13      3 chrB:30343-38564 chrA:29783-39746
 6     13     10 chrB:20066-30346      chrA:1-9619
 > comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      0 chrA:60083-65733 chrA:60083-65733
 2      4      5 chrA:60083-65733 chrA:50249-60084
 3      6      5 chrB:10670-19403 chrA:60083-65733
@@ -862,7 +862,7 @@ Type 'q()' to quit R.
 5      7      3 chrB:19402-30098 chrA:60083-65733
 6      7      5 chrA:60083-65733 chrA:30210-39787
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      9      3 chrA:50543-60846 chrA:50543-60846
 2     11      2 chrA:39503-50542 chrA:39503-50542
 3     12      5      chrA:1-9443      chrA:1-9443
@@ -870,7 +870,7 @@ Type 'q()' to quit R.
 5     13      4 chrB:19786-29900 chrA:50543-60846
 6     13      9  chrB:9204-19785 chrA:39503-50542
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      4      1 chrB:39793-41984 chrA:19497-29954
 2      5      4 chrB:39793-41984 chrB:19254-29576
 3      6      0 chrA:50363-58689 chrA:50363-58689
@@ -878,7 +878,7 @@ Type 'q()' to quit R.
 5      7      4 chrA:10361-19496 chrA:10361-19496
 6      9      0 chrB:39793-41984      chrB:1-9952
 > comp(500, 200, dist=5000, cuts=simcuts(chromos))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrB:35297-39247 chrA:19803-25099
 2      0      2 chrA:39955-45198 chrA:39955-45198
 3      0      2 chrB:30292-35296 chrA:60208-64737
@@ -886,7 +886,7 @@ Type 'q()' to quit R.
 5      1      0 chrB:35297-39247 chrB:35297-39247
 6      1      1 chrA:39955-45198   chrA:5487-9921
 > comp(500, 200, dist=5000, cuts=simcuts(chromos, overlap=2))
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      3 chrA:55500-59884  chrA:5372-10450
 2      1      0 chrA:10449-14878 chrA:10449-14878
 3      1      0  chrA:5372-10450  chrA:5372-10450
@@ -894,7 +894,7 @@ Type 'q()' to quit R.
 5      1      3 chrA:45254-49942 chrA:40681-45255
 6      1      3      chrB:1-5310 chrA:45254-49942
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:44417-49327 chrA:44417-49327
 2      1      1 chrB:30329-35881 chrA:24822-30357
 3      1      1   chrB:4940-9640 chrA:30358-35082
@@ -902,7 +902,7 @@ Type 'q()' to quit R.
 5      1      2 chrB:14845-19610   chrA:4775-9868
 6      1      2   chrB:4940-9640 chrA:44417-49327
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      4 chrA:50055-55193 chrA:20635-24922
 2      2      3 chrA:45221-50054 chrA:24923-29183
 3      2      4 chrA:60356-63973 chrA:55194-60355
@@ -910,7 +910,7 @@ Type 'q()' to quit R.
 5      2      4 chrB:20149-24417 chrA:20635-24922
 6      2      5 chrB:10001-15212 chrA:45221-50054
 > comp(500, 200, dist=1000, cuts=simcuts(chromos))
-  count1 count2           anchor          target
+  count1 count2          anchor1         anchor2
 1      0      1 chrA:11120-12769  chrA:6661-7311
 2      0      1 chrA:11120-12769 chrA:9729-11119
 3      0      1   chrA:1296-2431     chrA:1-1295
@@ -918,7 +918,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:15526-16816  chrA:7312-8118
 6      0      1 chrA:18878-20062  chrA:2432-3385
 > comp(500, 200, dist=1000, cuts=simcuts(chromos), filter=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrA:21983-23643       chrA:1-719
 2      0      2 chrA:27412-28196 chrA:15173-16362
 3      0      2 chrA:29348-30916   chrA:2670-4296
@@ -926,7 +926,7 @@ Type 'q()' to quit R.
 5      0      2 chrA:34315-36238 chrA:29348-30916
 6      0      2 chrA:38643-39568 chrA:31523-33376
 > comp(500, 200, dist=1000, cuts=simcuts(chromos), filter=5)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      3      2 chrB:33902-34961 chrB:15503-17015
 2      3      2 chrB:36342-38215 chrB:33902-34961
 3      4      1 chrB:25099-26090 chrB:17016-18566
@@ -938,7 +938,7 @@ Type 'q()' to quit R.
 > # Testing some restriction.
 > 
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), restrict="chrB")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1     19      8 chrB:20107-30247 chrB:20107-30247
 2     25      8  chrB:9948-20106  chrB:9948-20106
 3     38     18 chrB:30248-40681 chrB:30248-40681
@@ -946,7 +946,7 @@ Type 'q()' to quit R.
 5     50     14 chrB:20107-30247  chrB:9948-20106
 6     57     29 chrB:20107-30247      chrB:1-9947
 > comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=4), restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      5      3 chrA:59436-68661 chrA:59436-68661
 2      6      4      chrA:1-9364      chrA:1-9364
 3      7      4 chrA:30738-40737 chrA:30738-40737
@@ -954,7 +954,7 @@ Type 'q()' to quit R.
 5     11      5 chrA:20254-30741 chrA:20254-30741
 6     13     10 chrA:59436-68661 chrA:20254-30741
 > comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=2), restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      0 chrA:59992-62543  chrA:9457-19738
 2      3      3 chrA:59992-62543 chrA:39981-49758
 3      4      1 chrA:59992-62543      chrA:1-9458
@@ -962,7 +962,7 @@ Type 'q()' to quit R.
 5      5      0 chrA:59992-62543 chrA:49757-59993
 6      5      1 chrA:59992-62543 chrA:19737-29876
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), filter=2, restrict="chrB")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1     18      4 chrB:29531-35971 chrB:29531-35971
 2     20     14 chrB:10269-19858 chrB:10269-19858
 3     37     18     chrB:1-10268     chrB:1-10268
@@ -970,7 +970,7 @@ Type 'q()' to quit R.
 5     43     20 chrB:29531-35971 chrB:19859-29530
 6     52     27 chrB:29531-35971     chrB:1-10268
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), filter=5, restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      7      2 chrA:39846-49465 chrA:39846-49465
 2      9      8 chrA:19773-29480 chrA:19773-29480
 3     12      3 chrA:49466-56859 chrA:49466-56859
@@ -978,7 +978,7 @@ Type 'q()' to quit R.
 5     16      4      chrA:1-9889      chrA:1-9889
 6     17     11  chrA:9890-19772      chrA:1-9889
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      1      1 chrA:44476-49117 chrA:44476-49117
 2      2      1 chrA:44476-49117 chrA:15478-20632
 3      2      2 chrA:25458-29707      chrA:1-5022
@@ -986,7 +986,7 @@ Type 'q()' to quit R.
 5      2      4 chrA:25458-29707 chrA:15478-20632
 6      3      0 chrA:34684-39835 chrA:34684-39835
 > comp(500, 200, dist=5000, cuts=simcuts(chromos, overlap=2), restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10329-14801 chrA:10329-14801
 2      0      1 chrA:25618-29488 chrA:25618-29488
 3      0      1 chrA:60643-63031 chrA:45283-49542
@@ -994,7 +994,7 @@ Type 'q()' to quit R.
 5      1      1 chrA:45283-49542 chrA:10329-14801
 6      1      1 chrA:60643-63031 chrA:10329-14801
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), filter=2, restrict="chrB")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      4      2 chrB:10563-15457 chrB:10563-15457
 2      5      1 chrB:30260-35108 chrB:30260-35108
 3      7      2 chrB:30260-35108 chrB:10563-15457
@@ -1002,7 +1002,7 @@ Type 'q()' to quit R.
 5     11      0      chrB:1-5019      chrB:1-5019
 6     12      4  chrB:5020-10562  chrB:5020-10562
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), filter=5, restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      2      3 chrA:59270-64084 chrA:39639-45035
 2      2      4 chrA:50617-54582 chrA:35767-39638
 3      2      4 chrA:54583-59269 chrA:20366-24761
@@ -1010,7 +1010,7 @@ Type 'q()' to quit R.
 5      3      2 chrA:35767-39638 chrA:20366-24761
 6      3      2 chrA:54583-59269  chrA:9831-14921
 > comp(500, 200, dist=1000, cuts=simcuts(chromos), restrict="chrA")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:12297-13377       chrA:1-781
 2      0      1 chrA:12297-13377   chrA:3206-3804
 3      0      1 chrA:13378-14304 chrA:10565-12296
@@ -1018,7 +1018,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:16874-18197   chrA:5239-6463
 6      0      1 chrA:18198-19493 chrA:18198-19493
 > comp(500, 200, dist=1000, cuts=simcuts(chromos), filter=2, restrict="chrB")
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      2 chrB:13081-13905 chrB:10374-11902
 2      0      2 chrB:29840-30492 chrB:17284-18197
 3      0      2 chrB:29840-30492 chrB:27851-29839
@@ -1026,13 +1026,13 @@ Type 'q()' to quit R.
 5      0      2 chrB:32433-34008  chrB:9072-10373
 6      0      2 chrB:34009-34942 chrB:27851-29839
 > comp(500, 200, dist=1000, cuts=simcuts(chromos), filter=5, restrict="chrA")
-[1] count1 count2 anchor target <NA>  
+[1] count1  count2  anchor1 anchor2 <NA>   
 <0 rows> (or 0-length row.names)
 > 
 > # And the cap.
 > 
 > comp(500, 200, dist=10000, cuts=simcuts(chromos), cap=1)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      6      2 chrA:39879-49455 chrA:39879-49455
 2      7      3      chrB:1-9534 chrA:39879-49455
 3      9      5 chrA:30021-39878 chrA:30021-39878
@@ -1040,7 +1040,7 @@ Type 'q()' to quit R.
 5     11      8 chrB:19354-29688 chrA:39879-49455
 6     12      4 chrA:20285-30020 chrA:20285-30020
 > comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=4), cap=1)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      5      1      chrA:1-9415      chrA:1-9415
 2      7      5 chrA:49816-59891 chrA:49816-59891
 3      8      3 chrA:39859-49819 chrA:39859-49819
@@ -1048,7 +1048,7 @@ Type 'q()' to quit R.
 5      8      4      chrB:1-9732      chrA:1-9415
 6      8      7  chrB:9729-20449      chrA:1-9415
 > comp(500, 200, dist=5000, cuts=simcuts(chromos, overlap=2), cap=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:65578-67790 chrA:25092-29555
 2      0      1 chrA:65578-67790 chrA:65578-67790
 3      0      1 chrB:24862-29717 chrA:65578-67790
@@ -1056,7 +1056,7 @@ Type 'q()' to quit R.
 5      0      1 chrB:34993-38683 chrA:44792-49367
 6      0      1 chrB:34993-38683 chrA:49366-54789
 > comp(500, 200, dist=5000, cuts=simcuts(chromos), cap=1)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1      chrB:1-5442 chrA:55282-58936
 2      1      0 chrA:55282-58936 chrA:55282-58936
 3      1      0   chrB:5443-9280 chrA:14833-19956
@@ -1064,7 +1064,7 @@ Type 'q()' to quit R.
 5      1      1   chrB:5443-9280 chrA:55282-58936
 6      1      1   chrB:5443-9280   chrB:5443-9280
 > comp(500, 200, dist=1000, cuts=simcuts(chromos, overlap=4), cap=2)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:10156-11634      chrA:1-1716
 2      0      1 chrA:14751-15411 chrA:10156-11634
 3      0      1 chrA:15408-16603 chrA:13324-14754
@@ -1072,7 +1072,7 @@ Type 'q()' to quit R.
 5      0      1 chrA:16600-17792   chrA:5123-6395
 6      0      1 chrA:19376-20241 chrA:10156-11634
 > comp(500, 200, dist=1000, cuts=simcuts(chromos, overlap=2), cap=1)
-  count1 count2           anchor           target
+  count1 count2          anchor1          anchor2
 1      0      1 chrA:11471-13254   chrA:3612-4213
 2      0      1 chrA:13253-15182       chrA:1-936
 3      0      1 chrA:13253-15182 chrA:13253-15182
@@ -1090,4 +1090,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 39.370   1.078  40.460 
+ 36.585   0.963  37.593 

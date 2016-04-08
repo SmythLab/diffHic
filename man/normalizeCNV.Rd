@@ -11,8 +11,8 @@ matchMargins(data, margins)
 }
 
 \arguments{
-\item{data}{a \code{DIList} object produced by \code{\link{squareCounts}}}
-\item{margins}{a \code{DIList} object produced by \code{\link{marginCounts}}}
+\item{data}{an InteractionSet object produced by \code{\link{squareCounts}}}
+\item{margins}{a RangedSummarizedExperiment object produced by \code{\link{marginCounts}}}
 \item{prior.count}{a numeric scalar specifying the prior count to use in computing marginal log-ratios}
 \item{span}{a numeric scalar between 0 and 1, describing the span of the fit}
 \item{maxk}{a integer scalar specifying the number of vertices to use during local fitting}
@@ -38,7 +38,7 @@ The fitted value can then be used as a GLM offset for each bin pair.
 % For example, a doubling in copy number for both regions might result in a 4-fold increase for random ligation, but only a 2-fold increase for genuine interactions (as the interaction is just doubled).
 % Using the abundance as a covariate will ensure that these cases are fitted separately.
 
-The \code{DIList} objects in \code{data} and \code{margins} should be constructed with the same parameters in their respective functions.
+The objects in \code{data} and \code{margins} should be constructed with the same \code{width} and \code{param} arguments in their respective functions.
 This ensures that the regions are the same, so that the marginal counts can be directly used.
 Matching of the bins in each bin pair in \code{data} to indices of \code{margins} is performed using \code{matchMargins}.
 Note that the marginal counts are not directly computed from \code{data} as filtering of bin pairs may be performed beforehand.
@@ -52,14 +52,16 @@ The fit parameters can be changed by varying \code{span}, \code{maxk} and additi
 Higher values of \code{span} will increase smoothness, at the cost of sensitivity.
 Increases in \code{maxk} may be required to obtain a more accurate approximation when fitting large datasets.
 In all cases, a loess fit of degree 1 is used.
+
+For use by downstream functions, the offset matrix can be stored as an assay named \code{"offset"} in the \code{data} object.
 }
 
 \value{
 For \code{normalizeCNV}, a numeric matrix is returned with the same dimensions as \code{counts(data)}.
 This contains log-based GLM offsets for each bin pair in each library.
 
-For \code{matchMargins}, a data frame is returned with integer fields \code{amatch} and \code{tmatch}.
-Each field specifies the index in \code{margins} corresponding to the anchor or target bin for each bin pair in \code{data}. 
+For \code{matchMargins}, a data frame is returned with integer fields \code{anchor1} and \code{anchor2}.
+Each field specifies the index in \code{margins} corresponding to the bin regions for each bin pair in \code{data}. 
 }
 
 \seealso{
@@ -79,31 +81,41 @@ set.seed(3423746)
 npts <- 100
 npairs <- 5000
 nlibs <- 4
-anchors <- sample(npts, npairs, replace=TRUE)
-targets <- sample(npts, npairs, replace=TRUE)
-data <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
-	totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
-	regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
-margins <- DIList(counts=matrix(rpois(npts*nlibs, 100), nrow=npts),
-	totals=data$totals, anchors=1:npts, targets=1:npts, regions=regions(data))
+anchor1 <- sample(npts, npairs, replace=TRUE)
+anchor2 <- sample(npts, npairs, replace=TRUE)
+
+data <- InteractionSet(
+    list(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs)),
+    GInteractions(anchor1=anchor1, anchor2=anchor2, 
+        regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"),
+	colData=DataFrame(totals=runif(nlibs, 1e6, 2e6))) 
+
+margins <- SummarizedExperiment(matrix(rpois(npts*nlibs, 100), nrow=npts),
+	colData=DataFrame(totals=data$totals), rowRanges=regions(data))
 
 # Running normalizeCNV.
-head(normalizeCNV(data, margins))
+out <- normalizeCNV(data, margins)
+head(out)
 head(normalizeCNV(data, margins, prior.count=1))
 head(normalizeCNV(data, margins, span=0.5))
 
+# Store offsets as the 'offset' assay for use by, e.g., asDGEList.
+assays(data)$offset <- out
+data
+
 # Occasionally locfit will complain; increase maxk to compensate.
-data <- DIList(counts=matrix(rpois(npairs*nlibs, 20), nrow=npairs),
-	totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
-	regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
+data <- InteractionSet(matrix(rpois(npairs*nlibs, 20), nrow=npairs),
+    GInteractions(anchor1=anchor1, anchor2=anchor2,
+        regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"),
+	colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)))
 tryCatch(head(normalizeCNV(data, margins, maxk=100)), error=function(e) e)
 head(normalizeCNV(data, margins, maxk=1000))
 
 # Matching margins.
 matched <- matchMargins(data, margins)
 head(matched)
-anchor.counts <- margins[matched$amatch,]
-target.counts <- margins[matched$tmatch,]
+anchor1.counts <- margins[matched$anchor1,]
+anchor2.counts <- margins[matched$anchor2,]
 }
 
 \keyword{normalization}

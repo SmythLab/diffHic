@@ -9,7 +9,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # sometime in 2012.
-# last modified 28 April 2015
+# last modified 22 November 2015
 {
 	first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
@@ -23,7 +23,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	# Setting up the parameters
 	fragments <- param$fragments
 	if (!(first.chr %in% seqlevels(fragments)) || !(second.chr %in% seqlevels(fragments))) { 
-		stop("anchor/target chromosome names not in cut site list") 
+		stop("anchor chromosome names not in cut site list") 
 	}
 	discard <- .splitDiscards(param$discard)
 	cap <- param$cap
@@ -35,7 +35,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	first.max <- min(seqlengths(fragments)[[first.chr]], first.end)
 	second.min <- max(1L, second.start)
 	second.max <- min(seqlengths(fragments)[[second.chr]], second.end)
-	if (first.min > first.max || second.min > second.max) { stop("invalid anchor/target ranges supplied") }
+	if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
 
 	# Setting up the boxes.
 	cur.chrs <- frag.by.chr$first[[first.chr]]:frag.by.chr$last[[first.chr]]
@@ -74,7 +74,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 		current <- .baseHiCParser(TRUE, file, second.chr, first.chr, 
 			chr.limits=frag.by.chr, discard=discard, cap=cap)[[1]]
 		flipped <- TRUE
-	} else { current<-data.frame(anchor.id=integer(0), target.id=integer(0)) }
+	} else { current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0)) }
 
 	# Generating a plot.
 	if (is.null(xlab)) { xlab <- first.chr }
@@ -93,13 +93,13 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
  	   	filter.a <- keep.frag.first
 		filter.t <- keep.frag.second
    	}	   
-   	retain <- filter.a[current$anchor.id] & filter.t[current$target.id]
+   	retain <- filter.a[current$anchor1.id] & filter.t[current$anchor2.id]
 	if (!any(retain)) { return(invisible(colfun)) }
 
 	if (first.chr==second.chr) { 
 		# Pick up reflection around diagonal (it's hard to conclusively define 
-		# the anchor/target range acround the diagonal, so we just include everything).
-		retain <- retain | (filter.a[current$target.id] & filter.t[current$anchor.id]) 
+		# the anchor range acround the diagonal, so we just include everything).
+		retain <- retain | (filter.a[current$anchor2.id] & filter.t[current$anchor1.id]) 
 		bin.indices <- out.id[filter.t | filter.a]	
 	} else {
 		bin.indices <- out.id[filter.t]
@@ -164,9 +164,12 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # created 21 November 2014
-# last modified 28 April 2015
+# last modified 8 December 2015
 {
-	first.chr <- as.character(seqnames(first.region))
+    # Checking for proper type.
+    .check_StrictGI(data)
+	
+    first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
 	first.start <- start(first.region)
 	first.end <- end(first.region)
@@ -180,7 +183,7 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
 	first.max <- min(seqlengths(regions(data))[[first.chr]], first.end)
 	second.min <- max(1L, second.start)
 	second.max <- min(seqlengths(regions(data))[[second.chr]], second.end)
-	if (first.min > first.max || second.min > second.max) { stop("invalid anchor/target ranges supplied") }
+	if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
 
 	# Checking that our points are consistent.
 	nr <- nrow(data)
@@ -188,18 +191,18 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
 
 	# Identifying the region pairs in our ranges of interest (some stretch, to allow for partial overlaps at plot edge).
 	first.keep <- overlapsAny(regions(data), first.region, maxgap=width(first.region)/2+100)
-	anchor.id <- anchors(data, id=TRUE)
-	target.id <- targets(data, id=TRUE)
+	anchor1.id <- anchors(data, type="first", id=TRUE)
+    anchor2.id <- anchors(data, type="second", id=TRUE)
 	flipped <- FALSE
 
 	if (first.chr!=second.chr || first.start!=second.start || first.end!=second.end) {
 		second.keep <- overlapsAny(regions(data), second.region, maxgap=width(second.region)/2+100)
-		keep.normal <- second.keep[target.id] & first.keep[anchor.id]
-		keep.flipped <- first.keep[target.id] & second.keep[anchor.id]
+		keep.normal <- second.keep[anchor2.id] & first.keep[anchor1.id]
+		keep.flipped <- first.keep[anchor2.id] & second.keep[anchor1.id]
 		if (!any(keep.normal) && any(keep.flipped)) { flipped <- TRUE } # Checking whether chromosome names are flipped.
 		keep <- keep.normal | keep.flipped # Include all bin pairs while accounting for reflection around diagonal.
 	} else {
-		keep <- first.keep[anchor.id] & first.keep[target.id]
+		keep <- first.keep[anchor1.id] & first.keep[anchor2.id]
 	}
 
 	if (is.null(xlab)) { xlab <- first.chr }
@@ -219,11 +222,11 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
 	# Assigning coordinates while checking if the chromosome names are flipped.		
 	current <- data[keep,]
 	if (flipped) {
-		first.ranges <- targets(current)
-		second.ranges <- anchors(current)
+		first.ranges <- anchors(current, type="second")
+		second.ranges <- anchors(current, type="first")
 	} else {
-		first.ranges <- anchors(current)
-		second.ranges <- targets(current)
+		first.ranges <- anchors(current, type="first")
+		second.ranges <- anchors(current, type="second")
 	}	
 
 	# Making the actual plot.

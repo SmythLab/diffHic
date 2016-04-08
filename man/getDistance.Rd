@@ -3,7 +3,11 @@
 
 \title{Get the linear distance for each interaction}
 
-\description{Compute the distance between interacting regions on the linear genome.}
+\description{
+Compute the distance between interacting regions on the linear genome.
+
+\bold{NOTE:} This function is deprecated in favour of the \code{pairdist} function from the InteractionSet package.
+}
 
 \usage{
 getDistance(data, type=c("mid", "gap", "span"))
@@ -31,21 +35,3 @@ Interchromosomal interactions are marked with \code{NA}.
 	\code{\link{connectCounts}}
 }
 
-\examples{
-# Making up a DIList.
-nregs <- 20
-reg.sizes <- as.integer(runif(nregs, 5, 10))
-ends <- cumsum(reg.sizes)
-regions <- GRanges("chrA", IRanges(c(1, ends[-nregs]+1), ends))
-
-all.combos <- combn(length(regions), 2)
-y <- DIList(matrix(0, ncol(all.combos), 1), anchors=all.combos[2,],
-	targets=all.combos[1,], regions=regions, exptData=List(width=1))
-
-# Collating to count combinations.
-getDistance(y)
-getDistance(y, type="gap")
-getDistance(y, type="span")
-}
-
-\keyword{filtering}

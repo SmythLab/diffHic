@@ -36,8 +36,8 @@ getPairData <- function(file, param)
 	if (!nrow(incoming)) {
 		return(list(length=integer(0), orientation=integer(0), gap=integer(0)))
 	}
-	output <- .Call(cxx_pair_stats, incoming$anchor.id, incoming$target.id, incoming$anchor.pos, incoming$target.pos,
-		incoming$anchor.len, incoming$target.len, same.chr, start(fragments), end(fragments))
+	output <- .Call(cxx_pair_stats, incoming$anchor1.id, incoming$anchor2.id, incoming$anchor1.pos, incoming$anchor2.pos,
+		incoming$anchor1.len, incoming$anchor2.len, same.chr, start(fragments), end(fragments))
 	if (is.character(output)) { stop(output) }
 	names(output) <- c("length", "orientation", "insert")
 	return(output)	

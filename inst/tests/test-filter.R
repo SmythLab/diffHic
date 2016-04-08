@@ -48,17 +48,17 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 				if (current[[tx]][d]) { 
 					collected <- h5read(combo[d], file.path(ax, tx))
 				} else {
-					collected <- data.frame(anchor.id=integer(0),
-						target.id=integer(0), anchor.pos=integer(0), target.pos=integer(0),
-						anchor.len=integer(0), target.len=integer(0))
+					collected <- data.frame(anchor1.id=integer(0),
+						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
+						anchor1.len=integer(0), anchor2.len=integer(0))
 				}
 				mod.d <- d+2
 				if (current[[tx]][mod.d]) { 
 					counter <- h5read(combo[mod.d], file.path(ax, tx))
 				} else {
-					counter <- data.frame(anchor.id=integer(0),
-						target.id=integer(0), anchor.pos=integer(0), target.pos=integer(0),
-						anchor.len=integer(0), target.len=integer(0))
+					counter <- data.frame(anchor1.id=integer(0),
+						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
+						anchor1.len=integer(0), anchor2.len=integer(0))
 				}
 
 				# Pruning the statistics.
@@ -89,8 +89,8 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 				# Checking discards.
 				disc.keep <- !logical(nrow(collected))
 				if (!is.null(discard)) { 
-					nokill <- !overlapsAny(GRanges(ax, IRanges(collected$anchor.pos, collected$anchor.pos+abs(collected$anchor.len)-1L)), discard, type="within") & 
-						!overlapsAny(GRanges(tx, IRanges(collected$target.pos, collected$target.pos+abs(collected$target.len)-1L)), discard, type="within")
+					nokill <- !overlapsAny(GRanges(ax, IRanges(collected$anchor1.pos, collected$anchor1.pos+abs(collected$anchor1.len)-1L)), discard, type="within") & 
+						!overlapsAny(GRanges(tx, IRanges(collected$anchor2.pos, collected$anchor2.pos+abs(collected$anchor2.len)-1L)), discard, type="within")
 					lost.disc <- lost.disc + sum(!nokill)
 					disc.keep <- nokill 
 				}
@@ -98,7 +98,7 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 
 				# Comparing it to the cap.
 				if (!is.na(cap)) { 
-					is.diff <- c(TRUE, diff(collected$anchor.id)!=0L | diff(collected$target.id)!=0L)
+					is.diff <- c(TRUE, diff(collected$anchor1.id)!=0L | diff(collected$anchor2.id)!=0L)
 					uniq.ids <- cumsum(is.diff)
 					by.ids <- split(1:nrow(collected), uniq.ids)
 					to.keep <- logical(nrow(collected))
@@ -109,7 +109,7 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 					collected <- collected[to.keep,]
 				} 
 
-				dim(collected$anchor.id) <- dim(collected$target.id) <- NULL
+				dim(collected$anchor1.id) <- dim(collected$anchor2.id) <- NULL
 				everything[[d]] <- collected
 			}
 									

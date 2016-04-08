@@ -4,8 +4,9 @@ getDistance <- function(data, type=c("mid", "gap", "span"))
 #
 # written by Aaron Lun
 # created 22 April 2014
-# last modified 24 March 2015
+# last modified 22 November 2015
 {
+    .Deprecated(new="pairdist", old="getDistance")
 	aid <- anchors(data, id=TRUE)
 	tid <- targets(data, id=TRUE)
 	st <- start(regions(data))
@@ -39,10 +40,11 @@ getArea <- function(data, bp=TRUE)
 # 
 # written by Aaron Lun
 # created 30 July 2014
-# last modified 22 July 2015
+# last modified 8 December 2015
 {
-	ax <- anchors(data, id=TRUE)
-	tx <- targets(data, id=TRUE)
+    .check_StrictGI(data)
+	ax <- anchors(data, type="first", id=TRUE)
+	tx <- anchors(data, type="second", id=TRUE)
 	reg <- regions(data)
 
 	if (bp) {
@@ -51,7 +53,7 @@ getArea <- function(data, bp=TRUE)
 
 		# Accounting for special behaviour around the diagonal.	It you don't halve,
 		# you'll have to double every other (unreflected) area.
-		overlap <- getDistance(data, type="gap")
+		overlap <- pairdist(data, type="gap")
 		is.olap <- !is.na(overlap) & overlap < -0.5
 		lap.dist <- -overlap[is.olap]
 		self.lap.area <- lap.dist * (lap.dist - 1)/2		
@@ -72,7 +74,7 @@ getArea <- function(data, bp=TRUE)
 			right.edge <- right.edge[is.partial]
 			left.edge <- left.edge[is.partial]
 			by.chr <- split(seq_len(sum(is.partial)), as.character(seqnames(reg)[ax][is.partial]))
-			fragments <- exptData(data)$param$fragments
+			fragments <- metadata(data)$param$fragments
 			fdata <- .splitByChr(fragments)
 
 			for (x in seq_along(fdata$chr)) {

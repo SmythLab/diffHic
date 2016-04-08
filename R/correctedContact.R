@@ -10,7 +10,7 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 #
 # written by Aaron Lun
 # some time ago	
-# last modified 22 July 2015
+# last modified 22 November 2015
 {
 	if (!average & ncol(data)>1L) {
 		collected.truth <- collected.bias <- collected.max <- collected.trend <- list()
@@ -38,6 +38,7 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
   	winsor.high <- as.double(winsor.high)
 	if (winsor.high >= 1) { stop("proportion of high coverage interactions to winsorize should be less than 1") }
 	exclude.local <- as.integer(exclude.local)
+    .check_StrictGI(data)
     
 	# Computing average counts, with or without distance correction.
 	if (dist.correct) { 
@@ -48,19 +49,20 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 		is.local <- !is.na(trended$log.distance)
 		nzero <- !is.na(ave.counts)
 	} else {
-		is.local <- !is.na(getDistance(data))
+		is.local <- intrachr(data)
    		log.lib <- log(data$totals)
 		if (length(log.lib)>1L) {
-			ave.counts <- exp(edgeR::mglmOneGroup(counts(data), offset=log.lib - mean(log.lib)))
+			ave.counts <- exp(edgeR::mglmOneGroup(assay(data), offset=log.lib - mean(log.lib)))
 			nzero <- !is.na(ave.counts)
 		} else {
-			nzero <- counts(data) != 0L
-			ave.counts <- as.double(counts(data))
+			nzero <- assay(data) != 0L
+			ave.counts <- as.double(assay(data))
 		}
 	}
 
-	out<-.Call(cxx_iterative_correction, ave.counts[nzero], anchors(data, id=TRUE)[nzero], targets(data, id=TRUE)[nzero], 
-		is.local[nzero], length(regions(data)), iterations, exclude.local, ignore.low, winsor.high)
+	out<-.Call(cxx_iterative_correction, ave.counts[nzero], 
+               anchors(data, type="first", id=TRUE)[nzero], anchors(data, type="second", id=TRUE)[nzero], 
+               is.local[nzero], length(regions(data)), iterations, exclude.local, ignore.low, winsor.high)
  	if (is.character(out)) { stop(out) }
 	full.truth <- rep(0, length(nzero))
 	full.truth[nzero] <- out[[1]]

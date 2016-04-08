@@ -2,13 +2,32 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.3.3}{\itemize{
+\section{Version 1.3.5}{\itemize{
 \item 
-Bug fix to plotPlaid() when the interaction space is empty.
+Deprecated DIList objects and methods in favour of InteractionSet objects.
 
 \item
-Bug fix to preparePairs() for correct reporting of reads with unmapped chimeric segments.
-}}
+marginCounts() now returns a RangedSummarizedExperiment for all bins.
+
+\item
+Added the max.height argument to the rotPlaid() and rotDI() functions.
+
+\item
+Added the diClusters() function for post-hoc cluster-level FDR control.
+
+\item
+Added the annotatePairs() function for convenient annotation of (clusters of) interactions.
+
+\item
+Fixed a bug in plotPlaid() when the interaction space was empty.
+
+\item
+Fixed a bug in preparePairs() where unmapped chimeric segments led to the loss of the entire pair.
+
+\item
+Updated user's guide, documentation and tests.
+}
+}
 
 \section{Version 1.2.0}{\itemize{
 \item

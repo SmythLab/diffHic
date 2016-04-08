@@ -7,8 +7,8 @@
 
 \usage{
 segmentGenome(bs, size=500) 
-prepPseudoPairs(bam, param, file, dedup=TRUE, yield=1e7, 
-    ichim=TRUE, chim.span=1000, minq=NA)
+prepPseudoPairs(bam, param, file, dedup=TRUE, ichim=TRUE, 
+    chim.span=1000, minq=NA, output.dir=NULL)
 }
 
 \arguments{
@@ -18,10 +18,10 @@ prepPseudoPairs(bam, param, file, dedup=TRUE, yield=1e7,
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{file}{a character string specifying the path to an output index file}
 	\item{dedup}{a logical scalar indicating whether marked duplicate reads should be removed}
-	\item{yield}{a numeric scalar specifying the number of reads to extract at every iteration}
 	\item{ichim}{a logical scalar indicating whether invalid chimeras should be counted}
 	\item{chim.span}{an integer scalar specifying the maximum span between a chimeric 3' end and a mate read}
 	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
+    \item{output.dir}{a character string specifying a directory for temporary files}
 }
 
 \details{

@@ -6,7 +6,7 @@ savePairs <- function(x, file, param)
 #
 # written by Aaron Lun 
 # created some time ago
-# last modified 22 July 2015	
+# last modified 22 November 2015	
 {
 	swap <- x$anchor.id < x$target.id
 	if (any(swap)) { 
@@ -20,9 +20,9 @@ savePairs <- function(x, file, param)
 	frag.out <- .splitByChr(param$fragments)
 	all.chrs <- frag.out$chr
 	full.chrs <- rep(seq_along(all.chrs), frag.out$last-frag.out$first+1L)
-	achr <- full.chrs[x$anchor.id]
-	tchr <- full.chrs[x$target.id]
-	new.o <- order(achr, tchr, x$anchor.id, x$target.id)
+	achr <- full.chrs[x$anchor1.id]
+	tchr <- full.chrs[x$anchor2.id]
+	new.o <- order(achr, tchr, x$anchor1.id, x$anchor2.id)
 	x <- x[new.o,]
 
 	# Identifying stretches with the same chromatin pairs.

@@ -10,7 +10,7 @@ savePairs(x, file, param)
 }
 
 \arguments{
-	\item{x}{a sorted dataframe with integer fields \code{anchor.id} and \code{fragment.id} for each interaction}
+	\item{x}{a sorted dataframe with integer fields \code{anchor1.id} and \code{anchor2.id} for each interaction}
 	\item{file}{a character string specifying the path for the output index file}
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 }
@@ -22,16 +22,16 @@ A \code{NULL} value is invisibly returned.
 
 \details{
 This function facilitates the input of processed Hi-C data from other sources into the current pipeline. 
-Each entry in \code{x$anchor.id} and \code{x$target.id} refers to the index of \code{param$fragments} to denote the interacting regions. 
-The \code{x} object will be resorted by \code{anchor.id}, then \code{target.id}.
-If necessary, anchor and target IDs will be switched such that the former is never less than the latter. 
+Each entry in \code{x$anchor1.id} and \code{x$anchor2.id} refers to the index of \code{param$fragments} to denote the interacting regions. 
+The \code{x} object will be resorted by \code{anchor1.id}, then \code{anchor2.id}.
+If necessary, anchor1 and anchor2 indices will be switched such that the former is never less than the latter. 
 
 The coordinates of the restriction fragment boundaries in \code{param$fragments} should correspond to the reference genome being used. 
 In most cases, these can be generated using the \code{\link{cutGenome}} function from any given \code{BSgenome} object.
 Values of \code{param$discard} and \code{param$restrict} will not be used here and can be ignored.
 
 Any additional fields in \code{x} will also be saved to file.
-Users are recommended to put in \code{xxx.pos} and \code{xxx.len} fields (where \code{xxx} is replaced with \code{anchor} or \code{target}).
+Users are recommended to put in \code{anchor1.pos}, \code{anchor1.len}, \code{anchor2.pos} and \code{anchor2.len} fields.
 This will allow removal of reads in \code{param$discard} during counting (e.g., with \code{\link{squareCounts}}).
 It will also allow proper calculation of statistics with \code{\link{getPairData}}, and quality control with \code{\link{prunePairs}}.
 See the output of \code{\link{preparePairs}} for more details on the specification of the fields.
@@ -45,10 +45,10 @@ param <- pairParam(cuts)
 n <- 1000
 all.a <- as.integer(runif(n, 1L, length(cuts)))
 all.t <- as.integer(runif(n, 1L, length(cuts)))
-x <- data.frame(anchor.id=pmax(all.a, all.t), target.id=pmin(all.a, all.t),
-	anchor.pos=runif(1:100), anchor.len=10, 
-	target.pos=runif(1:100), target.len=-10)
-x <- x[order(x$anchor.id, x$target.id),]
+x <- data.frame(anchor1.id=pmax(all.a, all.t), anchor2.id=pmin(all.a, all.t),
+	anchor1.pos=runif(1:100), anchor1.len=10, 
+	anchor2.pos=runif(1:100), anchor2.len=-10)
+x <- x[order(x$anchor1.id, x$anchor2.id),]
 
 fout <- "temp2.h5"
 savePairs(x, fout, param)

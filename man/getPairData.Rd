@@ -28,7 +28,7 @@ The \code{insert} simply refers to the insert size for each read pair.
 This is defined as the distance between the extremes of each read on the same chromosome.
 Values for interchromosomal pairs are set to \code{NA}.
 
-For \code{orientation}, setting 0x1 or 0x2 means that the reads designated as the ``anchor'' or ``target'' respectively are on the reverse strand.
+For \code{orientation}, setting 0x1 or 0x2 means that the read mapped into the first or second anchor fragment respectively is on the reverse strand.
 For intrachromosomal reads, an orientation value of 1 represents inward-facing reads whereas a value of 2 represents outward-facing reads.
 
 Note that a \code{pairParam} object is only used here for consistency.

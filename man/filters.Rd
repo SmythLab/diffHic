@@ -11,10 +11,10 @@ filterTrended(data, span=0.25, prior.count=2, reference=NULL)
 }
 
 \arguments{
-\item{data}{a \code{DIList} object produced by \code{\link{squareCounts}}}
+\item{data}{an InteractionSet object produced by \code{\link{squareCounts}}}
 \item{span}{a numeric scalar specifying the bandwidth for loess curve fitting}
 \item{prior.count}{a numeric scalar indicating the prior count to use for calculating the average abundance}
-\item{reference}{another \code{DIList} object, usually containing data for larger bin pairs}
+\item{reference}{another InteractionSet object, usually containing data for larger bin pairs}
 }
 
 \details{
@@ -66,10 +66,12 @@ regions <- GRanges(rep(c("chrA", "chrB"), c(a, b)), IRanges(c(1:a, 1:b), c(1:a, 
 
 set.seed(138153)
 npairs <- 500
-all.anchors <- sample(length(regions), npairs, replace=TRUE)
-all.targets <- as.integer(runif(npairs, 1, all.anchors+1))
-y <- DIList(matrix(rnbinom(npairs*4, mu=10, size=10), npairs, 4), anchors=all.anchors, 
-    targets=all.targets, regions=regions, exptData=List(width=1))
+all.anchor1 <- sample(length(regions), npairs, replace=TRUE)
+all.anchor2 <- as.integer(runif(npairs, 1, all.anchor1+1))
+counts <- matrix(rnbinom(npairs*4, mu=10, size=10), npairs, 4) 
+y <- InteractionSet(counts, GInteractions(anchor1=all.anchor1, 
+        anchor2=all.anchor2, regions=regions, mode="reverse"),
+    colData=DataFrame(totals=colSums(counts)), metadata=List(width=1))
 
 # Requiring at least 1.5-fold change.
 direct <- filterDirect(y)
@@ -85,14 +87,14 @@ y[keep,]
 w <- 5L
 a2 <- a/w
 b2 <- b/w
-regions2 <- GRanges(rep(c("chrA", "chrB"), c(a2, b2)), 
+rep.regions <- GRanges(rep(c("chrA", "chrB"), c(a2, b2)), 
     IRanges(c(1:a2, 1:b2)*w-w+1L, c(1:a2, 1:b2)*w))
 npairs2 <- 20
-all.anchors2 <- sample(length(regions2), npairs2, replace=TRUE)
-all.targets2 <- as.integer(runif(npairs2, 1, all.anchors2+1))
-y2 <- DIList(matrix(rnbinom(npairs2*4, mu=10*w^2, size=10), npairs2, 4), 
-    anchors=all.anchors2, targets=all.targets2, regions=regions2, 
-    totals=y$totals, exptData=List(width=w))
+rep.anchor1 <- sample(length(rep.regions), npairs2, replace=TRUE)
+rep.anchor2 <- as.integer(runif(npairs2, 1, rep.anchor1+1))
+y2 <- InteractionSet(matrix(rnbinom(npairs2*4, mu=10*w^2, size=10), npairs2, 4), 
+    GInteractions(anchor1=rep.anchor1, anchor2=rep.anchor2, regions=rep.regions, mode="reverse"), 
+    colData=DataFrame(totals=y$totals), metadata=List(width=w))
 
 direct2 <- filterDirect(y, reference=y2)
 sum(direct2$abundances > direct2$threshold + log2(1.5))

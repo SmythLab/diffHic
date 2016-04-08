@@ -13,9 +13,12 @@ export(diffHicUsersGuide,
     getDistance, getArea,
 	filterDirect, filterTrended, filterDiag,
 	filterPeaks, enrichedPairs, neighborCounts,
-    boxPairs, clusterPairs, consolidatePairs,
+    boxPairs, clusterPairs, consolidatePairs, diClusters,
+    annotatePairs,
 	compartmentalize, domainDirections,
-    plotPlaid, rotPlaid, plotDI, rotDI)
+    plotPlaid, rotPlaid, plotDI, rotDI,
+    DI2IS
+)
 
 # Exporting the DIList class.
 exportClasses(
@@ -27,16 +30,19 @@ exportMethods(
 	asDGEList, normOffsets, reform
     , normalize
 )
+# asDGEList, normOffsets and normalize can be shuffled 
+# into 'exports' when the DIList objects are finally removed,
+# to ensure that they are accessible to the user.
 
 # Requires several imports.
-import(Rsamtools,GenomicRanges,Biostrings,BSgenome,rhdf5,
+import(Rsamtools,Rhtslib,GenomicRanges,Biostrings,BSgenome,rhdf5,
 	IRanges,S4Vectors,GenomeInfoDb,
 	edgeR,limma,locfit,methods,csaw,
-	SummarizedExperiment)
+    InteractionSet,SummarizedExperiment
+)
 	
 importFrom("BiocGenerics", counts)
-importFrom("grDevices", "col2rgb", "rgb")
-importFrom("graphics", "box", "par", "plot", "polygon", "rect", "text")
-importFrom("stats", "approx", "approxfun", "fitted", "kmeans")
-importFrom("utils", "read.table", "write.table")
-
+importFrom("grDevices", col2rgb, rgb)
+importFrom("graphics", box, par, plot, polygon, rect, text)
+importFrom("stats", approx, approxfun, fitted, kmeans)
+importFrom("utils", read.table, write.table)

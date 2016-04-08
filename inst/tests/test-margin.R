@@ -21,19 +21,19 @@ comp<-function(n1, n2, dist, cuts, restrict=NULL) {
 	n <- length(regions(y))
 	ref <- matrix(0L, n, 2)
 	for (x in 1:nrow(y)) {
-		a<-y@anchors[x]
-		t<-y@targets[x]
-		ref[a,]<-ref[a,]+ counts(y)[x,]
-		ref[t,]<-ref[t,] + counts(y)[x,] 
+		a<-anchors(y, id=TRUE, type="first")[x]
+		t<-anchors(y, id=TRUE, type="second")[x]
+		ref[a,]<-ref[a,]+ assay(y)[x,]
+		ref[t,]<-ref[t,] + assay(y)[x,] 
 	}
-	
-	keep<-which(rowSums(ref)>0.5)
-	if (!identical(ref[keep,], counts(frags))) { stop("mismatches in counts") }
-	if (!identical(frags$totals, y$totals) || !identical(as.integer(colSums(counts(frags))), frags$totals*2L)) { 
+
+    out <- assay(frags)
+    dimnames(out) <- NULL 
+	if (!identical(ref, out)) { stop("mismatches in counts") }
+	if (!identical(frags$totals, y$totals) || !identical(as.integer(colSums(assay(frags))), frags$totals*2L)) { 
 		stop("mismatches in total counts") }
-	if (!identical(keep, frags@anchors) || !identical(keep, frags@targets)) { stop("mismatches in the regions to keep") }
-	if (!identical(regions(y), regions(frags)))  { stop("mismatches in final regions") }
-	return(head(counts(frags)))
+	if (!identical(regions(y), rowRanges(frags)))  { stop("mismatches in final regions") }
+	return(head(assay(frags)))
 }
 
 ###################################################################################################

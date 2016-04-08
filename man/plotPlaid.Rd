@@ -7,11 +7,12 @@
 \description{Plot interactions between two sequences in a plaid format with informative coloring.}
 
 \usage{
-plotPlaid(file, param, first.region, second.region=first.region, 
-    width=10000, col="black", max.count=20, xlab=NULL, ylab=NULL, 
-	diag=TRUE, count=FALSE, count.args=list(), ...)
-rotPlaid(file, param, region, width=10000, col="black", 
-    max.count=20, xlab=NULL, ylab="Gap", ...) 
+plotPlaid(file, param, first.region, second.region=first.region, width=10000, 
+    col="black", max.count=20, xlab=NULL, ylab=NULL, diag=TRUE, count=FALSE, 
+    count.args=list(), ...)
+
+rotPlaid(file, param, region, width=10000, col="black", max.count=20, 
+    xlab=NULL, max.height=NULL, ylab="Gap", ...) 
 }
 
 \arguments{
@@ -24,6 +25,7 @@ rotPlaid(file, param, region, width=10000, col="black",
 	\item{col}{any type of R color to describe the color of the plot elements}
 	\item{max.count}{a numeric scalar specifying the count for which the darkest color is obtained}
 	\item{xlab}{character string for the x-axis label on the plot, defaults to the chromosome name of \code{first.region}}
+	\item{max.height}{a numeric scalar indicating the y-axis limit for \code{rotPlaid}}
 	\item{ylab}{character string for the y-axis label on the plot, defaults to the chromosome name of \code{second.regeion} in \code{plotPlaid}}
 	\item{diag}{a logical scalar specifying whether boxes should be shown above the diagonal for intra-chromosomal plots in \code{plotPlaid}}
 	\item{count}{a logical scalar specifying whether the count for each bin should be plotted in \code{plotPlaid}}
@@ -54,6 +56,11 @@ The \code{rotPlaid} function constructs a plaid plot that has been rotated by 45
 This is useful for visualizing local interactions within a specified \code{region}.
 In a rotated plot, the x-coordinate of a box in the plotting space represents the midpoint between two interacting bins, while the y-coordinate represents the distance between bins.
 More simply, the interacting bins of a box can be identified by tracing diagonals from the edges of the box to the x-axis.
+
+By default, \code{max.height} is chosen to include the interaction between the boundaries \code{region} in \code{rotPlaid}.
+This is equivalent to the width of \code{region}.
+Smaller values can be chosen to focus on interactions closer to the diagonal.
+Larger values can also be used, but this is less useful as the interacting bins cannot be easily traced (as they will lie outside the x-axis limits).
 
 Note that the plotted boxes for the bin pairs may overwrite the bounding box of the plot.
 This can be fixed by running \code{box()} after each \code{plotPlaid} call.

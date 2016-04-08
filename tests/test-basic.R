@@ -28,16 +28,16 @@ connectCounts(fout, param, regions=regions, filter=1L)
 
 # Checking some values.
 head(getArea(data))
-head(getDistance(data))
+head(pairdist(data))
 
-anchors(data)
-targets(data)
-counts(data)
+anchors(data, type="first")
+anchors(data, type="second")
+assay(data)
 regions(data)
 
 data$totals
 colData(data)
-exptData(data)
+metadata(data)
 
 asDGEList(data)
 asDGEList(data, lib.size=20)$samples
@@ -50,9 +50,9 @@ npairs <- 5000
 nlibs <- 4
 anchors <- sample(npts, npairs, replace=TRUE)
 targets <- sample(npts, npairs, replace=TRUE)
-dummy <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
-    totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
-    regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
+dummy <- InteractionSet(matrix(as.integer(rpois(npairs*nlibs, runif(npairs, 10, 100))), nrow=npairs),
+    colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
+    GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
 
 normOffsets(dummy)
 normOffsets(dummy, logratio=0)

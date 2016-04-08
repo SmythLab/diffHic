@@ -6,14 +6,15 @@ suppressPackageStartupMessages(require(edgeR))
 	
 comp<- function(npairs, nfrags, nlibs, lambda=5, winsorize=0.02, discard=0.02, locality=1) {
 	all.pairs <- rbind(t(combn(nfrags, 2)), cbind(1:nfrags, 1:nfrags))
-	all.pairs <- data.frame(anchor.id=all.pairs[,2], target.id=all.pairs[,1])	
+	all.pairs <- data.frame(anchor1.id=all.pairs[,2], anchor2.id=all.pairs[,1])	
 	npairs <- min(npairs, nrow(all.pairs))
 	counts <- do.call(cbind, lapply(1:nlibs, FUN=function(x) { rpois(npairs, lambda) }) )
 	chosen <- sample(nrow(all.pairs), npairs)
-	data <- DIList(counts=counts, anchors=all.pairs$anchor.id[chosen], 
-		targets=all.pairs$target.id[chosen], totals=rep(1, nlibs), 
-		regions=GRanges(sort(sample(c("chrA", "chrB", "chrC"), nfrags, replace=TRUE)),
-			IRanges(1:nfrags, 1:nfrags)))
+	data <- InteractionSet(counts, 
+        GInteractions(anchor1=all.pairs$anchor1.id[chosen], anchor2=all.pairs$anchor2.id[chosen], 
+    		regions=GRanges(sort(sample(c("chrA", "chrB", "chrC"), nfrags, replace=TRUE)),
+    			IRanges(1:nfrags, 1:nfrags)), mode="reverse"),
+        colData=DataFrame(totals=rep(1, nlibs)))
 	
 	# Constructing the values.	
 	actual.mat<-matrix(0, nfrags, nfrags)
@@ -21,8 +22,8 @@ comp<- function(npairs, nfrags, nlibs, lambda=5, winsorize=0.02, discard=0.02, l
 	ave.count <- exp(mglmOneGroup(counts, offset=numeric(nlibs)))
 	for (x in 1:nrow(data)) { 
 		if (ave.count[x] < 1e-6) { next } # As zeros get removed.
-		a<-data@anchors[x]
-		t<-data@targets[x]
+		a<-anchors(data, id=TRUE, type="first")[x]
+		t<-anchors(data, id=TRUE, type="second")[x]
 		if (a!=t) { 
 			actual.mat[a,t] <- ave.count[x]
 			is.filled[a,t] <- TRUE

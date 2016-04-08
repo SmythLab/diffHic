@@ -11,14 +11,15 @@ connectCounts(files, param, regions, filter=1L, type="any", second.regions=NULL)
 \arguments{
    \item{files}{a character vector containing the paths to the count file for each library}
    \item{param}{a \code{pairParam} object containing read extraction parameters}
-   \item{regions}{a \code{GRanges} object specifying the regions between which read pairs should be counted}
+   \item{regions}{a GRanges object specifying the regions between which read pairs should be counted}
    \item{filter}{an integer scalar specifying the minimum count for each interaction}
    \item{type}{a character string specifying how restriction fragments should be assigned to regions}
-   \item{second.regions}{a \code{GRanges} object containing the second regions of interest, or an integer scalar specifying the bin size}
+   \item{second.regions}{a GRanges object containing the second regions of interest, or an integer scalar specifying the bin size}
 }
 
 \value{
-A \code{DIList} is returned, specifying the number of read pairs in each library that are mapped between pairs of \code{regions}, or between \code{regions} and \code{second.regions}.
+An InteractionSet is returned, specifying the number of read pairs in each library that are mapped between pairs of \code{regions}, or between \code{regions} and \code{second.regions}.
+Interacting regions are returned as a ReverseStrictGInteractions object containing the concatenated \code{regions} and \code{second.regions}.
 }
 
 \details{
@@ -36,9 +37,9 @@ By default, a restriction fragment is assigned to one or more regions if said fr
 This means that the boundaries of each region are expanded outwards to obtain the effective coordinates in the output \code{region}.
 In contrast, setting \code{type="within"} would contract each region inwards.
 
-The modified regions can be extracted from the \code{regions} slot in the output \code{DIList} object.
+The modified regions can be extracted from the \code{regions} slot in the output InteractionSet object.
 These will be reordered according to the new start positions.
-The ordering permutation can be recovered from the \code{original} metadata field of the \code{GRanges} object.
+The ordering permutation can be recovered from the \code{original} metadata field of the GRanges object.
 Similarly, the number of restriction fragments assigned to each interval is stored in the \code{nfrags} metadata field.
 
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
@@ -56,12 +57,12 @@ For example, the first set can be set to several ``viewpoint'' regions of intere
 This is similar to the bait region in 4C-seq, or the captured regions in Capture Hi-C.
 Interactions between these viewpoints and the rest of the genome can then be examined by setting \code{second.regions} to some appropriate bin size.
 
-The output \code{DIList} will merge all \code{regions} and \code{second.regions} into a single \code{GRanges} object.
+The output InteractionSet will merge all \code{regions} and \code{second.regions} into a single GRanges object.
 However, those in the second set can be distinguished with the \code{is.second} metadata field.
 Each \code{original} index will also point towards the corresponding entry in the original \code{second.regions} when \code{is.second=TRUE}.
 Similarly, if \code{is.second=FALSE}, the index will point towards the corresponding entry in the original \code{regions}.
 
-Note that this function does \emph{not} guarantee that the second set of regions will be present as the anchor or target regions.
+Note that this function does \emph{not} guarantee that the second set of regions will be treated as the second anchor region (or the first) for each interaction.
 Those definitions are dependent on the sorting order of the coordinates for all regions.
 Users should use the \code{is.second} field to identify the region from the second set in each interaction.
 }
@@ -69,7 +70,8 @@ Users should use the \code{is.second} field to identify the region from the seco
 \seealso{
 \code{\link{squareCounts}},
 \code{\link{findOverlaps}},
-\code{\link{DIList-class}}
+\code{\link[InteractionSet]{InteractionSet-class}},
+\code{\link[InteractionSet]{ReverseStrictGInteractions-class}}
 }
 
 \author{Aaron Lun}
@@ -88,19 +90,19 @@ regions <- suppressWarnings(c(
 
 # Collating to count combinations.
 con <- connectCounts(fout, param, regions=regions, filter=1L)
-head(counts(con))
+head(assay(con))
 con <- connectCounts(fout, param, regions=regions, filter=1L, type="within")
-head(counts(con))
+head(assay(con))
 
 # Still works with restriction and other parameters.
 con <- connectCounts(fout, param=reform(param, restrict="chrA"), 
     regions=regions, filter=1L)
-head(counts(con))
+head(assay(con))
 con <- connectCounts(fout, param=reform(param, discard=GRanges("chrA", IRanges(1, 50))),
     regions=regions, filter=1L)
-head(counts(con))
+head(assay(con))
 con <- connectCounts(fout, param=reform(param, cap=1), regions=regions, filter=1L)
-head(counts(con))
+head(assay(con))
 
 # Specifying a second region.
 regions2 <- suppressWarnings(c(
@@ -108,11 +110,11 @@ regions2 <- suppressWarnings(c(
     GRanges("chrB", IRanges(1, 50))))
 
 con <- connectCounts(fout, param, regions=regions, filter=1L, second.region=regions2)
-head(anchors(con))
-head(targets(con))
+head(anchors(con, type="first"))
+head(anchors(con, type="second"))
 con <- connectCounts(fout, param, regions=regions, filter=1L, second.region=50)
-head(anchors(con))
-head(targets(con))
+head(anchors(con, type="first"))
+head(anchors(con, type="second"))
 
 \dontshow{
 unlink(fout)

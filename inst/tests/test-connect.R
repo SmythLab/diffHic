@@ -80,8 +80,8 @@ refline <- function(dirs, cuts, ranges, filter=20L, type="any", restrict=NULL) {
 
 				# Need in both.
 				collected <- list()
-				matched.a <- match(counts$anchor.id, cur.rle$values)
-				matched.t <- match(counts$target.id, cur.rle$values)
+				matched.a <- match(counts$anchor1.id, cur.rle$values)
+				matched.t <- match(counts$anchor2.id, cur.rle$values)
 				in.both <- !is.na(matched.a) & !is.na(matched.t)
 
 				# Determining which ranges each pair overlaps.
@@ -125,7 +125,7 @@ refline <- function(dirs, cuts, ranges, filter=20L, type="any", restrict=NULL) {
 	everypair <- do.call(rbind, everypair)
 	everycount <- do.call(rbind, everycount)
 	if (is.null(everycount) || nrow(everycount)==0L) { 
-		final <- list(pairs=data.frame(anchor.id=integer(0), target.id=integer(0)), 
+		final <- list(pairs=data.frame(anchor1.id=integer(0), anchor2.id=integer(0)), 
 				counts=matrix(0L, ncol=length(dirs), nrow=0), region=ranges2,
 				totals=totals)
 		return(final)
@@ -133,24 +133,24 @@ refline <- function(dirs, cuts, ranges, filter=20L, type="any", restrict=NULL) {
 	final <- reconstruct(everypair, everycount)
 	keep <- rowSums(final$counts) >= filter
 
-	# Determining which one is anchor or target.
+	# Determining which one is anchor1 or anchor2.
 	left <- final$pairs[keep,1]
 	right <- final$pairs[keep,2]
 	matched <- match(as.character(seqnames(ranges)), runValue(seqnames(cuts)))
 	rank <- integer(length(ranges))
 	rank[order(matched, start(ranges), end(ranges))] <- 1:length(ranges)
-	left.is.anchor <- rank[left] > rank[right] 
+	left.is.anchor1 <- rank[left] > rank[right] 
 
-	if (length(left.is.anchor)) { 
-		ax <- ifelse(left.is.anchor, left, right)
-		tx <- ifelse(left.is.anchor, right, left)
+	if (length(left.is.anchor1)) { 
+		ax <- ifelse(left.is.anchor1, left, right)
+		tx <- ifelse(left.is.anchor1, right, left)
 	} else {
 		ax <- tx <- integer(0)
 	}
 	
 	# Cleaning up the rest.
 	reo <- order(ax, tx)
-	final$pairs <- data.frame(anchor.id=ax, target.id=tx)[reo,]
+	final$pairs <- data.frame(anchor1.id=ax, anchor2.id=tx)[reo,]
 	final$counts <- final$counts[keep,,drop=FALSE][reo,,drop=FALSE]
 	final$region <- ranges
 	final$totals <- totals 
@@ -173,9 +173,11 @@ samecomp <- function(nreads, cuts, ranges, filter=0L, type="any", restrict=NULL)
 	param <- pairParam(cuts, restrict=restrict)
 	out <- connectCounts(c(dir1, dir2), regions=ranges, filter=filter, type=type, param=param) 
 	ref <- refline(c(dir1, dir2), cuts=cuts, ranges=ranges, filter=filter, type=type, restrict=restrict)
-	if (!identical(ref$pairs$anchor.id, out@anchors)) { stop("mismatch in anchor identities") }
-	if (!identical(ref$pairs$target.id, out@targets)) { stop("mismatch in target identities") }
-	if (!identical(ref$counts, counts(out))) { stop("mismatch in counts") }
+	if (!identical(ref$pairs$anchor1.id, anchors(out, type="first", id=TRUE))) { stop("mismatch in anchor1 identities") }
+	if (!identical(ref$pairs$anchor2.id, anchors(out, type="second", id=TRUE))) { stop("mismatch in anchor2 identities") }
+    obs.counts <- assay(out)
+    dimnames(obs.counts) <- NULL
+	if (!identical(ref$counts, obs.counts)) { stop("mismatch in counts") }
 	if (!identical(ref$region, regions(out))) { stop("mismatch in region output") }	
 	if (!identical(ref$totals, out$totals) ||
 		!identical(ref$totals, totalCounts(c(dir1, dir2), param=param))) {
@@ -254,15 +256,17 @@ secondcomp <- function(nreads, cuts, ranges1, ranges2, filter=0L, type="any", re
 
 	combined <- regions(out)
 	ref <- connectCounts(c(dir1, dir2), regions=combined, filter=filter, type="within", param=param) # Need within, avoid overlap from fill-in. 
-	keep <- anchors(ref)$is.second!=targets(ref)$is.second
+	keep <- anchors(ref, type="first")$is.second!=anchors(ref, type="second")$is.second
 	ref <- ref[keep,]
 
-	if (!identical(ref@anchors, out@anchors)) { stop("mismatch in anchor identities") }
-	if (!identical(ref@targets, out@targets)) { stop("mismatch in target identities") }
-	if (!identical(counts(ref), counts(out))) { stop("mismatch in counts") }
+	if (!all(regions(ref)==regions(out))) { stop("mismatch in regions") }
+	if (!identical(anchors(ref, id=TRUE, type="first"), anchors(out, id=TRUE, type="first"))) { stop("mismatch in anchor1 identities") }
+	if (!identical(anchors(ref, id=TRUE, type="second"), anchors(out, id=TRUE, type="second"))) { stop("mismatch in anchor2 identities") }
+	if (!identical(assay(ref), assay(out))) { stop("mismatch in counts") }
 	if (!identical(ref$totals, out$totals)) { stop("mismatch in total output") }	
 
-	return(cbind(anchors=head(ref@anchors), targets=head(ref@targets), head(ref@counts)))
+	return(cbind(anchor1=head(anchors(ref, type="first", id=TRUE)), 
+                 anchor2=head(anchors(ref, type="second", id=TRUE)), head(assay(ref))))
 }
 
 set.seed(234872)

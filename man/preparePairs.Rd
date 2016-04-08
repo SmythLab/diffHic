@@ -6,7 +6,7 @@
 \description{Identifies the interacting pair of restriction fragments corresponding to each read pair in a Hi-C library.}
 
 \usage{
-preparePairs(bam, param, file, dedup=TRUE, minq=NA, yield=1e7, ichim=TRUE, chim.dist=NA)
+preparePairs(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim.dist=NA, output.dir=NULL)
 }
 
 \arguments{
@@ -15,9 +15,9 @@ preparePairs(bam, param, file, dedup=TRUE, minq=NA, yield=1e7, ichim=TRUE, chim.
 	\item{file}{a character string specifying the path to an output index file}
 	\item{dedup}{a logical scalar indicating whether marked duplicate reads should be removed}
 	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
-	\item{yield}{a numeric scalar specifying the number of reads to extract at every iteration}
 	\item{ichim}{a logical scalar indicating whether invalid chimeras should be counted}
 	\item{chim.dist}{an integer scalar specifying the maximum distance between segments for a valid chimeric read pair}
+	\item{output.dir}{a character string specifying a directory for temporary files}
 }
 
 \section{Converting to restriction fragment indices}{
@@ -32,8 +32,8 @@ In most cases, these can be generated using the \code{\link{cutGenome}} function
 If, for any reason, a modified genome is used for alignment, then the coordinates of the restriction fragments on the modified genome are required.
 
 Each read pair subsequently becomes associated with a pair of restriction fragments.
-The anchor fragment is that with the higher genomic coordinate, i.e., the larger index in \code{param$fragments}.
-The target fragment is that with the smaller coordinate/index. 
+The anchor1 fragment is that with the higher genomic coordinate, i.e., the larger index in \code{param$fragments}.
+The anchor2 fragment is that with the smaller coordinate/index. 
 This definition avoids the need to consider both permutations of indices in a pair during downstream processing.
 }
 
@@ -65,10 +65,10 @@ This ensures that the duplicate computations are performed on the most relevant 
 }
 
 \section{Miscellaneous information}{
-The value of \code{yield} simply controls the amount of memory used by regulating the number of read pairs that are loaded in at any given time. 
-Large values will require more memory but will reduce the computation time. 
-Input files must be sorted by read name for proper execution of the function.
-Read pair information need not be synchronised so long as the pairing, first read and second read flags are appropriately set.
+If \code{output.dir} is not specified, a directory name is constructed using the \code{\link{tempfile}} command.
+If it is specified, users should make sure that no file already exists with that name.
+Otherwise, an error will be raised.
+This directory is used to store intermediate files that will be eventually processed into the HDF5 output file.
 
 Users should note that the use of a \code{pairParam} object for input is strictly for convenience.
 Any non-empty values of \code{param$discard} and \code{param$restrict} will be ignored here.
@@ -77,16 +77,13 @@ Reads will not be discarded if they lie outside the specified chromosomes, or if
 
 \value{
 Multiple dataframe objects are stored within the specified \code{file} using the HDF5 format.
-Each object corresponds to a pair of anchor/target chromosomes.
+Each object corresponds to a pair of chromosomes, designated as the anchor1 (later) or anchor2 (earlier) chromosome based on the order of their names.
 Each row of the dataframe contains information for a read pair, with one read mapped to each chromosome. 
 The dataframe contains several integer fields:
 \describe{
-  \item{\code{anchor.id}:}{index of the anchor restriction fragment}
-  \item{\code{target.id}:}{index of the target restriction fragment}
-  \item{\code{anchor.pos}:}{mapping coordinate of the read (or for chimeras, the 5' segment thereof) on the anchor fragment}
-  \item{\code{target.pos}:}{mapping coordinate of read on the target fragment}
-  \item{\code{anchor.len}:}{length of the alignment on the anchor fragment, set to a negative value if the alignment is on the reverse strand}
-  \item{\code{target.len}:}{length of the alignment on the target fragment, set to a negative value if reverse stranded}
+  \item{\code{anchor1.id}, \code{anchor2.id}:}{index of the anchor1 or anchor2 restriction fragment}
+  \item{\code{anchor1.pos}, \code{anchor2.pos}:}{mapping coordinate of the read (or for chimeras, the 5' segment thereof) on the anchor1 or anchor2 fragment}
+  \item{\code{anchor1.len}, \code{anchor2.len}:}{length of the alignment on the anchor1 or anchor2 fragment, set to a negative value if the alignment is on the reverse strand}
 }
 See \code{\link{getPairData}} for more details on \code{length}, \code{orientation} and \code{gap}.  
 
@@ -99,7 +96,9 @@ An integer vector is also returned from the function, containing various diagnos
 }
 }
 
-\author{Aaron Lun}
+\author{Aaron Lun,
+with use of Rhtslib based on comments from Alessandro Mammana.
+}
 
 \seealso{
 \code{\link{cutGenome}}, 

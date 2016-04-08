@@ -1,0 +1,320 @@
+
+R Under development (unstable) (2015-12-22 r69809) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ####################################################################################################
+> # This tests the clusterPairs function.
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> 
+> ####################################################################################################
+> 
+> simgen <- function(alln, chromos, width, min.space, max.space) {
++ 	# Randomly sampling chromosomes to generate both a pair matrix and the chromosome space.
++ 	output <- GRanges()
++ 	for (x in names(chromos)) {
++ 		n <- chromos[[x]]
++ 		gaps <- round(runif(n, min.space, max.space))
++ 		starts <- cumsum(gaps)
++ 		ends <- starts + width
++ 		suppressWarnings(output <- c(output, GRanges(x, IRanges(starts, ends))))
++ 	}
++ 	
++ 	# Randomly sampling pairs.
++    	total <- length(output)
++    	chosen1 <- round(runif(alln, 1, total))
++    	chosen2 <- round(runif(alln, 1, total))
++    	chosen.a <- pmax(chosen1, chosen2)
++    	chosen.t <- pmin(chosen1, chosen2)
++ 
++ 	# Enforcing uniqueness.
++    	o <- order(chosen.a, chosen.t)
++    	chosen.a <- chosen.a[o]
++    	chosen.t <- chosen.t[o]
++    	is.diff <- c(TRUE, diff(chosen.a)!=0 | diff(chosen.t)!=0)
++ 	return(InteractionSet(list(counts=matrix(0L, nrow=alln, ncol=1)), 
++         GInteractions(anchor1=chosen.a, anchor2=chosen.t, region=output, mode="reverse"),
++         colData=DataFrame(totals=100)))
++ }
+> 
+> simregs <- function(data) {
++     total.size <- range(regions(data))
++     out <- tile(range(regions(data)), length(LETTERS))
++     for (i in seq_along(out)) {
++         names(out[[i]]) <- paste0(LETTERS, i)
++     }
++     unlist(out)
++ }
+> 
+> annoref <- function(data, indices, regions, ...) {
++     anno1 <- findOverlaps(anchors(data, type="first"), regions, ...)
++     anno2 <- findOverlaps(anchors(data, type="second"), regions, ...)
++     a1.anno <- sapply(split(names(regions)[subjectHits(anno1)], indices[queryHits(anno1)]), diffHic:::.uniqConcat)
++     a2.anno <- sapply(split(names(regions)[subjectHits(anno2)], indices[queryHits(anno2)]), diffHic:::.uniqConcat)
++     anchor1.anno <- anchor2.anno <- character(max(indices))
++     anchor1.anno[as.integer(names(a1.anno))] <- a1.anno
++     anchor2.anno[as.integer(names(a2.anno))] <- a2.anno
++     return(list(anchor1=anchor1.anno, anchor2=anchor2.anno))
++ }
+> 
+> .check_strings <- function(alpha, bravo) {
++     if (length(alpha)!=length(bravo)) { stop("strings are not identical") }
++     for (x in seq_along(alpha)) { 
++         a1 <- sort(unlist(strsplit(alpha[x], split=",")))
++         b1 <- sort(unlist(strsplit(bravo[x], split=",")))
++         if (!identical(a1, b1)) { stop("strings are not identical") }
++     }
++     return(NULL)
++ }
+> 
+> annocomp <- function(data, simregs, indices, ...) {
++     # Standard.
++     ref <- annoref(data, indices, simregs, ...)
++     obs <- annotatePairs(data, indices=indices, regions=simregs, ...)
++     .check_strings(ref$anchor1, obs$anchor1)
++     .check_strings(ref$anchor2, obs$anchor2)
++ 
++     # Missing indices.
++     ref.x <- annoref(data, seq_along(data), simregs, ...)
++     obs.x <- annotatePairs(data, regions=simregs, ...)
++     .check_strings(ref.x$anchor1, obs.x$anchor1)
++     .check_strings(ref.x$anchor2, obs.x$anchor2)
++ 
++     # Everyone split up into chunks.
++     grouping <- sample(3, length(data), replace=TRUE)
++     re.data <- split(data, grouping)
++     re.index <- split(indices, grouping)
++     obs.i <- annotatePairs(re.data, indices = re.index, regions = simregs, ...)
++     .check_strings(ref$anchor1, obs.i$anchor1)
++     .check_strings(ref$anchor2, obs.i$anchor2)
++ 
++     return(head(data.frame(obs)))
++ }
+> 
+> ####################################################################################################
+> 
+> set.seed(3413094)
+> 
+> chromos <- c(chrA=10, chrB=20, chrC=40)
+> data <- simgen(100, chromos, 20, 50, 100)
+> regions <- simregs(data)
+> indices <- sample(5, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                                                         anchor1
+1          G2,I2,J2,T2,A3,C3,E3,F3,I3,J3,K3,Q3,R3,S3,T3,U3,W3,X3
+2                               M2,E3,G3,I3,N3,Q3,R3,S3,U3,V3,X3
+3       D2,X2,Y2,A3,B3,D3,E3,H3,I3,J3,N3,Q3,S3,T3,U3,V3,W3,X3,Y3
+4                Q2,R2,U2,Z2,A3,B3,I3,J3,K3,L3,N3,O3,R3,S3,W3,X3
+5 H2,I2,U2,Z2,A3,E3,F3,H3,I3,J3,L3,O3,P3,Q3,R3,S3,U3,W3,X3,Y3,Z3
+                                                                        anchor2
+1                K1,P1,Q1,A2,B2,C2,Z2,M2,Y2,N2,A3,F1,G1,O2,P2,X2,B3,H1,I1,G2,G3
+2                F1,G1,T2,M1,N1,G2,B2,C2,O2,P2,I2,J2,P1,Q1,Z2,I3,Q3,C1,D1,L3,X2
+3 A2,C1,D1,F1,G1,U2,A3,Z1,Q2,R2,E3,M2,Y2,B3,W1,A1,I3,J3,K3,T2,L3,H1,I1,G3,W3,X3
+4                   E2,F2,W1,H2,I2,J2,S2,C1,D1,Y2,E3,C3,F1,G1,B3,P1,Q1,D3,H3,A3
+5             C1,D1,G2,B2,C2,H2,I2,M1,N1,E2,F2,C3,G3,J2,E3,D3,Z2,K2,I3,S1,T1,K1
+> annocomp(data, regions, indices, type="within")
+                                                anchor1
+1                         G2,T2,A3,C3,E3,F3,K3,S3,T3,U3
+2                      M2,E3,G3,I3,N3,Q3,R3,S3,U3,V3,X3
+3 D2,X2,Y2,A3,B3,D3,E3,H3,I3,J3,N3,Q3,S3,T3,U3,V3,X3,Y3
+4                   U2,Z2,A3,B3,I3,L3,N3,O3,R3,S3,W3,X3
+5             U2,Z2,A3,E3,F3,H3,L3,O3,P3,R3,S3,U3,W3,X3
+                                 anchor2
+1       K1,A2,Z2,M2,Y2,N2,A3,X2,B3,G2,G3
+2                   T2,G2,Z2,I3,Q3,L3,X2
+3 A2,U2,A3,Z1,E3,M2,Y2,B3,W1,A1,T2,L3,G3
+4             W1,S2,Y2,E3,C3,B3,D3,H3,A3
+5             G2,C3,G3,E3,D3,Z2,K2,I3,K1
+> 
+> indices <- sample(20, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                        anchor1                                anchor2
+1                      U3,V3,X3                      H2,I2,L3,H1,I1,X2
+2                      F3,I3,R3                               C3,G2,Z2
+3                         M2,X3                               F1,G1,A3
+4       Q2,R2,B3,I3,K3,Q3,S3,W3 E2,F2,A3,C1,D1,O2,P2,A1,I2,J2,I3,P1,Q1
+5 U2,D3,E3,H3,J3,K3,L3,R3,S3,X3                G2,Z1,Q2,R2,E3,P1,Q1,K1
+6             Q2,R2,F3,I3,J3,T3                   E2,F2,Y2,C1,D1,H1,I1
+> annocomp(data, regions, indices, type="within")
+                  anchor1     anchor2
+1                U3,V3,X3       L3,X2
+2                F3,I3,R3    C3,G2,Z2
+3                   M2,X3          A3
+4       B3,I3,K3,Q3,S3,W3    A3,A1,I3
+5 U2,D3,E3,H3,L3,R3,S3,X3 G2,Z1,E3,K1
+6                   F3,T3          Y2
+> 
+> indices <- sample(50, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+            anchor1              anchor2
+1             U2,X2             W1,C1,D1
+2 H2,I2,U2,A3,U3,V3 C1,D1,G2,M1,N1,H2,I2
+3             I3,L3          C1,D1,F1,G1
+4                D3                   Z1
+5                                       
+6          D2,W3,X3                A2,D3
+> annocomp(data, regions, indices, type="within")
+      anchor1 anchor2
+1       U2,X2      W1
+2 U2,A3,U3,V3      G2
+3       I3,L3        
+4          D3      Z1
+5                    
+6          D2   A2,D3
+> 
+> # Repeating with some different settings.
+> data <- simgen(100, chromos, 20, 10, 20)
+> regions <- simregs(data)
+> indices <- sample(5, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                                                                                       anchor1
+1 W1,X1,Y1,Z1,G2,H2,J2,K2,L2,P2,Q2,R2,C3,D3,E3,H3,J3,L3,M3,N3,O3,P3,Q3,R3,S3,T3,U3,V3,X3,Y3,Z3
+2                                     V2,W2,X2,B3,C3,D3,E3,F3,G3,H3,N3,O3,P3,Q3,R3,S3,T3,W3,X3
+3    E2,F2,G2,H2,I2,J2,K2,O2,P2,Q2,U2,V2,W2,B3,C3,D3,E3,H3,I3,K3,L3,M3,N3,O3,P3,Q3,U3,V3,W3,Z3
+4       J2,K2,L2,O2,P2,Q2,S2,T2,U2,V2,W2,X2,Y2,Z2,D3,E3,H3,I3,J3,L3,M3,R3,S3,T3,U3,V3,X3,Y3,Z3
+5       T1,U1,V1,W1,X1,L2,M2,N2,P2,Q2,R2,W2,X2,Y2,C3,D3,E3,G3,H3,I3,L3,M3,N3,T3,U3,V3,W3,X3,Y3
+                                                                                                                     anchor2
+1       P1,Q1,R1,S1,T1,U1,V1,L2,M2,O2,P2,Q2,N2,I2,J2,K2,D3,E3,J3,C2,D2,E2,F2,K3,P3,V2,W2,X2,W1,X1,A1,B1,C1,D1,E1,F1,G1,H1,I1
+2                                           G2,H2,K1,L1,M1,N1,V2,W2,X2,A3,C3,D3,O2,P2,Q2,I2,I1,J1,H3,A2,B2,F3,G3,V3,W3,T3,U3
+3 A2,B2,W1,X1,Y1,Z1,G2,H2,E1,F1,G1,H1,I1,R1,S1,T1,U1,V1,L2,M2,M1,N1,O1,P1,Q1,C2,D2,O2,P2,Q2,V2,W2,X2,H3,E2,F2,I2,J2,K2,C3,D3
+4       I2,J2,K2,B2,C2,D2,E1,F1,G1,H1,I1,E2,S2,T2,U2,M1,N1,O1,P1,Q1,L2,M2,N2,R2,C3,D3,V2,W2,X2,A2,R3,E3,J3,K3,K1,L1,Y2,M3,N3
+5                         T1,U1,V1,W1,X1,P1,Q1,R1,S1,Y1,Z1,A2,B2,L2,M2,R2,S2,A3,B3,L3,M3,M1,N1,O1,O2,P2,Q2,T2,U2,H3,I3,S3,T3
+> annocomp(data, regions, indices, type="within")
+      anchor1 anchor2
+1       H3,J3   J3,P3
+2 H3,P3,R3,W3   A3,H3
+3       H3,Z3      H3
+4    J3,R3,Z3      R3
+5          W3        
+> 
+> indices <- sample(20, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                                       anchor1
+1                         V2,W2,X2,C3,D3,J3,W3
+2                                     B3,C3,Z3
+3                         Y2,Z2,D3,E3,P3,Q3,R3
+4                            D3,E3,H3,I3,P3,Q3
+5 I2,J2,K2,B3,C3,G3,H3,K3,L3,M3,N3,U3,V3,Y3,Z3
+6       T1,U1,V1,W1,X1,P2,Q2,R2,S2,T2,U2,S3,T3
+                                                         anchor2
+1                                     S2,T2,U2,L2,M2,C3,D3,V3,W3
+2                                                    L2,M2,J3,K3
+3                               M1,N1,O1,P1,Q1,A3,H3,I1,J1,K1,L1
+4                                              M2,N2,R2,S2,J3,K3
+5 W1,X1,Y1,Z1,V2,W2,X2,A3,B3,M1,N1,O1,P1,Q1,D3,E3,B2,C2,D2,M3,N3
+6                            T1,U1,V1,W1,X1,L2,M2,E1,F1,G1,H1,I1
+> annocomp(data, regions, indices, type="within")
+  anchor1 anchor2
+1   J3,W3        
+2      Z3        
+3      R3   A3,H3
+4                
+5                
+6                
+> 
+> indices <- sample(50, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+            anchor1                       anchor2
+1       G2,H2,D3,E3          R1,S1,T1,U1,V1,L2,M2
+2    W1,X1,Y1,Z1,H3 P1,Q1,R1,S1,T1,B2,C2,D2,M2,N2
+3             D3,E3                      N2,O2,P2
+4       W2,X2,Y2,R3                         A2,B2
+5 J2,K2,L2,J3,U3,V3             I2,J2,K2,C3,D3,L2
+6             H3,I3                         A2,B2
+> annocomp(data, regions, indices, type="within")
+  anchor1 anchor2
+1                
+2      H3        
+3                
+4      R3        
+5      J3        
+6                
+> 
+> # Repeating again, with some different settings.
+> data <- simgen(100, chromos, 20, 100, 200)
+> regions <- simregs(data)
+> indices <- sample(5, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                                                   anchor1
+1             S2,Y2,B3,D3,E3,F3,J3,L3,N3,O3,P3,Q3,R3,S3,T3
+2 P1,A2,B2,G2,H2,J2,K2,S2,B3,D3,E3,G3,I3,K3,L3,U3,X3,Y3,Z3
+3       K2,L2,Q2,V2,A3,B3,G3,J3,K3,L3,O3,Q3,T3,U3,X3,Y3,Z3
+4          X2,Z2,A3,D3,E3,F3,H3,I3,J3,K3,O3,P3,Q3,U3,X3,Y3
+5    E2,M2,Q2,T2,X2,C3,F3,G3,H3,I3,L3,M3,N3,Q3,S3,V3,X3,Z3
+                                                               anchor2
+1                C1,M2,T2,C3,F2,G2,P1,Z1,Z2,X2,R1,S1,I3,I2,V2,G3,A2,V1
+2                C1,M1,Z1,P1,J1,I2,E2,X2,D3,V1,B3,J3,R3,K3,F3,Q3,C2,D2
+3       C2,D2,A1,X1,P1,C1,B3,E2,K2,L2,G3,R2,V2,R1,S1,S3,T3,M2,X3,N3,D3
+4 A2,M2,C2,D2,I2,M1,B2,E2,J2,K2,A3,V2,F3,I3,J1,G2,H2,F1,G1,K3,P3,O2,V3
+5                         F1,G1,P1,E2,A2,B2,O2,M2,A3,D3,T2,Q2,M3,S3,T3
+> annocomp(data, regions, indices, type="within")
+                                                anchor1
+1                   S2,Y2,B3,F3,J3,L3,N3,O3,P3,Q3,R3,S3
+2                      P1,S2,B3,G3,I3,K3,L3,U3,X3,Y3,Z3
+3          Q2,V2,A3,B3,G3,J3,K3,L3,O3,Q3,T3,U3,X3,Y3,Z3
+4       X2,Z2,A3,D3,E3,F3,H3,I3,J3,K3,O3,P3,Q3,U3,X3,Y3
+5 E2,M2,Q2,T2,X2,C3,F3,G3,H3,I3,L3,M3,N3,Q3,S3,V3,X3,Z3
+                                          anchor2
+1       C1,M2,T2,C3,P1,Z1,Z2,X2,I3,I2,V2,G3,A2,V1
+2 C1,M1,Z1,P1,J1,I2,E2,X2,D3,V1,B3,J3,R3,K3,F3,Q3
+3          A1,X1,P1,C1,B3,E2,G3,R2,V2,M2,X3,N3,D3
+4       A2,M2,I2,M1,E2,A3,V2,F3,I3,J1,K3,P3,O2,V3
+5                   P1,E2,O2,M2,A3,D3,A2,T2,Q2,M3
+> 
+> indices <- sample(20, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+                     anchor1                       anchor2
+1          S2,B3,I3,L3,Q3,U3    C1,T2,V2,D3,K2,L2,G3,S3,T3
+2       X2,F3,J3,Q3,S3,U3,Z3          A2,B2,I3,V2,V1,O2,Q3
+3          D3,E3,L3,U3,X3,Y3             E2,P1,A2,X2,M2,X3
+4                J2,K2,K3,M3                      P1,B3,O2
+5                      M2,G3                         P1,A3
+6 A2,B2,Q2,A3,I3,J3,S3,T3,X3 M1,F1,G1,C2,D2,F3,M2,P1,Z1,A2
+> annocomp(data, regions, indices, type="within")
+               anchor1           anchor2
+1    S2,B3,I3,L3,Q3,U3    C1,T2,V2,D3,G3
+2 X2,F3,J3,Q3,S3,U3,Z3 A2,I3,V2,V1,O2,Q3
+3          L3,U3,X3,Y3 E2,P1,A2,X2,M2,X3
+4                K3,M3          P1,B3,O2
+5                M2,G3             P1,A3
+6       Q2,A3,I3,J3,X3 M1,F3,M2,P1,Z1,A2
+> 
+> indices <- sample(50, length(data), replace=TRUE)
+> annocomp(data, regions, indices)
+      anchor1 anchor2
+1 D3,E3,F3,X3   C3,M2
+2          L3      Z1
+3                    
+4                    
+5          Q3      V2
+6          G3      D3
+> annocomp(data, regions, indices, type="within")
+  anchor1 anchor2
+1   F3,X3   C3,M2
+2      L3      Z1
+3                
+4                
+5      Q3      V2
+6      G3      D3
+> 
+> ####################################################################################################
+> # End.
+> 
+> proc.time()
+   user  system elapsed 
+ 12.130   0.169  12.299 

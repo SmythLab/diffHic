@@ -1,7 +1,7 @@
 
-R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+R Under development (unstable) (2015-12-22 r69809) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -42,13 +42,14 @@ Type 'q()' to quit R.
 +    	chosen.a <- pmax(chosen1, chosen2)
 +    	chosen.t <- pmin(chosen1, chosen2)
 + 
-+ 	# Enforcing uniqueness and anchor/target properties.
++ 	# Enforcing uniqueness.
 +    	o <- order(chosen.a, chosen.t)
 +    	chosen.a <- chosen.a[o]
 +    	chosen.t <- chosen.t[o]
 +    	is.diff <- c(TRUE, diff(chosen.a)!=0 | diff(chosen.t)!=0)
-+ 	return(DIList(anchors=chosen.a, targets=chosen.t, 
-+ 		counts=matrix(0, nrow=alln, ncol=1), totals=0, region=output))
++ 	return(InteractionSet(list(counts=matrix(0L, nrow=alln, ncol=1)), 
++         GInteractions(anchor1=chosen.a, anchor2=chosen.t, region=output, mode="reverse"),
++         colData=DataFrame(totals=100)))
 + }
 > 
 > crisscross <- function(id1, id2) {
@@ -67,20 +68,21 @@ Type 'q()' to quit R.
 + 	if (!is.null(data2)) { 
 + 		original <- data
 + 		new.regs <- c(regions(data), regions(data2))
-+ 		new.as <- c(anchors(data, id=TRUE), anchors(data2, id=TRUE) + length(regions(data)))
-+ 		new.ts <- c(targets(data, id=TRUE), targets(data2, id=TRUE) + length(regions(data)))
++ 		new.as <- c(anchors(data, type="first", id=TRUE), anchors(data2, type="first", id=TRUE) + length(regions(data)))
++ 		new.ts <- c(anchors(data, type="second", id=TRUE), anchors(data2, type="second", id=TRUE) + length(regions(data)))
 + 		o <- order(new.regs)
 + 		reordered <- integer(length(new.regs))
 + 		reordered[o] <- 1:length(new.regs)
 + 		new.as <- reordered[new.as]
 + 		new.ts <- reordered[new.ts]
 + 		new.regs <- new.regs[o]
-+ 		data <- DIList(counts=matrix(0, length(new.as), 1), anchors=new.as,
-+ 			targets=new.ts, regions=new.regs)
++ 		data <- InteractionSet(list(counts=matrix(0L, length(new.as), 1, dimnames=list(NULL, 1))), 
++             GInteractions(anchor1=new.as, anchor2=new.ts, regions=new.regs, mode="reverse"))
 + 	}
 + 
 + 	# Simulating cluster formation first, by expanding each region and checking for overlaps.
 + 	# We use a simple quadratic-time algorithm; slow, but gets the job done.
++     gi <- interactions(data)
 + 	region <- regions(data)
 + 	np <- nrow(data)
 + 	expanded <- resize(region, fix="center", width(region)+tol*2)
@@ -91,20 +93,20 @@ Type 'q()' to quit R.
 + 	last.id <- 1L
 + 
 + 	for (x in 1:np) {
-+ 		cura <- data@anchors[x]
++ 		cura <- gi@anchor1[x]
 + 		keep.a <- subjectHits(allap)[queryHits(allap)==cura]
-+ 		curt <- data@targets[x]
++ 		curt <- gi@anchor2[x]
 + 		keep.t <- subjectHits(allap)[queryHits(allap)==curt]
 + 
 + #		has.nested.a<- subjectHits(nested)[queryHits(nested)==cura & subjectHits(nested)!=cura] 
 + #		has.nested.t <- subjectHits(nested)[queryHits(nested)==curt & subjectHits(nested)!=curt] 
-+ #		anchors.nested <- data@anchors %in% has.nested.a
-+ #		targets.nested <- data@targets %in% has.nested.t
-+ #		if (any(anchors.nested & data@targets %in% keep.t)) { cat("Hooray, nested anchor!\n") }
-+ #		if (any(data@anchors %in% keep.a & targets.nested)) { cat("Hooray, nested target!\n") }
-+ #		if (any(anchors.nested & targets.nested)) { cat("Hooray, nested both!\n") }
++ #		anchor1.nested <- gi@anchor1 %in% has.nested.a
++ #		anchor2.nested <- gi@anchor2 %in% has.nested.t
++ #		if (any(anchor1.nested & gi@anchor2 %in% keep.t)) { cat("Hooray, nested anchor!\n") }
++ #		if (any(gi@anchor1 %in% keep.a & anchor2.nested)) { cat("Hooray, nested target!\n") }
++ #		if (any(anchor1.nested & anchor2.nested)) { cat("Hooray, nested both!\n") }
 + 
-+ 		partners <- which(data@anchors %in% keep.a & data@targets %in% keep.t)
++ 		partners <- which(gi@anchor1 %in% keep.a & gi@anchor2 %in% keep.t)
 + 		partners <- partners[partners>=x]
 + 		curids <- myids[partners]
 + 		curids <- curids[curids!=impossible]
@@ -129,8 +131,8 @@ Type 'q()' to quit R.
 + 	if (!crisscross(comp, myids)) { stop("mismatches in cluster IDs without bin size restriction") }
 + 
 + # Some error checking functions; just define 'current' as the pairs of interest.
-+ # targets <- which(sapply(split(comp, myids), FUN=function(x) { length(unique(x))!=1 }))
-+ # current <- pairs[myid==targets[1],]
++ # anchor2 <- which(sapply(split(comp, myids), FUN=function(x) { length(unique(x))!=1 }))
++ # current <- pairs[myid==anchor2[1],]
 + # plot(0,0,xlim=c(1075, 1358),ylim=c(1163,1475))
 + # rect(start(region)[current$t], start(region)[current$t], end(region)[current$a], end(region)[current$t], col=rgb(1,0,0,0.5))
 + 
@@ -142,8 +144,8 @@ Type 'q()' to quit R.
 + 	myid2 <- myids
 + 	for (x in names(clusters)) {
 + 		active <- clusters[[x]]
-+ 		active.a <- data@anchors[active]
-+ 		active.t <- data@targets[active]
++ 		active.a <- gi@anchor1[active]
++ 		active.t <- gi@anchor2[active]
 + 
 + 		cluster.as <- min(all.starts[active.a])
 + 		cluster.ae <- max(all.ends[active.a])
@@ -177,12 +179,21 @@ Type 'q()' to quit R.
 + 	} 
 + 	if (!crisscross(id.comp, myid2)) { stop("mismatches in cluster IDs when a maximum bin size is applied") }
 + 
++     # Checking it's the same with index.only=TRUE.
++ 	if (!is.null(data2)) { 
++ 		icomp <- clusterPairs(original, data2, tol=tol, upper=maxw, index.only=TRUE)
++ 	} else {
++ 		icomp <- clusterPairs(data, tol=tol, upper=maxw, index.only=TRUE)
++ 	} 
++ 	if (!identical(icomp, comp2$indices)) { stop("different behaviour with index.only=TRUE") }
++ 
 + 	# Checking the bounding boxes.
-+ 	arange <- range(split(anchors(data), myid2))
-+ 	trange <- range(split(targets(data), myid2))
-+ 	names(arange) <- names(trange) <- NULL
-+ 	if (!identical(comp2$anchors, unlist(arange)) || !identical(comp2$targets, unlist(trange))) {
-+ 		stop("mismatches in anchor/target bounding box coordinates")
++ 	a1range <- range(split(anchors(data, type="first"), myid2))
++ 	a2range <- range(split(anchors(data, type="second"), myid2))
++ 	names(a1range) <- names(a2range) <- NULL
++ 	if (!identical(anchors(comp2$interactions, type="first"), unlist(a1range)) || 
++         !identical(anchors(comp2$interactions, type="second"), unlist(a2range))) {
++ 		stop("mismatches in anchor1/anchor2 bounding box coordinates")
 + 	}
 + 
 + 	if (split) { 
@@ -518,4 +529,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 39.504   0.713  43.970 
+ 22.424   0.220  22.647 

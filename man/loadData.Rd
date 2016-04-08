@@ -7,17 +7,16 @@
 
 \usage{
 loadChromos(file)
-loadData(file, anchor, target)
+loadData(file, anchor1, anchor2)
 }
 
 \arguments{
 \item{file}{a character string containing a path to a index file}
-\item{anchor}{a character string, specifying the name of one chromosome in a pair}
-\item{target}{a character string, specifying the name of the other chromosome in the pair}
+\item{anchor1, anchor2}{a character string, specifying the name of the chromosomes in a pair}
 }
 
 \value{
-The \code{loadChromos} function will return a dataframe with character fields \code{anchors} and \code{targets}.
+The \code{loadChromos} function will return a dataframe with character fields \code{anchor1} and \code{anchor2}.
 Each row represents a pair of chromosomes, the names of which are stored in the fields. 
 The presence of a row indicates that the data for the corresponding pair exists in the \code{file}.
 
@@ -30,7 +29,7 @@ The purpose of these function is to allow users to perform custom analyses by ex
 This may be desirable, e.g., when preparing data for input into other tools.
 To extract all data, users are advised to run \code{loadData} iteratively on each pair of chromosomes as obtained with \code{loadChromos}.
 
-Note that \code{loadData} will successfully operate even if the anchor/target specification is mixed up.
+Note that \code{loadData} will successfully operate even if the anchor1/anchor2 specification is permuted.
 In this case, it will return a warning to inform the user that the names should be switched.
 }
 

@@ -17,8 +17,8 @@ squareCounts(files, param, width=50000, filter=1L)
 }
 
 \value{
-A \code{DIList} object is returned containing the number of read pairs for each bin pair across all libraries.
-The genomic coordinates for each bin are also recorded.
+An InteractionSet object is returned containing the number of read pairs for each bin pair across all libraries.
+Bin pairs are stored as a ReverseStrictGInteractions object.
 }
 
 \details{
@@ -66,26 +66,26 @@ invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
 y <- squareCounts(fout, param)
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, param, filter=1)
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, param, width=50, filter=1)
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, param, width=100, filter=1)
-head(counts(y))
+head(assay(y))
 
 # Attempting with other parameters.
 y <- squareCounts(fout, reform(param, restrict="chrA"), width=100, filter=1)
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, filter=1,
     param=reform(param, restrict=cbind("chrA", "chrB"))) 
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, filter=1,
     param=reform(param, cap=1), width=100)
-head(counts(y))
+head(assay(y))
 y <- squareCounts(fout, width=100, filter=1, 
     param=reform(param, discard=GRanges("chrA", IRanges(1, 50))))
-head(counts(y))
+head(assay(y))
 
 \dontshow{
 unlink(fout, recursive=TRUE)
@@ -97,7 +97,8 @@ unlink(fout, recursive=TRUE)
 \seealso{
 \code{\link{preparePairs}},
 \code{\link{cutGenome}},
-\code{\link{DIList-class}}
+\code{\link[InteractionSet]{InteractionSet-class}},
+\code{\link[InteractionSet]{ReverseStrictGInteractions-class}}
 }
 
 \references{

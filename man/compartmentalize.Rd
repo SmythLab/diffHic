@@ -10,7 +10,7 @@ compartmentalize(data, centers=2, dist.correct=TRUE,
 }
 
 \arguments{
-\item{data}{a \code{DIList} object containing bin pair data, like that produced by \code{\link{squareCounts}}}
+\item{data}{an InteractionSet object containing bin pair data, like that produced by \code{\link{squareCounts}}}
 \item{centers}{an integer scalar, specifying the number of clusters to form in \code{\link{kmeans}}}
 \item{dist.correct}{a logical scalar, indicating whether abundances should be corrected for distance biases}
 \item{cov.correct}{a logical scalar, indicating whether abundances should be corrected for coverage biases}
@@ -24,7 +24,7 @@ Bins in the same compartment interact more frequently with each other compared t
 This forms a checkerboard-like pattern in the interaction space that can be used to define the genomic intervals in each compartment.
 Typically, one compartment is gene-rich and is defined as ``open'', while the other is gene-poor and defined as ``closed''.
 
-Compartment identification is done by setting up a contact matrix where each row/rolumn represents a bin and each matrix entry contains the frequency of contacts between bins.
+Compartment identification is done by setting up a ContactMatrix object, where each row/rolumn represents a bin and each matrix entry contains the frequency of contacts between bins.
 Bins (i.e., rows) with similar interaction profiles (i.e., entries across columns) are clustered together with the k-means method.
 Those with the same ID in the output \code{compartment} vector are in the same compartment.
 Note that clustering is done separately for each chromosome, so bins with the same ID across different chromosomes cannot be interpreted as being in the same compartment.
@@ -54,8 +54,8 @@ If desired, users can also apply their own clustering methods on the \code{matri
 }
 
 \value{
-A named list of lists is returned where each internal list corresponds to a chromosome in \code{data} and contains \code{compartment}, an integer vector of compartment IDs for all bins in that chromosome; and \code{matrix}, a numeric matrix of (normalized) contact frequencies for the intra-chromosomal space. 
-Entries in \code{compartment} and rows/columns in \code{matrix} are named according to the matching index of \code{regions(data)}.
+A named list of lists is returned where each internal list corresponds to a chromosome in \code{data} and contains \code{compartment}, an integer vector of compartment IDs for all bins in that chromosome; and \code{matrix}, a ContactMatrix object containing (normalized) contact frequencies for the intra-chromosomal space. 
+Entries in \code{compartment} are named according to the matching index of \code{regions(data)}.
 
 % If \code{inter=TRUE}, a list is returned that contains \code{compartment}, an integer vector of IDs for all bins in the genome; and \code{matrix}, a contact matrix spanning the entire interaction space.
 % Each entry of \code{compartment} and each row/column in \code{matrix} corresponds to an entry of \code{regions(data)}.
@@ -75,12 +75,15 @@ set.seed(3426)
 npts <- 100
 npairs <- 5000
 nlibs <- 4
-anchors <- sample(npts, npairs, replace=TRUE)
-targets <- sample(npts, npairs, replace=TRUE)
-data <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
-   totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
-   regions=GRanges(c(rep("chrA", 80), rep("chrB", 20)), IRanges(c(1:80, 1:20), c(1:80, 1:20))),
-   exptData=List(width=1))
+anchor1 <- sample(npts, npairs, replace=TRUE)
+anchor2 <- sample(npts, npairs, replace=TRUE)
+data <- InteractionSet(
+    matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
+    GInteractions(anchor1=anchor1, anchor2=anchor2,
+        regions=GRanges(c(rep("chrA", 80), rep("chrB", 20)), 
+            IRanges(c(1:80, 1:20), c(1:80, 1:20))), mode="reverse"),
+    colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), metadata=List(width=1))
+data <- unique(data)
 
 # Running compartmentalization.
 out <- compartmentalize(data)

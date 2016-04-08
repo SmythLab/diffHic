@@ -1,12 +1,12 @@
 mergePairs <- function(files, file.out)
 # This function merges one or more separate count files together. It also produces a new index file
 # representing the updated values of the older count file combination. The algorithm proceeds
-# by reading all the index files in; splitting by anchor/target combinations, and then pulling out
+# by reading all the index files in; splitting by anchor combinations, and then pulling out
 # and combining the reads. This avoids having to read the entire structure into memory at once.
 #
 # written by Aaron Lun
 # some time ago
-# last modified 22 July 2015
+# last modified 22 November 2015
 {
 	# Use a temporary file as a placeholder just in case 'file.out' is in 'files'.
 	overall <- suppressWarnings(.loadIndices(files))
@@ -36,7 +36,7 @@ mergePairs <- function(files, file.out)
 
 			# No need to protect against an empty list; there must be one non-empty element for .loadIndices to get here.
 			out <- do.call(rbind, out)
-			out <- out[order(out$anchor.id, out$target.id),]
+			out <- out[order(out$anchor1.id, out$anchor2.id),]
 			.writePairs(out, tmpf, ac, tc)
 		}
 	}

@@ -8,16 +8,16 @@ simgen <- function(dir, num, chromos) {
 		max.anchor<-chromos[[i]]
 		for (j in 1:i) {
 			max.target<-chromos[[j]]
-			anchors<-as.integer(floor(runif(num, 1, max.anchor)))
-			targets<-as.integer(floor(runif(num, 1, max.target)))
+			anchor1<-as.integer(floor(runif(num, 1, max.anchor)))
+			anchor2<-as.integer(floor(runif(num, 1, max.target)))
 			if (i==j){
-				anchor.1<-pmax(anchors, targets)
-				target.1<-pmin(anchors, targets)
-				anchors<-anchor.1
-				targets<-target.1
+				larger<-pmax(anchor1, anchor2)
+				smaller<-pmin(anchor1, anchor2)
+				anchor1<-larger
+				anchor2<-smaller
 			}
-			cyrrebt<-data.frame(anchor.id=anchors+bonus[i], target.id=targets+bonus[j], 
-					anchor.pos=0L, target.pos=0L, anchor.len=0L, target.len=0L)
+			cyrrebt<-data.frame(anchor1.id=anchor1+bonus[i], anchor2.id=anchor2+bonus[j], 
+					anchor1.pos=0L, anchor2.pos=0L, anchor1.len=0L, anchor2.len=0L)
 			overall<-rbind(overall, cyrrebt)
 		}
 	}
@@ -57,21 +57,21 @@ augmentsim <- function(infile, frags, rlen=10) {
 		collected <- h5read(infile, cpath)
 		num <- nrow(collected)
 		
-		a.s <- allfs[collected$anchor.id]		
-		a.e <- allfe[collected$anchor.id]
+		a.s <- allfs[collected$anchor1.id]		
+		a.e <- allfe[collected$anchor1.id]
 		astr <- rbinom(num, 1, 0.5)==1L
 		a.s2 <- ifelse(astr, a.s, pmin(a.e, a.s - rlen + 1L))
 		a.e2 <- ifelse(astr, pmax(a.s, a.e - rlen + 1L), a.e)
-		collected$anchor.pos <- as.integer(runif(nrow(collected), min=a.s2, max=a.e2))
-		collected$anchor.len <- as.integer(rlen * ifelse(astr, 1, -1))
+		collected$anchor1.pos <- as.integer(runif(nrow(collected), min=a.s2, max=a.e2))
+		collected$anchor1.len <- as.integer(rlen * ifelse(astr, 1, -1))
 
-		t.s <- allfs[collected$target.id]
-		t.e <- allfe[collected$target.id]
+		t.s <- allfs[collected$anchor2.id]
+		t.e <- allfe[collected$anchor2.id]
 		tstr <- rbinom(num, 1, 0.5)==1L
 		t.s2 <- ifelse(astr, t.s, pmin(t.e, t.s - rlen + 1L))
 		t.e2 <- ifelse(astr, pmax(t.s, t.e - rlen + 1L), t.e)
-		collected$target.pos <- as.integer(runif(nrow(collected), min=t.s2, max=t.e2))
-		collected$target.len <- as.integer(rlen * ifelse(tstr, 1, -1))
+		collected$anchor2.pos <- as.integer(runif(nrow(collected), min=t.s2, max=t.e2))
+		collected$anchor2.len <- as.integer(rlen * ifelse(tstr, 1, -1))
 
 		everything[[i]] <- collected
 	}

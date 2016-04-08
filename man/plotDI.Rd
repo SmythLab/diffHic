@@ -7,16 +7,16 @@
 \description{Plot differential interactions in a plaid format with informative coloring.}
 
 \usage{
-plotDI(data, fc, first.region, second.region=first.region, 
-    col.up="red", col.down="blue", background="grey70", 
-    zlim=NULL, xlab=NULL, ylab=NULL, diag=TRUE, ...)
-rotDI(data, fc, region, col.up="red", col.down="blue",
-    background="grey70", zlim=NULL, xlab=NULL, ylab="Gap", ...)
+plotDI(data, fc, first.region, second.region=first.region, col.up="red", 
+    col.down="blue", background="grey70", zlim=NULL, xlab=NULL, ylab=NULL, 
+    diag=TRUE, ...)
 
+rotDI(data, fc, region, col.up="red", col.down="blue", background="grey70", 
+    zlim=NULL, xlab=NULL, max.height=NULL, ylab="Gap", ...)
 }
 
 \arguments{
-	\item{data}{a \code{DIList} object}
+	\item{data}{an InteractionSet object}
 	\item{fc}{a numeric vector of log-fold changes}
 	\item{first.region}{a \code{GRanges} object of length 1 specifying the first region}
 	\item{second.region}{a \code{GRanges} object of length 1 specifying the second region}
@@ -26,6 +26,7 @@ rotDI(data, fc, region, col.up="red", col.down="blue",
 	\item{background}{any type of R color, specifying the background color of the interaction space}
 	\item{zlim}{a numeric scalar indicating the maximum absolute log-fold change}
 	\item{xlab}{character string for the x-axis label on the plot, defaults to the first chromosome name}
+    \item{max.height}{a numeric scalar indicating the y-axis limit for \code{rotPlaid}}
 	\item{ylab}{character string for the y-axis label on the plot, defaults to the second chromosome name in \code{plotDI}}
 	\item{diag}{a logical scalar specifying whether boxes should be shown above the diagonal for intra-chromosomal plots in \code{plotDI}}
 	\item{...}{other named arguments to be passed to \code{\link{plot}}}
@@ -66,10 +67,11 @@ regions <- GRanges(rep(c("chrA", "chrB"), c(a, b)), IRanges(c(1:a, 1:b), c(1:a, 
     seqinfo=Seqinfo(seqlengths=c(chrA=a, chrB=b), seqnames=c("chrA", "chrB")))
 
 set.seed(3423)
-all.anchors <- sample(length(regions), 500, replace=TRUE)
-all.targets <- as.integer(runif(500, 1, all.anchors+1))
-out <- DIList(matrix(0, 500, 1), anchors=all.anchors, targets=all.targets, 
-    regions=regions, exptData=List(width=1))
+all.anchor1 <- sample(length(regions), 500, replace=TRUE)
+all.anchor2 <- as.integer(runif(500, 1, all.anchor1+1))
+out <- InteractionSet(matrix(0, 500, 1), colData=DataFrame(lib.size=1000),
+        GInteractions(anchor1=all.anchor1, anchor2=all.anchor2, 
+            regions=regions, mode="reverse"), metadata=List(width=1))
 fc <- runif(nrow(out), -2, 2)
 
 # Constructing intra-chromosomal DI plots around various regions

@@ -3,11 +3,18 @@
 # We start with unit tests for individual components of the preparePairs C++ code.
 
 suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+source("simsam.R")
+
+dir<-"hic-test"
+dir.create(dir)
 
 # Checking CIGAR.
 
 checkCIGAR <- function(cigar, rstrand) {
-	out <- .Call(diffHic:::cxx_test_parse_cigar, cigar, rstrand)
+    output <- simsam(file.path(dir, "whee"), "chrA", 1, !rstrand, c("chrA"=1000), 
+           cigar=cigar, len=GenomicAlignments::cigarWidthAlongQuerySpace(cigar))
+
+	out <- .Call(diffHic:::cxx_test_parse_cigar, output)
 	if (is.character(out)) { stop(out) }
 	
 	true.alen <- GenomicAlignments::cigarWidthAlongReferenceSpace(cigar)
@@ -103,15 +110,18 @@ try(assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L)) # This should fail, as 
 # We also set up a full simulation for the entire function.
 
 suppressPackageStartupMessages(require("rhdf5"))
-source("simsam.R")
 
-comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, 
-		yield=max(1L, round(npairs/runif(1, 2, 10)))) {
+comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, pseudo=FALSE) {
 	rlen<-as.integer(rlen)
 	spacer<-as.integer(spacer)
 	if (min(sizes) <= rlen) { stop("min fragment must be greater than read length") } 
 	# Necessary for proper assignment, especially at the start of the chromosome when reverse 
 	# reads are bounded at zero (i.e. their 5' ends would not be defined if 1+rlen > fragmentsize)
+
+	if (pseudo) {
+		stopifnot(sizes[1]==sizes[2])
+		stopifnot(spacer == 0L)
+	}
 
 	# Randomly generating fragment lengths for the chromosome.
 	fragments<-list()
@@ -159,6 +169,9 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 					ifelse(forward.frag!=length(cut.starts[[i]]),
 						cut.starts[[i]][forward.frag+1L],
 						my.ends[forward.frag])))
+			# Note that as.integer(runif(1, a, b)) samples from [a, b), as runif() will never actually generate 'b'.
+			# So, this will only generate positions after and including the start position for the chosen fragment,
+			# but before and not including the start position for the next fragment (or 1-past the end of the chromosome).
 			
 			reverse.frag <- chosen.frags[!cur.for]
 			starter <- integer(sum(!cur.for))
@@ -167,14 +180,16 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 			starter[!possible.zero] <- my.ends[reverse.frag[!possible.zero]-1L] 
 			pos[current][!cur.for] <- pmax(1L, 
 				as.integer(runif(sum(!cur.for), starter, my.ends[chosen.frags[!cur.for]])) - rlen + 1L)
-			# The boundary conditions here are tricky, but because runif will never generate values
-			# equal to the boundary, rounding down will always ensure a position in the correct fragment.
+			# Recall that the 'ends' are 1-past the last base of the fragment, so this runif() will sample from 
+			# the first non-overlapping base of the current fragment to the last base of the current fragment
+			# (it's [a, b), so when b is 1-past the last base, sampling will include the last base).
 		}
     }
 
-    # Throwing them into the SAM file generator. 
+    # Throwing them into the SAM file generator. Note that chromosome names are ordered inside. 
+    # If this differs from the order in 'max.cuts', it will test the ability of preparePairs to match them up correctly.
 	reversi<-c(1:npairs+npairs, 1:npairs)
-    out<-simsam(fname, names(chromosomes)[chrs], pos, str, chromosomes, names=names, len=rlen, 
+    out<-simsam(fname, names(chromosomes)[chrs], pos, str, chromosomes[order(names(chromosomes))], names=names, len=rlen, 
 			is.first=c(rep(TRUE, npairs), rep(FALSE, npairs)), is.paired=TRUE,
 			mate.chr=names(chromosomes)[chrs][reversi], mate.pos=pos[reversi], mate.str=str[reversi])
 
@@ -260,20 +275,26 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 
 	tmpdir<-paste0(fname, "_temp")
 	param <- pairParam(fragments=outfrags)
-	diagnostics <- preparePairs(out, param, tmpdir, yield=yield);
-   	
-	stopifnot(sum(codes==1L)==diagnostics$same.id[["dangling"]])
-	stopifnot(sum(codes==3L)==diagnostics$same.id[["self.circle"]])
-	stopifnot(length(codes)==diagnostics$pairs[["total"]])
-	stopifnot(singles==diagnostics$singles)
+	if (pseudo) {
+		# Special behaviour; faster assignment into bins, no removal of dangling ends/self-cirlces
+		# (as these concepts are meaningless for arbitrary bins).
+		diagnostics <- prepPseudoPairs(out, param, tmpdir, output.dir=file.path(dir, "whee"))
+	} else {
+		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"))
+		
+		stopifnot(sum(codes==1L)==diagnostics$same.id[["dangling"]])
+		stopifnot(sum(codes==3L)==diagnostics$same.id[["self.circle"]])
+		stopifnot(length(codes)==diagnostics$pairs[["total"]])
+		stopifnot(singles==diagnostics$singles)
 
-	# No support for testing chimeras, we use a fixed example below.
-	stopifnot(diagnostics$unmapped.chimeras==0L) 
-	stopifnot(diagnostics$chimeras[["total"]]==0L)
-	stopifnot(diagnostics$chimeras[["mapped"]]==0L)
-	stopifnot(diagnostics$chimeras[["invalid"]]==0L)
+		# No support for testing chimeras, we use a fixed example below.
+		stopifnot(diagnostics$unmapped.chimeras==0L) 
+		stopifnot(diagnostics$chimeras[["total"]]==0L)
+		stopifnot(diagnostics$chimeras[["mapped"]]==0L)
+		stopifnot(diagnostics$chimeras[["invalid"]]==0L)
+	}
 
-	# Anchor/target synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
+	# Anchor1/anchor2 synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
 	offset<-c(0L, cumsum(max.cuts))
 	names(offset)<-NULL
 	indices<-diffHic:::.loadIndices(tmpdir, seqlevels(outfrags))
@@ -283,25 +304,25 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 	for (i in 1:length(max.cuts)) {
 		for (j in 1:i) {
 			stuff<-(chrs[primary]==i & chrs[secondary]==j) | (chrs[primary]==j & chrs[secondary]==i) 
-			stuff<-stuff & (codes==0L | codes==2L)
+			if (!pseudo) { stuff<-stuff & (codes==0L | codes==2L) }
 			pids<-frag.ids[primary][stuff];
 			sids<-frag.ids[secondary][stuff];
 			if (i > j) {
 				which.is.which<-chrs[primary][stuff]==i & chrs[secondary][stuff]==j
- 			    anchor<-ifelse(which.is.which, pids, sids)
-				target<-ifelse(which.is.which, sids, pids)
+ 			    anchor1<-ifelse(which.is.which, pids, sids)
+				anchor2<-ifelse(which.is.which, sids, pids)
 			} else {
-				anchor<-pmax(pids, sids)
-				target<-pmin(pids, sids)
+				anchor1<-pmax(pids, sids)
+				anchor2<-pmin(pids, sids)
 			}
-			anchor<-anchor+offset[i]
-			target<-target+offset[j]
+			anchor1<-anchor1+offset[i]
+			anchor2<-anchor2+offset[j]
 			totes<-frag.lens[stuff]
 			cur.ori<-orientations[stuff]
 			cur.insert<-inserts[stuff]
-			o<-order(anchor, target, totes, cur.ori, cur.insert)
+			o<-order(anchor1, anchor2, totes, cur.ori, cur.insert)
 
-			# Checking anchor/target/length/orientation/insert statistics (sorting to ensure comparability).
+			# Checking anchor1/anchor2/length/orientation/insert statistics (sorting to ensure comparability).
 			achr<-names(max.cuts)[i]
 			tchr<-names(max.cuts)[j]
 			if (!(achr%in%names(indices)) || !(tchr %in% names(indices[[achr]]))) { 
@@ -312,9 +333,9 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 			for (x in 1:ncol(current)) { attributes(current[,x]) <- NULL }
 			collated <- diffHic:::.getStats(current, achr==tchr, outfrags)
 			
-			o2 <- order(current$anchor.id, current$target.id, collated$length, collated$orientation, collated$insert)
-			stopifnot(identical(current$anchor.id[o2], anchor[o]))
-			stopifnot(identical(current$target.id[o2], target[o]))
+			o2 <- order(current$anchor1.id, current$anchor2.id, collated$length, collated$orientation, collated$insert)
+			stopifnot(identical(current$anchor1.id[o2], anchor1[o]))
+			stopifnot(identical(current$anchor2.id[o2], anchor2[o]))
 			stopifnot(identical(collated$length[o2], totes[o]))
 			stopifnot(identical(collated$orientation[o2], cur.ori[o]))
 			if (!identical(collated$insert[o2], cur.insert[o])) { 
@@ -336,7 +357,11 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 	if (!is.null(unlist(used))) { stop("objects left unused in the directory") }
 
 	# Length insert and orientation checking.
-	keepers<-codes==0L | codes==2L
+	if (!pseudo) { 
+		keepers<-codes==0L | codes==2L
+	} else { 
+		keepers <- !logical(length(codes)) 
+	}
 	valid.len<-frag.lens[keepers]
 	valid.insert<-inserts[keepers]
 	valid.ori<-orientations[keepers]
@@ -351,7 +376,7 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 	curdex <- curdex[curdex$otype=="H5I_DATASET",][1,]
 	returned <- h5read(tmpdir, file.path(curdex$group, curdex$name))
 	processed <- diffHic:::.getStats(returned, basename(curdex$group)==curdex$name, outfrags)
-	return(head(data.frame(anchor.id=returned$anchor.id, target.id=returned$target.id, length=processed$length,
+	return(head(data.frame(anchor1.id=returned$anchor1.id, anchor2.id=returned$anchor2.id, length=processed$length,
 		orientation=processed$orientation, insert=processed$insert)))
 }
 
@@ -359,8 +384,6 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 # Initiating testing with something fairly benign.
 
 set.seed(0)
-dir<-"hic-test"
-dir.create(dir)
 fname<-file.path(dir, "out");
 max.cuts<-c(chrA=20L, chrB=10L, chrC=5L)
 
@@ -420,6 +443,28 @@ comp(fname, npairs=1000, size=c(50, 100), max.cuts=max.cuts);
 comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
 comp(fname, npairs=1000, size=c(200, 300), max.cuts=max.cuts);
 
+max.cuts<-c(chrD=5L, chrC=6L, chrA=7L, chrE=4L, chrG=3L, chrB=1L, chrF=2L) # Shuffled.
+comp(fname, npairs=200, size=c(500, 1000), max.cuts=max.cuts)
+comp(fname, npairs=1000, size=c(50, 100), max.cuts=max.cuts);
+comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
+comp(fname, npairs=1000, size=c(200, 300), max.cuts=max.cuts);
+
+# Checking results with pseudo-ness
+
+max.cuts<-c(chrA=20L, chrB=10L, chrC=5L)
+comp(fname, npairs=20, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=50, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(200, 200))
+comp(fname, npairs=1000, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(500, 500))
+
+max.cuts<-c(chrB=20L, chrC=10L, chrA=5L) # Shuffled
+comp(fname, npairs=20, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=50, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
+comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(200, 200))
+comp(fname, npairs=1000, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(500, 500))
+
 ###################################################################################################
 # Trying to do simulations with chimeras is hellishly complicated, so we're just going to settle for 
 # consideration of chimeras with a fixed example.
@@ -453,7 +498,7 @@ printfun<-function(dir, named=NULL) {
 		for (tx in names(indices[[ax]])) {
 			extracted <- h5read(dir, file.path(ax, tx))
 			processed <- diffHic:::.getStats(extracted, ax==tx, cuts)
-			output[[ax]][[tx]] <- data.frame(anchor.id=extracted$anchor.id, target.id=extracted$target.id,
+			output[[ax]][[tx]] <- data.frame(anchor1.id=extracted$anchor1.id, anchor2.id=extracted$anchor2.id,
 				length=processed$length, orientation=processed$orientation, insert=processed$insert)
 			if (!is.null(named[[ix]])) { rownames(output[[ax]][[tx]])<-named[[ix]] }
 			ix <- ix + 1L
@@ -541,7 +586,64 @@ named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "c
 printfun(tmpdir2, named=named)
 
 ###################################################################################################
-# This tests whether they are counted properly. 
+# This tests what happens with chimeras where one of the segments is unmapped. This requires some
+# care because unmapped reads don't get CIGAR strings, which makes diagnosing 5' behaviour difficult.
+
+generator <- function(cig1, cig2, cig3, cig4) {
+    mapped <- "chrA 100"
+    unmapped <- "* 0"
+    out <- sprintf("@HD VN:1.3  SO:queryname
+@SQ SN:chrA LN:200
+x1 %i %s 200 %s * 0 0 NNNNN hhhhh
+x1 %i %s 200 %s * 0 0 NNNNN hhhhh
+x1 %i %s 200 %s * 0 0 NNNNN hhhhh
+x1 %i %s 200 %s * 0 0 NNNNN hhhhh",
+    1+64 +ifelse(cig1=="*", 4, 0),     ifelse(cig1!="*", mapped, unmapped), cig1,
+    1+64 +ifelse(cig2=="*", 4, 0)+256, ifelse(cig2!="*", mapped, unmapped), cig2,
+    1+128+ifelse(cig3=="*", 4, 0),     ifelse(cig3!="*", mapped, unmapped), cig3,
+    1+128+ifelse(cig4=="*", 4, 0)+256, ifelse(cig4!="*", mapped, unmapped), cig4)
+    return(gsub(" +", "\t", out))
+}
+fout <- file.path(dir, "umap.sam")
+
+for (scenario in list(list("*", "*", "*", "*"),
+                      list("5M5H", "*", "*", "*"),
+                      list("*", "*", "5M5H", "*"),
+                      list("*", "*", "*", "5H5M"),
+                      list("*", "5H5M", "5M5H", "*"),
+                      list("5M5H", "*", "*", "5H5M"))) {
+    writeLines(do.call(generator, scenario), con=fout)
+    sout <- Rsamtools::asBam(fout, file.path(dir, "umap"), overwrite=TRUE)
+    x <- preparePairs(sout, param=pairParam(GRanges("chrA", IRanges(c(1, 71), c(70, 200)))), file=file.path(dir, "whee.h5"))
+    stopifnot(x$pairs[["total"]]==1L)
+    stopifnot(x$pairs[["filtered"]]==1L)
+    stopifnot(x$chimeras[["total"]]==1L)
+    stopifnot(x$chimeras[["mapped"]]==0L)
+}
+
+writeLines(generator("5M5H", "*", "5M5H", "*"), con=fout)
+sout <- Rsamtools::asBam(fout, file.path(dir, "umap"), overwrite=TRUE)
+x <- preparePairs(sout, param=pairParam(GRanges("chrA", IRanges(c(1, 71), c(70, 200)))), file=file.path(dir, "whee.h5"))
+stopifnot(x$pairs[["total"]]==1L)
+stopifnot(x$pairs[["mapped"]]==1L)
+stopifnot(x$chimeras[["total"]]==1L)
+stopifnot(x$chimeras[["mapped"]]==1L)
+stopifnot(x$chimeras[["multi"]]==0L)
+
+for (scenario in list(list("5M5H", "5H5M", "5M5H", "*"),
+                      list("5M5H", "*", "5M5H", "5H5M"),
+                      list("5M5H", "5H5M", "5M5H", "5H5M"))) {
+    writeLines(do.call(generator, scenario), con=fout)
+    sout <- Rsamtools::asBam(fout, file.path(dir, "umap"), overwrite=TRUE)
+    x <- preparePairs(sout, param=pairParam(GRanges("chrA", IRanges(c(1, 71), c(70, 200)))), file=file.path(dir, "whee.h5"))
+    stopifnot(x$pairs[["total"]]==1L)
+    stopifnot(x$pairs[["mapped"]]==1L)
+    stopifnot(x$chimeras[["total"]]==1L)
+    stopifnot(x$chimeras[["mapped"]]==1L)
+    stopifnot(x$chimeras[["multi"]]==1L)
+}
+
+###################################################################################################
 
 unlink(dir, recursive=TRUE) # Cleaning up
 

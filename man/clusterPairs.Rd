@@ -5,20 +5,24 @@
 \description{Aggregate bin pairs into local clusters for summarization.}
 
 \usage{
-clusterPairs(..., tol, upper=1e6)
+clusterPairs(..., tol, upper=1e6, index.only=FALSE)
 }
 
 \arguments{
-\item{...}{one or more \code{DIList} objects, optionally named}
-\item{tol}{a numeric scalar specifying the maximum distance between bin pairs}
-\item{upper}{a numeric scalar specifying the maximum size of each cluster}
+\item{...}{One or more InteractionSet objects, optionally named.}
+\item{tol}{A numeric scalar specifying the maximum distance between bin pairs in base pairs.}
+\item{upper}{A numeric scalar specifying the maximum size of each cluster in base pairs.}
+\item{index.only}{A logical scalar indicating whether only indices should be returned.}
+
 }
 
 \value{
-A list containing \code{indices}, a named list of integer vectors where each vector contains a cluster ID for each interaction in the corresponding input \code{DIList} object;
-\code{anchors}, a \code{GRanges} object containing the dimensions of the bounding box of each cluster on the anchor chromosome;
-and \code{targets}, a \code{GRanges} object containing the corresponding dimensions on the target chromosome;
-
+If \code{index.only=FALSE}, a named list is returned containing:
+\describe{
+\item{\code{indices}:}{A named list of integer vectors where each vector contains a cluster ID for each interaction in the corresponding input InteractionSet object.}
+\item{\code{interactions}:}{A ReverseStrictGInteractions object containing the coordinates of the sides of the bounding box for each cluster.}
+}
+If \code{index.only=TRUE}, the \code{indices} are returned directly without computing coordinates.
 }
 
 \details{
@@ -41,12 +45,17 @@ This aims to improve the spatial interpretability of the clustering result.
 
 There is no guarantee that each cluster forms a regular shape in the interaction space.
 Instead, a minimum bounding box is reported containing all bin pairs in each cluster.
-The coordinates of the box for each cluster is stored in each row of the output \code{anchors} and \code{targets}.
+The coordinates of the box for each cluster is stored in each row of the output \code{interactions}.
 The cluster ID in each \code{indices} vector represents the row index for these coordinates.
+
+If \code{index.only=TRUE}, only the indices are returned and coordinates of the bounding box are not computed. 
+This is largely for efficiency purposes when \code{clusterPairs} is called by internal functions.
 }
 
 \seealso{
-\code{\link{squareCounts}}
+\code{\link{squareCounts}},
+\code{\link{diClusters}},
+\code{\link{boxPairs}}
 }
 
 \author{
@@ -60,10 +69,11 @@ b <- 20
 regions <- GRanges(rep(c("chrA", "chrB"), c(a, b)), IRanges(c(1:a, 1:b), c(1:a, 1:b)))
 
 set.seed(3423)
-all.anchors <- sample(length(regions), 50, replace=TRUE)
-all.targets <- as.integer(runif(50, 1, all.anchors+1))
-y <- DIList(matrix(0, 50, 1), anchors=all.anchors, targets=all.targets, 
-    regions=regions, exptData=List(width=1))
+all.anchor1 <- sample(length(regions), 50, replace=TRUE)
+all.anchor2 <- as.integer(runif(50, 1, all.anchor1+1))
+y <- InteractionSet(matrix(0, 50, 1), 
+    GInteractions(anchor1=all.anchor1, anchor2=all.anchor2, regions=regions, mode="reverse"),
+    colData=DataFrame(lib.size=1000), metadata=List(width=1))
 
 # Clustering; note, small tolerances are used in this toy example.
 clusterPairs(y, tol=1)
@@ -74,12 +84,13 @@ clusterPairs(y, tol=5, upper=5)
 # Multiple bin sizes allowed.
 a2 <- a/2
 b2 <- b/2
-regions2 <- GRanges(rep(c("chrA", "chrB"), c(a2, b2)), 
+rep.regions <- GRanges(rep(c("chrA", "chrB"), c(a2, b2)), 
     IRanges(c(1:a2*2, 1:b2*2), c(1:a2*2, 1:b2*2)))
-all.anchors2 <- sample(length(regions2), 10, replace=TRUE)
-all.targets2 <- as.integer(runif(10, 1, all.anchors2+1))
-y2 <- DIList(matrix(0, 10, 1), anchors=all.anchors2, targets=all.targets2, 
-    regions=regions2, exptData=List(width=2))
+rep.anchor1 <- sample(length(rep.regions), 10, replace=TRUE)
+rep.anchor2 <- as.integer(runif(10, 1, rep.anchor1+1))
+y2 <- InteractionSet(matrix(0, 10, 1), 
+    GInteractions(anchor1=rep.anchor1, anchor2=rep.anchor2, regions=rep.regions, mode="reverse"), 
+    colData=DataFrame(lib.size=1000), metadata=List(width=2))
 
 clusterPairs(y, y2, tol=1)
 clusterPairs(y, y2, tol=3)

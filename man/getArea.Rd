@@ -10,7 +10,7 @@ getArea(data, bp=TRUE)
 }
 
 \arguments{
-\item{data}{a \code{DIList} object}
+\item{data}{an InteractionSet object}
 \item{bp}{a logical scalar indicating whether areas should be reported in base-pair terms}
 }
 
@@ -42,7 +42,7 @@ This is because bins will not partially overlap in any significant manner when c
 }
 
 \examples{
-# Making up a DIList for binned data.
+# Making up an InteractionSet for binned data.
 nfrags <- 50
 frag.sizes <- as.integer(runif(nfrags, 5, 10))
 ends <- cumsum(frag.sizes)
@@ -51,8 +51,10 @@ param <- pairParam(cuts)
 
 regions <- diffHic:::.getBinID(cuts, 20)$region
 all.combos <- combn(length(regions), 2)
-y <- DIList(matrix(0, ncol(all.combos), 1), anchors=all.combos[2,],
-    targets=all.combos[1,], regions=regions, exptData=List(param=param, width=20))
+y <- InteractionSet(matrix(0, ncol(all.combos), 1), 
+    GInteractions(anchor1=all.combos[2,], anchor2=all.combos[1,], 
+        regions=regions, mode="reverse"), 
+    colData=DataFrame(lib.size=1000), metadata=List(param=param, width=20))
 
 # Generating partially overlapping regions.
 set.seed(3424)
@@ -62,8 +64,10 @@ regions <- GRanges("chrA", IRanges(start(cuts)[rs], end(cuts)[re]))
 regions$nfrags <- re - rs + 1L
 regions <- sort(regions)
 all.combos <- combn(length(regions), 2)
-y2 <- DIList(matrix(0, ncol(all.combos), 1), anchors=all.combos[2,],
-    targets=all.combos[1,], regions=regions, exptData=List(param=param))
+y2 <- InteractionSet(matrix(0, ncol(all.combos), 1), 
+    GInteractions(anchor1=all.combos[2,], anchor2=all.combos[1,], 
+        regions=regions, mode="reverse"),
+    colData=DataFrame(lib.size=1000), metadata=List(param=param))
 
 #### Getting areas. ####
 

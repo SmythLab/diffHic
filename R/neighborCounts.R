@@ -5,7 +5,7 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 #
 # written by Aaron Lun
 # created 21 May 2015
-# last modified 22 July 2015
+# last modified 22 November 2015
 {
 	nlibs <- length(files)
 	if (nlibs==0L) {
@@ -54,21 +54,21 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)
-    for (anchor in names(overall)) {
-        current <- overall[[anchor]]
-		for (target in names(current)) {
-			pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
+    for (anchor1 in names(overall)) {
+        current <- overall[[anchor1]]
+		for (anchor2 in names(current)) {
+			pairs <- .baseHiCParser(current[[anchor2]], files, anchor1, anchor2, 
 				chr.limits=frag.by.chr, discard=discard, cap=cap)
 			
 			# Aggregating counts in C++ to obtain count combinations for each bin pair.
 			out <- .Call(cxx_count_background, pairs, new.pts$id, flank, exclude, filter, 
-				bin.by.chr$first[[target]], bin.by.chr$last[[target]], bin.by.chr$first[[anchor]], bin.by.chr$last[[anchor]],
+				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]],
 				maxit, tol, offsets, disp, prior.count)
 			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
 			# Storing counts and locations. 
-			if (any(out[[1]] < out[[2]])) { stop("anchor ID should not be less than target ID") }
+			if (any(out[[1]] < out[[2]])) { stop("anchor2 ID should not be less than anchor1 ID") }
 			out.a[[idex]] <- out[[1]]
  			out.t[[idex]] <- out[[2]]
 			out.counts[[idex]] <- out[[3]]
@@ -83,9 +83,11 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 	out.f <- log2(unlist(out.filter))
 	out.counts <- do.call(rbind, out.counts)
 
-	return(list(interaction=DIList(counts=out.counts, totals=full.sizes, 
-		anchors=out.a, targets=out.t, regions=new.pts$region,
-		exptData=List(param=param, width=width)), enrichment=out.f))
+	out.IS <- InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
+		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=new.pts$region, mode="reverse"), 
+        metadata=List(param=param, width=width))
+    mcols(out.IS)$enrichment <- out.f
+    return(out.IS)
 }
 
 

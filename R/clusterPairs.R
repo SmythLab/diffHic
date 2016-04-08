@@ -1,4 +1,4 @@
-clusterPairs <- function(..., tol, upper=1e6) 
+clusterPairs <- function(..., tol, upper=1e6, index.only=FALSE) 
 # This function examines the bin pairs in two-dimensional space and 
 # clusters those pairs which are close together. Specifically, it does 
 # so if the Chebyshev distance between the regions is less than 'tol'.
@@ -7,20 +7,21 @@ clusterPairs <- function(..., tol, upper=1e6)
 #
 # written by Aaron Lun
 # created 6 December 2013
-# last modified 22 July 2015
+# last modified 8 December 2015
 {
 	tol <- as.integer(tol)
 	stopifnot(tol>=0L) # Minimum overlap not supported.
 	upper <- as.integer(upper)
 
 	all.data <- list(...)
+    lapply(all.data, FUN=.check_StrictGI)
 	achrs <- tchrs <- astarts <- aends <- tstarts <- tends <- list()
 	for (x in seq_along(all.data)) {
 		data <- all.data[[x]]
 		region <- regions(data)
 		allchrs <- as.character(seqnames(region))
-		aid <- anchors(data, id=TRUE)
-		tid <- targets(data, id=TRUE)
+		aid <- anchors(data, type="first", id=TRUE)
+		tid <- anchors(data, type="second", id=TRUE)
 
 		achrs[[x]] <- allchrs[aid]
 		tchrs[[x]] <- allchrs[tid]
@@ -45,9 +46,14 @@ clusterPairs <- function(..., tol, upper=1e6)
 	tstarts <- tstarts[ro]
 	aends <- aends[ro]
 	tends <- tends[ro]
+
 	n <- length(ro)
-	is.new <- which(c(TRUE, achrs[-1]!=achrs[-n] | tchrs[-1]!=tchrs[-n]))
-	upnext <- c(is.new[-1]-1L, n)
+    if (n) { 
+        is.new <- which(c(TRUE, achrs[-1]!=achrs[-n] | tchrs[-1]!=tchrs[-n]))
+        upnext <- c(is.new[-1]-1L, n)
+    } else {
+        is.new <- upnext <- integer(0)
+    }
 
 	# Now, running through.
 	all.ids <- integer(n)
@@ -74,9 +80,11 @@ clusterPairs <- function(..., tol, upper=1e6)
 		bonus <- bonus + max(out)
 	}
 
-	# Getting the bounding box for each cluster.
-	min.box <- .minBoundingBox(all.ids, achrs, astarts, aends, tchrs, tstarts, tends, seqinfo(region))
-	all.ids[ro] <- all.ids	
+    # Rearranging the indices to correspond to the output.
+    if (!index.only) { 
+        min.box <- .minBoundingBox(all.ids, achrs, astarts, aends, tchrs, tstarts, tends, seqinfo(region))
+    }
+    all.ids[ro] <- all.ids	
 	indices <- list()
 	last <- 0
 	for (x in seq_along(all.data)) {
@@ -85,7 +93,13 @@ clusterPairs <- function(..., tol, upper=1e6)
 		last <- last + currows
 	}
 	names(indices) <- names(all.data)
-	return(list(indices=indices, anchors=min.box$anchors, targets=min.box$targets))
+    if (index.only) { 
+        return(indices) 
+    }
+
+    # Getting the bounding box for each cluster, if so desired.
+    output <- GInteractions(min.box$anchors, min.box$targets, mode="reverse")
+	return(list(indices=indices, interactions=output))
 }
 
 # No need to consider special behaviour beyond the diagonal.

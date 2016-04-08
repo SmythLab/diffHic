@@ -16,8 +16,7 @@ marginCounts(files, param, width=50000)
 }
 
 \value{
-A \code{DIList} object containing the marginal counts for each bin.
-Anchor and target regions are guaranteed to be identical.
+A RangedSummarizedExperiment object containing the marginal counts for each bin.
 }
 
 \details{
@@ -25,11 +24,9 @@ The genome is first split into non-overlapping adjacent bins of size \code{width
 The marginal count for each bin is defined as the number of reads in the library mapped to the bin.
 This acts as a proxy for genomic coverage by treating Hi-C data as single-end.
 
-Even though counts do not correspond to interactions, a \code{DIList} object is still used to store the output for convenience.
-Bin coordinates can be extracted as the anchor or target intervals in the output.
-Each row of the output refers to a single bin in the linear genome, instead of a bin pair in the interaction space.
-
-% Cleaner than pulling out a SummarizedExperiment from the middle of nowhere.
+Each row of the output RangedSummarizedExperiment refers to a single bin in the linear genome, instead of a bin pair in the interaction space.
+The count matrix for all row can be extracted using the \code{assay} method.
+Bin coordinates can be extracted using the \code{rowRanges} method.
 
 Larger marginal counts can be collected by increasing the \code{width} value. 
 However, this comes at the cost of spatial resolution as adjacent events in the same bin can no longer be distinguished. 
@@ -50,19 +47,19 @@ invisible(preparePairs(hic.file, param, fout))
 
 # Collating to count combinations.
 mar <- marginCounts(fout, param, width=10)
-head(counts(mar))
+head(assay(mar))
 mar <- marginCounts(fout, param, width=50)
-head(counts(mar))
+head(assay(mar))
 mar <- marginCounts(fout, param, width=100)
-head(counts(mar))
+head(assay(mar))
 
 # Attempting with other parameters.
 mar <- marginCounts(fout, reform(param, restrict="chrA"), width=50)
-head(counts(mar))
+head(assay(mar))
 mar <- marginCounts(fout, reform(param, cap=1), width=50)
-head(counts(mar))
+head(assay(mar))
 mar <- marginCounts(fout, reform(param, discard=GRanges("chrA", IRanges(1, 50))), width=50)
-head(counts(mar))
+head(assay(mar))
 
 \dontshow{
 unlink(fout, recursive=TRUE)
@@ -73,7 +70,7 @@ unlink(fout, recursive=TRUE)
 
 \seealso{
 \code{\link{squareCounts}},
-\code{\link{DIList-class}}
+\code{\link[SummarizedExperiment]{RangedSummarizedExperiment-class}}
 }
 
 \keyword{counting}

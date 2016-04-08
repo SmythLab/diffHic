@@ -1,21 +1,23 @@
-boxPairs <- function(..., reference, minbox=FALSE)
+boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 # This function reports bin pairs that are nested within other bin pairs.  The
 # idea is to consolidate smaller bin pairs into their larger counterparts for
 # summarization of analyses involving multiple bin sizes.
 #
 # written by Aaron Lun
 # created 3 June 2014
-# last modified 22 July 2015
+# last modified 8 December 2015
 {
 	all.hits <- list(...)
+    lapply(all.hits, FUN=.check_StrictGI)
 	nk <- length(all.hits)
 	if (missing(reference)) { 
-		reference <- max(sapply(all.hits, FUN=function(x) { exptData(x)$width }))
+		reference <- max(sapply(all.hits, FUN=function(x) { metadata(x)$width }))
 	}
-	fragments <- exptData(all.hits[[1]])$param$fragments
+	fragments <- metadata(all.hits[[1]])$param$fragments
 	for (x in all.hits[-1]) { 
-		if (!identical(exptData(x)$param$fragments, fragments)) {
-			stop("fragment boundaries should be the same between DIList objects")
+        curfrag <- metadata(x)$param$fragments
+		if (length(curfrag)!=length(fragments) || any(curfrag!=fragments)) { 
+			stop("fragment boundaries should be the same between InteractionSet objects")
 		}
 	}
 	parents <- .getBinID(fragments, reference)$region
@@ -30,8 +32,8 @@ boxPairs <- function(..., reference, minbox=FALSE)
 		olap <- findOverlaps(regions(current), parents, type="within", select="first")
 		if (any(is.na(olap))) { stop("smaller bins must be fully contained within larger bins") }
 		
-		all.a[[x]] <- olap[anchors(current, id=TRUE)]
-		all.t[[x]] <- olap[targets(current, id=TRUE)]
+		all.a[[x]] <- olap[anchors(current, type="first", id=TRUE)]
+		all.t[[x]] <- olap[anchors(current, type="second", id=TRUE)]
 		all.mode[[x]] <- rep(x, ncur)
 		all.idx[[x]] <- seq_len(ncur)
 		num.pairs[[x]] <- ncur
@@ -61,14 +63,17 @@ boxPairs <- function(..., reference, minbox=FALSE)
 		indices[[x]] <- current.out
 	}
 	names(indices) <- names(all.hits)
+    if (index.only) { 
+        return(indices)
+    }
 	
 	# Selecting the boundaries to report.
 	if (minbox) {
 		a.chrs <- a.starts <- a.ends <- t.chrs <- t.starts <- t.ends <- list()
 		for (x in seq.it.nk) {
 			current <- all.hits[[x]]
-			aid <- anchors(current, id=TRUE)
-			tid <- targets(current, id=TRUE)
+			aid <- anchors(current, type="first", id=TRUE)
+			tid <- anchors(current, type="second", id=TRUE)
 			rstarts <- start(regions(current))
 			rends <- end(regions(current))
 			rchrs <- as.character(seqnames(regions(current)))
@@ -81,11 +86,20 @@ boxPairs <- function(..., reference, minbox=FALSE)
 		}
 		boxed <- .minBoundingBox(unlist(indices), unlist(a.chrs), unlist(a.starts), unlist(a.ends), 
 			unlist(t.chrs), unlist(t.starts), unlist(t.ends), seqinfo(parents))
-		anchors <- boxed$anchors
-		targets <- boxed$targets
+        output <- GInteractions(boxed$anchors, boxed$targets, mode="reverse")
 	} else {
-		anchors <- parents[all.a[is.diff]]
-		targets <- parents[all.t[is.diff]]
+        output <- GInteractions(all.a[is.diff], all.t[is.diff], parents, mode="reverse")
 	}
-	return(list(indices=indices, anchors=anchors, targets=targets))
+	return(list(indices=indices, interactions=output))
 }
+
+.check_StrictGI <- function(x) {
+    if (!is(x, "InteractionSet")) { 
+        stop("input object must be an InteractionSet")
+    } 
+    if (!is(interactions(x), "ReverseStrictGInteractions")) { 
+        stop("'interactions' slot of InteractionSet must be a 'ReverseStrictGInteractions'")
+    }
+    invisible(return(NULL))
+}
+

@@ -21,7 +21,8 @@ neighborCounts(files, param, width=50000, filter=1L, flank=NULL,
 }
 
 \value{
-A list object is returned containing \code{interaction}, a \code{DIList} object with the number of read pairs for each bin pair across all libraries; and \code{enrichment}, a numeric vector of enrichment statistics for each bin pair in \code{interaction}.
+An InteractionSet object is returned with the number of read pairs for each bin pair across all libraries.
+In the \code{mcols}, the \code{enrichment} field contains a numeric vector of enrichment statistics for each bin pair.
 }
 
 \details{
@@ -44,16 +45,16 @@ invisible(preparePairs(hic.file, param, file=fout))
 # Collating to count combinations.
 y <- neighborCounts(fout, param, width=50, filter=2, 
     flank=5, prior.count=2)
-y$interaction
-y$enrichment
+y
+mcols(y)$enrichment
 
 # Practically identical to a more memory-intensive call.
 ref <- squareCounts(fout, param, width=50, filter=1)
-keep <- rowSums(counts(ref)) >= 2
+keep <- rowSums(assay(ref)) >= 2
 enriched <- enrichedPairs(ref, flank=5, prior.count=2)
 
-stopifnot(identical(ref[keep,], y$interaction))
-stopifnot(all(abs(enriched[keep] - y$enrichment) < 1e-6))
+stopifnot(identical(anchors(ref[keep,]), anchors(y)))
+stopifnot(all(abs(enriched[keep] - mcols(y)$enrichment) < 1e-6))
 
 \dontshow{
 unlink(fout, recursive=TRUE)

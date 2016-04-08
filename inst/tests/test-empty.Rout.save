@@ -1,7 +1,7 @@
 
-R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
-Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R Under development (unstable) (2016-02-24 r70217) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -24,15 +24,9 @@ Type 'q()' to quit R.
 > # Don't worry about cases involving empty files; 
 > # that just shouldn't be a practical concern.
 > 
-> ghost <- DIList(matrix(0, nrow=0, ncol=1), anchors=integer(0),
-+ 	targets=integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)))
-> 
-> getDistance(ghost)
-logical(0)
-> getDistance(ghost, type="gap")
-logical(0)
-> getDistance(ghost, type="span")
-logical(0)
+> ghost <- InteractionSet(matrix(0, nrow=0, ncol=1), 
++     GInteractions(integer(0), integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)), mode="reverse"),
++     colData=DataFrame(totals=1e6))
 > 
 > getArea(ghost)
 numeric(0)
@@ -41,10 +35,10 @@ numeric(0)
 > 
 > f.out <- "empty.h5"
 > param <- pairParam(GRanges("chrA", IRanges(1:5, 1:5)))
-> savePairs(data.frame(anchor.id=integer(0), target.id=integer(0)), file=f.out, param=param)
+> savePairs(data.frame(anchor1.id=integer(0), anchor2.id=integer(0)), file=f.out, param=param)
 > 
 > loadChromos(f.out) # While we're here, let's see what happens.
-[1] anchors targets
+[1] anchor1 anchor2
 <0 rows> (or 0-length row.names)
 > unlink(f.out)
 > 
@@ -53,7 +47,7 @@ $abundances
 numeric(0)
 
 $threshold
-[1] 19.93157
+[1] 0.9999942
 
 Warning message:
 In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = .makeEmpty(data,  :
@@ -63,14 +57,14 @@ $abundances
 numeric(0)
 
 $threshold
-[1] NaN
+[1] 0.9999942
 
 $ref
 $ref$abundances
 numeric(0)
 
 $ref$threshold
-[1] 19.93157
+[1] 0.9999942
 
 
 Warning message:
@@ -125,12 +119,13 @@ $max
 [39] 0 0 0 0 0 0 0 0 0 0 0 0
 
 > 
-> try(normalizeCNV(ghost, ghost)) # locfit isn't as robust as loessFit
-Error in locfit(i.fc ~ cov.fun, maxk = maxk, ..., lfproc = locfit.robust) : 
-  fewer than one row in the data
+> ghost.ranges <- SummarizedExperiment(matrix(0, 0, 0), GRanges())
+> try(normalizeCNV(ghost, ghost.ranges)) # locfit isn't as robust as loessFit
+Error in if (mean.lib.size == 0) { : 
+  missing value where TRUE/FALSE needed
 > 
-> matchMargins(ghost, ghost)
-[1] amatch tmatch
+> matchMargins(ghost, ghost.ranges)
+[1] anchor1 anchor2
 <0 rows> (or 0-length row.names)
 > 
 > asDGEList(ghost)
@@ -140,7 +135,7 @@ $counts
 
 $samples
         group lib.size norm.factors
-Sample1     1        0            1
+Sample1     1    1e+06            1
 
 > 
 > normOffsets(ghost)
@@ -148,7 +143,33 @@ Sample1     1        0            1
 > normOffsets(ghost, type="loess")
      [,1]
 > 
+> diClusters(ghost, data.frame(PValue=integer(0), logFC=numeric(0)), target=0.05, cluster.args=list(tol=1))
+$indices
+$indices[[1]]
+integer(0)
+
+
+$interactions
+ReverseStrictGInteractions object with 0 interactions and 0 metadata columns:
+   seqnames1   ranges1     seqnames2   ranges2
+       <Rle> <IRanges>         <Rle> <IRanges>
+  -------
+  regions: 0 ranges and 0 metadata columns
+  seqinfo: 1 sequence from an unspecified genome; no seqlengths
+
+$FDR
+[1] 0
+
+> 
+> annotatePairs(ghost, indices=integer(0), regions=GRanges())
+$anchor1
+character(0)
+
+$anchor2
+character(0)
+
+> 
 > 
 > proc.time()
    user  system elapsed 
-  5.856   0.163   6.012 
+  8.064   0.192   8.344 

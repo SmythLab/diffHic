@@ -7,21 +7,24 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 #
 # written by Aaron Lun
 # created 11 September 2014
-# last modified 22 July 2015
+# last modified 8 December 2015
 {
+    # Checking for proper type.
+    .check_StrictGI(data)
+
 	cont.cor <- 0.5
 	cont.cor.scaled <- cont.cor * data$totals/mean(data$totals)
-	ab <- aveLogCPM(counts(data), lib.size=data$totals, prior.count=cont.cor)
-	mave <- aveLogCPM(counts(margins), lib.size=margins$totals, prior.count=prior.count)
+	ab <- aveLogCPM(assay(data), lib.size=data$totals, prior.count=cont.cor)
+	mave <- aveLogCPM(assay(margins), lib.size=margins$totals, prior.count=prior.count)
 	if (!identical(margins$totals, data$totals)) { 
 		warning("library sizes should be identical for margin and data objects")
 	}
 
 	# Generating covariates.
-	mab <- cpm(counts(margins), lib.size=margins$totals, log=TRUE, prior.count=prior.count) - mave
+	mab <- cpm(assay(margins), lib.size=margins$totals, log=TRUE, prior.count=prior.count) - mave
 	matched <- matchMargins(data, margins)	
-	ma.adjc <- mab[matched$amatch,,drop=FALSE] 
-	mt.adjc <- mab[matched$tmatch,,drop=FALSE]
+	ma.adjc <- mab[matched$anchor1,,drop=FALSE] 
+	mt.adjc <- mab[matched$anchor2,,drop=FALSE]
 
 	offsets <- matrix(0, nrow=nrow(data), ncol=ncol(data))
 	for (lib in seq_len(ncol(data))) {
@@ -35,7 +38,7 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 		all.cov <- list(mfc1, mfc2, ab)
 	
 		# Fitting a loess surface with the specified covariates.	
-		i.fc <- log2(counts(data)[,lib] + cont.cor.scaled[lib]) - ab 
+		i.fc <- log2(assay(data)[,lib] + cont.cor.scaled[lib]) - ab 
 		cov.fun <- do.call(lp, c(all.cov, nn=span, deg=1))
 		fit <- locfit(i.fc ~ cov.fun, maxk=maxk, ..., lfproc=locfit.robust) 
 		offsets[,lib] <- fitted(fit)
@@ -66,19 +69,20 @@ matchMargins <- function(data, margins)
 #
 # written by Aaron Lun
 # created 17 September 2014	
-# last modified 20 March 2015 
+# last modified 8 December 2015 
 {
-	# Checking to ensure that the regions are the same.
-	if (!identical(regions(data), regions(margins))) {
-		stop("regions must be the same for bin pair and marginal counts") 
-	}
-	all.indices <- integer(length(regions(data)))
-	id <- anchors(margins, id=TRUE)
-	all.indices[id] <- seq_along(id)
-	amatch <- all.indices[anchors(data, id=TRUE)]
-	if (any(amatch==0L)) { stop("non-empty anchor in data that is not in margins") }
-	tmatch <- all.indices[targets(data, id=TRUE)]
-	if (any(tmatch==0L)) { stop("non-empty target in data that is not in margins") }
-	
-	return(data.frame(amatch, tmatch))
+    .check_StrictGI(data)
+    anchor1 <- anchors(data, type="first", id=TRUE)
+    anchor2 <- anchors(data, type="second", id=TRUE)
+
+	# Checking to ensure that the regions are the same, and matching otherwise.
+	if (any(regions(data)!=rowRanges(margins))) {
+        m <- match(regions(data), rowRanges(margins))
+        anchor1 <- m[anchor1]
+        anchor2 <- m[anchor2]
+        if (any(is.na(anchor1)) || any(is.na(anchor2))) {
+            stop("regions in 'data' missing from 'margins'")
+        }
+    }
+	return(data.frame(anchor1=anchor1, anchor2=anchor2))
 }	

@@ -1,7 +1,7 @@
 
-R version 3.2.0 (2015-04-16) -- "Full of Ingredients"
+R Under development (unstable) (2015-12-22 r69809) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -53,51 +53,76 @@ $chimeras
 6     80           0    114
 > 
 > loadChromos(fout)
-  anchors targets
+  anchor1 anchor2
 1    chrA    chrA
 2    chrB    chrA
 3    chrB    chrB
 > head(loadData(fout, "chrA", "chrA"))
-  anchor.id target.id anchor.pos target.pos anchor.len target.len
-1         2         1         49         14         -5         10
-2         2         1         79          9        -10         10
-3         2         1         65         21         10        -10
-4         4         1        156          6        -10        -10
-5         4         2        141         80         -5         10
-6         4         2        154         50         10         10
+  anchor1.id anchor2.id anchor1.pos anchor2.pos anchor1.len anchor2.len
+1          2          1          49          14          -5          10
+2          2          1          79           9         -10          10
+3          2          1          65          21          10         -10
+4          4          1         156           6         -10         -10
+5          4          2         141          80          -5          10
+6          4          2         154          50          10          10
 > head(loadData(fout, "chrA", "chrB"))
-  anchor.id target.id anchor.pos target.pos anchor.len target.len
-1         5         2         19         44         10        -10
-2         5         3         14        105         10        -10
-3         6         1         65         19          5         10
-4         6         2         24         90         -5          5
-5         6         3         24        100         -5        -10
-6         6         3         24         95         -5        -10
+  anchor1.id anchor2.id anchor1.pos anchor2.pos anchor1.len anchor2.len
+1          5          2          19          44          10         -10
+2          5          3          14         105          10         -10
+3          6          1          65          19           5          10
+4          6          2          24          90          -5           5
+5          6          3          24         100          -5         -10
+6          6          3          24          95          -5         -10
 Warning message:
-In value[[3L]](cond) : anchor and target definitions are reversed
+In value[[3L]](cond) : anchor definitions are reversed
 > 
 > # Loading the counts.
 > data <- squareCounts(fout, param, width=50, filter=1)
 > data
-DIList object for 1 library with 10 pairs across 6 regions
+class: InteractionSet 
+dim: 10 1 
+metadata(2): param width
+assays(1): counts
+rownames: NULL
+rowData names(0):
+colnames: NULL
+colData names(1): totals
+type: ReverseStrictGInteractions
+regions: 6
 > 
 > margins <- marginCounts(fout, param, width=50)
 > margins
-DIList object for 1 library with 6 pairs across 6 regions
+class: RangedSummarizedExperiment 
+dim: 6 1 
+metadata(1): param
+assays(1): counts
+rownames: NULL
+rowData names(1): nfrags
+colnames: NULL
+colData names(1): totals
 > totalCounts(fout, param)
 [1] 17
 > 
 > regions <- GRanges("chrA", IRanges(c(1, 100, 150), c(20, 140, 160)))
 > connectCounts(fout, param, regions=regions, filter=1L)
-DIList object for 1 library with 2 pairs across 3 regions
+class: InteractionSet 
+dim: 2 1 
+metadata(1): param
+assays(1): counts
+rownames: NULL
+rowData names(0):
+colnames: NULL
+colData names(1): totals
+type: ReverseStrictGInteractions
+regions: 3
 > 
 > # Checking some values.
 > head(getArea(data))
 [1] 2208 2304 2208 2208 3312 3174
-> head(getDistance(data))
+> head(pairdist(data))
 [1]  47 140  93  47  NA  NA
 > 
-> anchors(data)
+> anchors(data, type="first")
 GRanges object with 10 ranges and 1 metadata column:
        seqnames     ranges strand |    nfrags
           <Rle>  <IRanges>  <Rle> | <integer>
@@ -113,7 +138,7 @@ GRanges object with 10 ranges and 1 metadata column:
   [10]     chrB [ 70,  92]      * |         1
   -------
   seqinfo: 2 sequences from an unspecified genome
-> targets(data)
+> anchors(data, type="second")
 GRanges object with 10 ranges and 1 metadata column:
        seqnames    ranges strand |    nfrags
           <Rle> <IRanges>  <Rle> | <integer>
@@ -129,7 +154,7 @@ GRanges object with 10 ranges and 1 metadata column:
   [10]     chrB [70,  92]      * |         1
   -------
   seqinfo: 2 sequences from an unspecified genome
-> counts(data)
+> assay(data)
       [,1]
  [1,]    3
  [2,]    1
@@ -161,9 +186,16 @@ DataFrame with 1 row and 1 column
      totals
   <integer>
 1        17
-> exptData(data)
-List of length 2
-names(2): param width
+> metadata(data)
+$param
+Genome contains 7 restriction fragments across 2 chromosomes
+No discard regions are specified
+No limits on chromosomes for read extraction
+No cap on the read pairs per pair of restriction fragments
+
+$width
+[1] 50
+
 > 
 > asDGEList(data)
 An object of class "DGEList"
@@ -198,32 +230,32 @@ Sample1     a       17            2
 > nlibs <- 4
 > anchors <- sample(npts, npairs, replace=TRUE)
 > targets <- sample(npts, npairs, replace=TRUE)
-> dummy <- DIList(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
-+     totals=runif(nlibs, 1e6, 2e6), anchors=pmax(anchors, targets), targets=pmin(anchors, targets),
-+     regions=GRanges("chrA", IRanges(1:npts, 1:npts)))
+> dummy <- InteractionSet(matrix(as.integer(rpois(npairs*nlibs, runif(npairs, 10, 100))), nrow=npairs),
++     colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
++     GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
 > 
 > normOffsets(dummy)
-[1] 1.0797832 0.8315380 0.9929251 1.1216694
+[1] 1.0797833 0.8315381 0.9929250 1.1216692
 > normOffsets(dummy, logratio=0)
-[1] 1.0811624 0.8302083 0.9910453 1.1241609
+[1] 1.0811625 0.8302084 0.9910453 1.1241607
 > normOffsets(dummy, lib.sizes=c(10, 20, 15, 25))
 [1] 1.6546731 0.8295975 1.1041603 0.6597634
 > head(normOffsets(dummy, type="loess"))
              [,1]          [,2]         [,3]         [,4]
-[1,] -0.001441205  0.0009288939  0.004926866 -0.004414554
-[2,]  0.005400644  0.0041595563 -0.006896160 -0.002664040
-[3,]  0.003115173 -0.0016344141  0.001783304 -0.003264063
-[4,]  0.005334707  0.0035367045 -0.005104467 -0.003766944
-[5,] -0.003505621  0.0163064678 -0.001889799 -0.010911049
-[6,]  0.004070284  0.0090487766 -0.008279824 -0.004839236
+[1,] -0.001441205  0.0009288925  0.004926866 -0.004414553
+[2,]  0.005400642  0.0041595535 -0.006896159 -0.002664036
+[3,]  0.003115172 -0.0016344146  0.001783304 -0.003264061
+[4,]  0.005334705  0.0035367018 -0.005104467 -0.003766940
+[5,] -0.003505626  0.0163064598 -0.001889796 -0.010911038
+[6,]  0.004070281  0.0090487722 -0.008279823 -0.004839230
 > head(normOffsets(dummy, type="loess", span=0.5))
               [,1]          [,2]         [,3]          [,4]
-[1,] -0.0024209796  0.0006743125  0.003720243 -0.0019735760
-[2,]  0.0063348114  0.0041435478 -0.006281532 -0.0041968270
-[3,] -0.0009160649 -0.0004010364  0.002050126 -0.0007330249
-[4,]  0.0067668245  0.0036523894 -0.005981150 -0.0044380642
-[5,] -0.0016877752  0.0152247089 -0.006733300 -0.0068036332
-[6,]  0.0031066340  0.0085339739 -0.006865168 -0.0047754397
+[1,] -0.0024209802  0.0006743114  0.003720243 -0.0019735742
+[2,]  0.0063348094  0.0041435451 -0.006281532 -0.0041968230
+[3,] -0.0009160654 -0.0004010371  0.002050126 -0.0007330237
+[4,]  0.0067668226  0.0036523870 -0.005981149 -0.0044380604
+[5,] -0.0016877799  0.0152247018 -0.006733298 -0.0068036242
+[6,]  0.0031066311  0.0085339697 -0.006865167 -0.0047754340
 > 
 > # Playing around with some bin counts.
 > stuff <- correctedContact(data)
@@ -249,4 +281,4 @@ Sample1     a       17            2
 > 
 > proc.time()
    user  system elapsed 
- 15.676   0.682  16.646 
+  7.467   0.220   7.702 

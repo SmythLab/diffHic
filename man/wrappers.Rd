@@ -10,6 +10,9 @@
 
 \description{
 Convenience wrappers for statistical routines operating on DIList objects.
+
+\bold{NOTE:} These methods are all deprecated, along with the DIList class itself.
+Users can apply the same methods to InteractionSet objects.
 }
 
 \usage{
@@ -42,28 +45,3 @@ For \code{asDGEList}, a \code{DGEList} object is returned.
 
 \author{Aaron Lun}
 
-\examples{
-blah <- DIList(counts=matrix(c(1,1,2,2,3,3,4,4,5,5,6,6), ncol=2), 
-    totals=c(10L, 10L), anchors=c(1,2,3,4,5,6), targets=c(1,1,2,2,3,3), 
-	regions=GRanges("chrA", IRanges(10+1:20, 2+21:40)))
-
-asDGEList(blah)
-asDGEList(blah, lib.sizes=c(1,2)) # Manually set to some other value.
-asDGEList(blah, group=c("a", "b")) 
-
-normOffsets(blah)
-normOffsets(blah, lib.sizes=c(1,2)) # Manually set to some other value.
-normOffsets(blah, logratioTrim=0)
-normOffsets(blah, type="loess")
-
-c(blah, blah)
-c(blah[1:2,], blah[3:4,], add.totals=FALSE)
-}
-
-\seealso{
-\code{\link{DGEList}},
-\code{\link{normOffsets}},
-\code{\link{squareCounts}}
-}
-
-\keyword{normalization}

@@ -7,10 +7,10 @@ suppressPackageStartupMessages(require(rhdf5))
 tmp<-"temp-pairs"
 dir.create(tmp)
 savecomp<-function(n, nfrags, nchrs) {
-	# Simulating the dudes (target<=anchor at all times).
+	# Simulating the dudes (anchor2<=anchor1 at all times).
 	ai<-as.integer(runif(n, 1, nfrags))
 	ti<-as.integer(runif(n, 1, nfrags))
-	collected <- data.frame(anchor.id=pmax(ai, ti), target.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
+	collected <- data.frame(anchor1.id=pmax(ai, ti), anchor2.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
 
 	# Simulating the fragment IDs.
 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
@@ -28,7 +28,7 @@ savecomp<-function(n, nfrags, nchrs) {
 		reread<-h5read(newdir, file.path(indices$group[x], indices$name[x]))
 		for (y in 1:ncol(reread)) { attributes(reread[,y]) <- NULL }
 		regot[[x]] <- reread
-		o <- order(reread$anchor.id, reread$target.id)
+		o <- order(reread$anchor1.id, reread$anchor2.id)
 		stopifnot(all(diff(o)==1L)) 
 
 		uniq.a<-unique(chrs[reread[,1]])
@@ -39,8 +39,8 @@ savecomp<-function(n, nfrags, nchrs) {
 
 	# Checking that the stored result is the same.
 	regot <- do.call(rbind, regot)
-	regot <- regot[order(regot$anchor.id, regot$target.id, regot$junk, regot$more.junk),]
-	original <- collected[order(collected$anchor.id, collected$target.id, collected$junk, collected$more.junk),]
+	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk, regot$more.junk),]
+	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk, collected$more.junk),]
 	rownames(original) <- rownames(regot) <- NULL 
 	stopifnot(identical(original, regot))
 	head(regot)
@@ -67,10 +67,10 @@ mergecomp<-function(nl, n, nfrags, nchrs) {
 	allfiles<-list()
 	allcounts<-list()
 	for (x in 1:nl) {
-		# Simulating the dudes (target<=anchor at all times).
+		# Simulating the dudes (anchor2<=anchor1 at all times).
 		ai<-as.integer(runif(n, 1, nfrags))
 		ti<-as.integer(runif(n, 1, nfrags))
-		collected <- data.frame(anchor.id=pmax(ai, ti), target.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
+		collected <- data.frame(anchor1.id=pmax(ai, ti), anchor2.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
 		allcounts[[x]]<-collected
 		allfiles[[x]]<-  file.path(tmp, paste0("output_", x))
 		savePairs(collected, allfiles[[x]], pairParam(fragments=blah))

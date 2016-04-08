@@ -17,7 +17,7 @@
 
 	for (ix in seq_len(ni)) {
 		all.data <- loadChromos(y[ix])
-		current <- split(all.data$targets, all.data$anchors)
+		current <- split(all.data$anchor2, all.data$anchor1)
 
 		for (ac in names(current)) {
 			if (check.chrs && !ac %in% frag.chrs) { 
@@ -26,8 +26,7 @@
 			}
 			subcurrent <- current[[ac]]
 
-			# Checking whether we should skip this anchor; otherwise, taking only the 
-			# relevant targets for the inner iteration step.
+			# Checking whether we should skip this anchor1; otherwise, taking only the relevant anchor2 for the inner iteration step.
 			if (do.restrict) {
 				amatch <- restrict==ac
 				if (!any(amatch)) { next }
@@ -55,9 +54,14 @@
 	return(overall)
 }
 
-.getPairs <- function(y, anchor, target) { 
+.getPairs <- function(y, anchor1, anchor2) { 
 	y <- path.expand(y)
-	h5read(y, file.path(anchor, target)) 
+	out <- h5read(y, file.path(anchor1, anchor2)) 
+
+    # For legacy purposes:
+    colnames(out) <- sub("anchor\\.", "anchor1.", colnames(out))
+    colnames(out) <- sub("target\\.", "anchor2.", colnames(out))
+    return(out)
 }
 
 .initializeH5 <- function(y) {
@@ -73,10 +77,10 @@
 	return(invisible(NULL))
 }
 
-.writePairs <- function(pairs, y, anchor, target) {
+.writePairs <- function(pairs, y, anchor1, anchor2) {
 	y <- path.expand(y)
 	rownames(pairs) <- NULL
-	if (h5write(pairs, y, file.path(anchor, target))) { stop("failed to add tag pair data to '%s'", y) }
+	if (h5write(pairs, y, file.path(anchor1, anchor2))) { stop("failed to add tag pair data to '%s'", y) }
 	return(invisible(NULL))
 }
 
@@ -85,27 +89,31 @@ loadChromos <- function(file)
 # file. This is designed to allow users to pull out one chromosome or another.
 #
 # written by Aaron Lun
-# created 3 November 2014.
+# created 3 November 2014
+# last modified 6 January 2016
 {
 	current <- h5ls(file)
 	keep <- current$otype=="H5I_DATASET"
-	return(data.frame(anchors=basename(current$group[keep]),
-		targets=current$name[keep]))
+	return(data.frame(anchor1=basename(current$group[keep]), 
+            anchor2=current$name[keep], stringsAsFactors=FALSE))
 }
 
-loadData <- function(file, anchor, target) 
+loadData <- function(file, anchor1, anchor2) 
 # Friendly user-exposed handling of read pair extraction, when the user
-# isn't sure of the order of the anchor/target chromosomes.
+# isn't sure of the order of the anchor chromosomes.
 #
 # written by Aaron Lun
 # created 3 November 2014
+# last modified 22 November 2015
 {
-	stopifnot(is.character(anchor) & is.character(target) & is.character(file))
-	tryCatch(.getPairs(file, anchor, target), error=function(e) {
-		out <- tryCatch(.getPairs(file, target, anchor), error=function(e) {
-			stop("no dataset corresponding to this anchor/target combination")
+	stopifnot(is.character(anchor1))
+	stopifnot(is.character(anchor2))
+	stopifnot(is.character(file))
+	tryCatch(.getPairs(file, anchor1, anchor2), error=function(e) {
+		out <- tryCatch(.getPairs(file, anchor2, anchor1), error=function(e) {
+			stop("no dataset corresponding to this anchor combination")
 		})
-		warning("anchor and target definitions are reversed")
+		warning("anchor definitions are reversed")
 		out
 	})
 }	

@@ -1,7 +1,6 @@
 consolidatePairs <- function(indices, result.list, equiweight=TRUE, combine.args=list()) 
-# Consolidates results from multiple bin sizes. Returns a DIList of the
-# relevant bin pairs in which things are now nested, as well as a table of
-# combined p-values.
+# Consolidates results from multiple bin sizes. Returns a table of
+# combined p-values and various statistics.
 #
 # written by Aaron Lun
 # created 9 March 2015
