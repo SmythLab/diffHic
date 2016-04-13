@@ -94,8 +94,8 @@ loadChromos <- function(file)
 {
 	current <- h5ls(file)
 	keep <- current$otype=="H5I_DATASET"
-	return(data.frame(anchor1=sub(" +$", "", basename(current$group[keep])), 
-            anchor2=sub(" +$", "", current$name[keep]), stringsAsFactors=FALSE))
+	return(data.frame(anchor1=basename(current$group[keep]), 
+            anchor2=current$name[keep], stringsAsFactors=FALSE))
 }
 
 loadData <- function(file, anchor1, anchor2) 

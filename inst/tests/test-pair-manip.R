@@ -23,8 +23,6 @@ savecomp<-function(n, nfrags, nchrs) {
 	chrs<-as.character(seqnames(blah))
 	indices <- h5ls(newdir)
 	indices <- indices[indices$otype=="H5I_DATASET",]
-    indices$group <- sub(" +$", "", indices$group)
-    indices$name <- sub(" +$", "", indices$name)
 	regot <- list()	
 	for (x in 1:nrow(indices)) {
 		reread<-h5read(newdir, file.path(indices$group[x], indices$name[x]))

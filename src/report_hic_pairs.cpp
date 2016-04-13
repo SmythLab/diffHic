@@ -306,10 +306,10 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
     // Initializing the chromosome conversion table (to get from BAM TIDs to chromosome indices in the 'fragments' GRanges).
 	const size_t nc=ffptr->nchrs();
     if (!isInteger(chr_converter)) { throw std::runtime_error("chromosome conversion table should be integer"); }
-    if (LENGTH(chr_converter)!=nc) { throw std::runtime_error("conversion table should have length equal to the number of chromosomes"); }
+    if (LENGTH(chr_converter)!=int(nc)) { throw std::runtime_error("conversion table should have length equal to the number of chromosomes"); }
     const int* converter=INTEGER(chr_converter);
     for (size_t i=0; i<nc; ++i) {
-        if (converter[i]==NA_INTEGER || converter[i] < 0 || converter[i] >= nc) { throw std::runtime_error("conversion indices out of range"); }
+        if (converter[i]==NA_INTEGER || converter[i] < 0 || converter[i] >= int(nc)) { throw std::runtime_error("conversion indices out of range"); }
     }
     
    	// Constructing output containers
@@ -369,7 +369,7 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
             if (! (curdup && rm_dup) && ! curunmap) {
                 current.reverse=bool(bam_is_rev(input.read));
                 const int32_t& curtid=(input.read -> core).tid;
-                if (curtid==-1 || curtid >= nc) {
+                if (curtid==-1 || curtid >= int(nc)) {
                     std::stringstream err;
                     err << "tid for read '" << bam_get_qname(input.read) << "' out of range of BAM header";
                     throw std::runtime_error(err.str());
@@ -477,10 +477,10 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
         // Saving all file names.
         SET_VECTOR_ELT(total_output, 0, allocVector(VECSXP, nc));
         SEXP all_paths=VECTOR_ELT(total_output, 0);
-        for (int i=0; i<nc; ++i) {
+        for (size_t i=0; i<nc; ++i) {
             SET_VECTOR_ELT(all_paths, i, allocVector(STRSXP, i+1));
             SEXP current_paths=VECTOR_ELT(all_paths, i);
-            for (int j=0; j<=i; ++j) {
+            for (size_t j=0; j<=i; ++j) {
                 if (collected[i][j].out!=NULL) {
                     SET_STRING_ELT(current_paths, j, mkChar(collected[i][j].path.c_str()));
                 } else {
