@@ -6,7 +6,8 @@
 \description{Identifies the interacting pair of restriction fragments corresponding to each read pair in a Hi-C library.}
 
 \usage{
-preparePairs(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim.dist=NA, output.dir=NULL)
+preparePairs(bam, param, file, dedup=TRUE, minq=NA, 
+    ichim=TRUE, chim.dist=NA, output.dir=NULL)
 }
 
 \arguments{

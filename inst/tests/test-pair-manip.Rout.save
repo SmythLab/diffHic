@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2015-11-22 r69685) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
+R version 3.3.0 beta (2016-04-08 r70447) -- "Supposedly Educational"
+Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -29,7 +29,7 @@ Type 'q()' to quit R.
 + 	# Simulating the dudes (anchor2<=anchor1 at all times).
 + 	ai<-as.integer(runif(n, 1, nfrags))
 + 	ti<-as.integer(runif(n, 1, nfrags))
-+ 	collected <- data.frame(anchor1.id=pmax(ai, ti), anchor2.id=pmin(ai, ti), junk=ai+ti, more.junk=ai-ti)
++     collected <- data.frame(anchor1.id=ai, anchor2.id=ti, junk=ai+ti, more.junk=ai-ti)
 + 
 + 	# Simulating the fragment IDs.
 + 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
@@ -59,6 +59,9 @@ Type 'q()' to quit R.
 + 	# Checking that the stored result is the same.
 + 	regot <- do.call(rbind, regot)
 + 	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk, regot$more.junk),]
++ 	
++     collected$anchor1.id <- pmax(ai, ti)
++     collected$anchor2.id <- pmin(ai, ti)
 + 	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk, collected$more.junk),]
 + 	rownames(original) <- rownames(regot) <- NULL 
 + 	stopifnot(identical(original, regot))
@@ -247,4 +250,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 15.073   0.499  15.594 
+ 16.952   0.906  17.952 

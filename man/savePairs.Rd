@@ -45,10 +45,9 @@ param <- pairParam(cuts)
 n <- 1000
 all.a <- as.integer(runif(n, 1L, length(cuts)))
 all.t <- as.integer(runif(n, 1L, length(cuts)))
-x <- data.frame(anchor1.id=pmax(all.a, all.t), anchor2.id=pmin(all.a, all.t),
+x <- data.frame(anchor1.id=all.a, anchor2.id=all.t,
 	anchor1.pos=runif(1:100), anchor1.len=10, 
 	anchor2.pos=runif(1:100), anchor2.len=-10)
-x <- x[order(x$anchor1.id, x$anchor2.id),]
 
 fout <- "temp2.h5"
 savePairs(x, fout, param)

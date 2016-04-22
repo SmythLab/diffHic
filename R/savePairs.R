@@ -6,13 +6,16 @@ savePairs <- function(x, file, param)
 #
 # written by Aaron Lun 
 # created some time ago
-# last modified 22 November 2015	
+# last modified 22 April 2016
 {
-	swap <- x$anchor.id < x$target.id
+    if (any(colnames(x) %in% c("anchor.id", "target.id"))) { 
+        stop("colnames 'anchor.*' and 'target.*' should be changed to 'anchor1.*' and 'anchor2.*'")
+    }
+	swap <- x$anchor1.id < x$anchor2.id
 	if (any(swap)) { 
-		temp <- x$target.id[swap]
-		x$target.id[swap] <- x$anchor.id[swap]
-		x$anchor.id[swap] <- temp
+		temp <- x$anchor2.id[swap]
+		x$anchor2.id[swap] <- x$anchor1.id[swap]
+		x$anchor1.id[swap] <- temp
 	}
 	if (file.exists(file)) { unlink(file, recursive=TRUE) }
 
