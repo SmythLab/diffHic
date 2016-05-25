@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.3.5}{\itemize{
+\section{Version 1.4.0}{\itemize{
 \item 
 Deprecated DIList objects and methods in favour of InteractionSet objects.
 
