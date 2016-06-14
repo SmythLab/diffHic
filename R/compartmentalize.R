@@ -43,7 +43,7 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 	colnames(mat) <- rownames(mat) <- all.a
 
 	# Filling NA's (i.e., zero's). Using mid-distance, interpolating to get the trend.
-	lost.ind <- which(is.na(mat))
+	lost.ind <- Matrix::which(is.na(mat))
     lost <- arrayInd(lost.ind, dim(mat))
 	seq.id <- as.integer(seqnames(regions(data)))
 	mid.pts <- mid(ranges(regions(data)))
