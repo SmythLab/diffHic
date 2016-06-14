@@ -306,9 +306,10 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
     // Initializing the chromosome conversion table (to get from BAM TIDs to chromosome indices in the 'fragments' GRanges).
 	const size_t nc=ffptr->nchrs();
     if (!isInteger(chr_converter)) { throw std::runtime_error("chromosome conversion table should be integer"); }
-    if (LENGTH(chr_converter)!=int(nc)) { throw std::runtime_error("conversion table should have length equal to the number of chromosomes"); }
+    const int nbamc=LENGTH(chr_converter);
+    if (nbamc > int(nc)) { throw std::runtime_error("more chromosomes in the BAM file than in the fragment list"); }
     const int* converter=INTEGER(chr_converter);
-    for (size_t i=0; i<nc; ++i) {
+    for (int i=0; i<nbamc; ++i) {
         if (converter[i]==NA_INTEGER || converter[i] < 0 || converter[i] >= int(nc)) { throw std::runtime_error("conversion indices out of range"); }
     }
     
@@ -369,7 +370,7 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
             if (! (curdup && rm_dup) && ! curunmap) {
                 current.reverse=bool(bam_is_rev(input.read));
                 const int32_t& curtid=(input.read -> core).tid;
-                if (curtid==-1 || curtid >= int(nc)) {
+                if (curtid==-1 || curtid >= nbamc) {
                     std::stringstream err;
                     err << "tid for read '" << bam_get_qname(input.read) << "' out of range of BAM header";
                     throw std::runtime_error(err.str());

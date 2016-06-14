@@ -111,7 +111,7 @@ try(assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L)) # This should fail, as 
 
 suppressPackageStartupMessages(require("rhdf5"))
 
-comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, pseudo=FALSE) {
+comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, pseudo=FALSE, extras=NULL) {
 	rlen<-as.integer(rlen)
 	spacer<-as.integer(spacer)
 	if (min(sizes) <= rlen) { stop("min fragment must be greater than read length") } 
@@ -139,6 +139,13 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 		outfrags[[i]]<-GRanges(names(max.cuts)[i], IRanges(cut.starts[[i]], ends-spacer))
 		chromosomes[i]<-tail(ends, 1)-spacer;
 	}
+    if (!is.null(extras)) { # Editing it for error-checking purposes.
+        if (extras[1]==-1L) {
+            outfrags <- outfrags[-1]
+        } else {
+            outfrags <- c(outfrags, list(GRanges(extras, IRanges(1, sizes[1]))))
+        }
+    }
 	suppressWarnings(outfrags<-do.call(c, outfrags))
 	names(chromosomes)<-names(max.cuts)
 	names(fragments)<-names(max.cuts)
@@ -443,7 +450,7 @@ comp(fname, npairs=1000, size=c(50, 100), max.cuts=max.cuts);
 comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
 comp(fname, npairs=1000, size=c(200, 300), max.cuts=max.cuts);
 
-max.cuts<-c(chrD=5L, chrC=6L, chrA=7L, chrE=4L, chrG=3L, chrB=1L, chrF=2L) # Shuffled.
+max.cuts<-c(chrD=5L, chrC=6L, chrA=7L, chrE=4L, chrG=3L, chrB=1L, chrF=2L) # Shuffled, to test effect of non-trivial 'm'.
 comp(fname, npairs=200, size=c(500, 1000), max.cuts=max.cuts)
 comp(fname, npairs=1000, size=c(50, 100), max.cuts=max.cuts);
 comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
@@ -464,6 +471,18 @@ comp(fname, npairs=50, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 10
 comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(100, 100))
 comp(fname, npairs=100, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(200, 200))
 comp(fname, npairs=1000, max.cuts=max.cuts, pseudo=TRUE, spacer=0, sizes=c(500, 500))
+
+# Checking what happens when I add more or less chromosomes 
+
+max.cuts<-c(chrA=20L, chrB=10L)
+comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras="chrX") # should work
+comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras="chrX", pseudo=TRUE)
+try({
+    comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras=-1L) # should be okay
+})
+try({
+    comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras=-1L, pseudo=TRUE)
+})
 
 ###################################################################################################
 # Trying to do simulations with chimeras is hellishly complicated, so we're just going to settle for 
@@ -606,6 +625,7 @@ x1 %i %s 200 %s * 0 0 NNNNN hhhhh",
 }
 fout <- file.path(dir, "umap.sam")
 
+# None of these should show up as a pair.
 for (scenario in list(list("*", "*", "*", "*"),
                       list("5M5H", "*", "*", "*"),
                       list("*", "*", "5M5H", "*"),
@@ -621,6 +641,7 @@ for (scenario in list(list("*", "*", "*", "*"),
     stopifnot(x$chimeras[["mapped"]]==0L)
 }
 
+# All of these should show up as a pair.
 writeLines(generator("5M5H", "*", "5M5H", "*"), con=fout)
 sout <- Rsamtools::asBam(fout, file.path(dir, "umap"), overwrite=TRUE)
 x <- preparePairs(sout, param=pairParam(GRanges("chrA", IRanges(c(1, 71), c(70, 200)))), file=file.path(dir, "whee.h5"))
