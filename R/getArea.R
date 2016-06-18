@@ -6,29 +6,7 @@ getDistance <- function(data, type=c("mid", "gap", "span"))
 # created 22 April 2014
 # last modified 22 November 2015
 {
-    .Deprecated(new="pairdist", old="getDistance")
-	aid <- anchors(data, id=TRUE)
-	tid <- targets(data, id=TRUE)
-	st <- start(regions(data))
-	en <- end(regions(data))
-	chr <- as.character(seqnames(regions(data)))
-
-	is.same <- chr[aid]==chr[tid]
-	all.as <- st[aid[is.same]]
-	all.ae <- en[aid[is.same]]
-	all.ts <- st[tid[is.same]]
-	all.te <- en[tid[is.same]]
-
-	output <- rep(NA, nrow(data))
-	type <- match.arg(type)
-	if (type=="gap") {
-		output[is.same] <- pmax(all.as, all.ts) - pmin(all.ae, all.te) - 1L
-	} else if (type=="span") {
-		output[is.same] <- pmax(all.ae, all.te) - pmin(all.as, all.ts) + 1L
-	} else if (type=="mid") {
-		output[is.same] <- as.integer(floor((all.as + all.ae)/2) - floor((all.ts + all.te)/2))
-	}
-	return(output)
+    .Defunct(new="pairdist", package="InteractionSet")
 }
 
 getArea <- function(data, bp=TRUE)

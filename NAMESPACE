@@ -17,22 +17,14 @@ export(diffHicUsersGuide,
     annotatePairs,
 	compartmentalize, domainDirections,
     plotPlaid, rotPlaid, plotDI, rotDI,
+	asDGEList, normOffsets, reform, normalize, # From csaw, but also available to the user.
     DI2IS
 )
 
-# Exporting the DIList class.
+# Exporting classes.
 exportClasses(
-    DIList, pairParam
+    pairParam
 )
-
-exportMethods(
-    anchors, targets, counts, regions, 
-	asDGEList, normOffsets, reform
-    , normalize
-)
-# asDGEList, normOffsets and normalize can be shuffled 
-# into 'exports' when the DIList objects are finally removed,
-# to ensure that they are accessible to the user.
 
 # Requires several imports.
 import(Rsamtools,Rhtslib,GenomicRanges,Biostrings,BSgenome,rhdf5,

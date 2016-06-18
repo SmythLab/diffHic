@@ -2,8 +2,12 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.5.1}{\itemize{
+\section{Version 1.5.3}{\itemize{
 \item Relaxed checks in preparePairs(), prepPseudoPairs() when more chromosomes are supplied than needed.
+
+\item Fixed clash between BiocGenerics and Matrix which().
+
+\item Removed defunct DIList class and methods.
 }
 }
 
