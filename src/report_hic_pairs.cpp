@@ -255,7 +255,7 @@ public:
 class OutputFile {
 public: 
     OutputFile(const char* p, const int c1, const int c2, const size_t np) : num(0), NPAIRS(np), 
-            ai(NPAIRS), ti(NPAIRS), ap(NPAIRS), tp(NPAIRS), al(NPAIRS), tl(NPAIRS), saved(false) {
+            ai(NPAIRS), ti(NPAIRS), ap(NPAIRS), tp(NPAIRS), al(NPAIRS), tl(NPAIRS), out(NULL), saved(false) {
         std::stringstream converter;
         converter << p << c1 << "_" << c2;
         path=converter.str();
@@ -278,7 +278,11 @@ public:
 
     void dump() {
         if (!num) { return; }
-        FILE * out=std::fopen(path.c_str(), "a");  // Assuming file isn't already present (should be absent in a new directory).
+        if (saved) {
+            out=std::fopen(path.c_str(), "a");
+        } else {
+            out=std::fopen(path.c_str(), "w"); // Overwrite any existing file, just to be safe.
+        }
         if (out==NULL) {
             std::stringstream err;
             err << "failed to open output file at '" << path << "'"; 
@@ -292,11 +296,12 @@ public:
         saved=true;
         return;
     }
-    
+
     size_t num;
     const size_t NPAIRS;
     std::deque<int> ai, ti, ap, tp, al, tl;
     std::string path;
+    FILE * out; 
     bool saved;
 };
 
