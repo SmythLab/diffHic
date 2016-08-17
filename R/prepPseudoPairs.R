@@ -1,4 +1,4 @@
-prepPseudoPairs <- function(bam, param, file, dedup=TRUE, ichim=TRUE, chim.span=1000, minq=NA, output.dir=NULL)
+prepPseudoPairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim.span=1000, output.dir=NULL, storage=5000L)
 # This function acts the same as preparePairs, but it assumes that you're
 # putting things into contiguous bins across the genome. The idea is to
 # allow DNase-digested Hi-C experiments to fit in the pipeline, where reads
@@ -38,6 +38,10 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, ichim=TRUE, chim.span=
 	ichim <- as.logical(ichim)
 	chim.span <- as.integer(chim.span)
 	dedup <- as.logical(dedup)
+    storage <- as.integer(storage)
+    if (storage <= 1L) { 
+        stop("'storage' must be a positive integer")
+    }
 
     # Setting up the output directory.
     if (is.null(output.dir)) { 
@@ -45,14 +49,13 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, ichim=TRUE, chim.span=
     } else {
         output.dir <- path.expand(output.dir)
     }
-    if (file.exists(output.dir)) { 
-        stop("output directory already exists")
+    if (!dir.create(output.dir)) {
+        stop("failed to create output directory")
     }
-    dir.create(output.dir)
     on.exit({ unlink(output.dir, recursive=TRUE) })
     prefix <- file.path(output.dir, "")
 
-    out <- .Call(cxx_report_hic_binned_pairs, n.per.chr, bin.width, m-1L, path.expand(bam), prefix, !ichim, chim.span, minq, dedup)
+    out <- .Call(cxx_report_hic_binned_pairs, n.per.chr, bin.width, m-1L, path.expand(bam), prefix, storage, !ichim, chim.span, minq, dedup)
     if (is.character(out)) { stop(out) }
     final <- .process_output(out, file, chrs, before.first)
     final$same.id <- NULL

@@ -7,8 +7,8 @@
 
 \usage{
 segmentGenome(bs, size=500) 
-prepPseudoPairs(bam, param, file, dedup=TRUE, ichim=TRUE, 
-    chim.span=1000, minq=NA, output.dir=NULL)
+prepPseudoPairs(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, 
+    chim.span=1000, output.dir=NULL, storage=5000L)
 }
 
 \arguments{
@@ -18,10 +18,11 @@ prepPseudoPairs(bam, param, file, dedup=TRUE, ichim=TRUE,
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{file}{a character string specifying the path to an output index file}
 	\item{dedup}{a logical scalar indicating whether marked duplicate reads should be removed}
+	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
 	\item{ichim}{a logical scalar indicating whether invalid chimeras should be counted}
 	\item{chim.span}{an integer scalar specifying the maximum span between a chimeric 3' end and a mate read}
-	\item{minq}{an integer scalar specifying the minimum mapping quality for each read}
     \item{output.dir}{a character string specifying a directory for temporary files}
+    \item{storage}{an integer scalar specifying the maximum number of pairs to store in memory before writing to file}
 }
 
 \details{
@@ -31,6 +32,7 @@ Reads are then assigned into these pseudo-fragments using \code{prepPseudoPairs}
 The rest of the analysis pipeline can then be used in the same manner as that for standard Hi-C.
 
 The behavior of \code{prepPseudoPairs} is almost identical to that for \code{\link{preparePairs}}, if the latter were asked to assign reads into pseudo-fragments.
+(See \code{?\link{preparePairs}} for detailed descriptions of all arguments.)
 However, for \code{prepPseudoPairs}, no reporting or removal of self-circles or dangling ends is performed, as these have no meaning for artificial fragments.
 Also, invalidity of chimeras is determined by checking whether the 3' end is more than \code{chim.span} away from the mate read, rather than checking for localization in different fragments.
 

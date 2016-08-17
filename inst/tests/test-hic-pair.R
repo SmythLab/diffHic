@@ -111,7 +111,7 @@ try(assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L)) # This should fail, as 
 
 suppressPackageStartupMessages(require("rhdf5"))
 
-comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, pseudo=FALSE, extras=NULL) {
+comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, spacer=rlen, pseudo=FALSE, extras=NULL, storage=5000) {
 	rlen<-as.integer(rlen)
 	spacer<-as.integer(spacer)
 	if (min(sizes) <= rlen) { stop("min fragment must be greater than read length") } 
@@ -143,7 +143,7 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
         if (extras[1]==-1L) {
             outfrags <- outfrags[-1]
         } else {
-            outfrags <- c(outfrags, list(GRanges(extras, IRanges(1, sizes[1]))))
+            outfrags <- c(list(GRanges(extras, IRanges(1, 100))), outfrags)
         }
     }
 	suppressWarnings(outfrags<-do.call(c, outfrags))
@@ -285,9 +285,9 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 	if (pseudo) {
 		# Special behaviour; faster assignment into bins, no removal of dangling ends/self-cirlces
 		# (as these concepts are meaningless for arbitrary bins).
-		diagnostics <- prepPseudoPairs(out, param, tmpdir, output.dir=file.path(dir, "whee"))
+		diagnostics <- prepPseudoPairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 	} else {
-		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"))
+		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 		
 		stopifnot(sum(codes==1L)==diagnostics$same.id[["dangling"]])
 		stopifnot(sum(codes==3L)==diagnostics$same.id[["self.circle"]])
@@ -303,6 +303,9 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 
 	# Anchor1/anchor2 synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
 	offset<-c(0L, cumsum(max.cuts))
+    if (!is.null(extras)) { 
+        offset <- offset + length(extras) # adding values to match up with 'outfrags'.
+    }
 	names(offset)<-NULL
 	indices<-diffHic:::.loadIndices(tmpdir, seqlevels(outfrags))
 	used<-indices
@@ -310,6 +313,7 @@ comp<-function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10, 
 
 	for (i in 1:length(max.cuts)) {
 		for (j in 1:i) {
+            # Getting the fragment IDs for the remaining pairs for this chromosome.
 			stuff<-(chrs[primary]==i & chrs[secondary]==j) | (chrs[primary]==j & chrs[secondary]==i) 
 			if (!pseudo) { stuff<-stuff & (codes==0L | codes==2L) }
 			pids<-frag.ids[primary][stuff];
@@ -478,11 +482,18 @@ max.cuts<-c(chrA=20L, chrB=10L)
 comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras="chrX") # should work
 comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras="chrX", pseudo=TRUE)
 try({
-    comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras=-1L) # should be okay
+    comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras=-1L)  # fails due to removal of first chromosome.
 })
 try({
     comp(fname, npairs=20, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), extras=-1L, pseudo=TRUE)
 })
+
+# Throwing more than 5000 read pairs in, to check that it still behaves past the 5000 read pair threshold for file dumping. 
+max.cuts<-c(chrA=20L, chrB=10L)
+comp(fname, npairs=10000, max.cuts=max.cuts, sizes=c(50, 100))
+comp(fname, npairs=10000, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), pseudo=TRUE) 
+comp(fname, npairs=10000, max.cuts=max.cuts, sizes=c(50, 100), storage=10) # Also checking that it does the same when we turn down the storage.
+comp(fname, npairs=10000, max.cuts=max.cuts, spacer=0, sizes=c(100, 100), pseudo=TRUE, storage=10) 
 
 ###################################################################################################
 # Trying to do simulations with chimeras is hellishly complicated, so we're just going to settle for 

@@ -6,8 +6,8 @@
 \description{Identifies the interacting pair of restriction fragments corresponding to each read pair in a Hi-C library.}
 
 \usage{
-preparePairs(bam, param, file, dedup=TRUE, minq=NA, 
-    ichim=TRUE, chim.dist=NA, output.dir=NULL)
+preparePairs(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, 
+    chim.dist=NA, output.dir=NULL, storage=5000L)
 }
 
 \arguments{
@@ -19,6 +19,7 @@ preparePairs(bam, param, file, dedup=TRUE, minq=NA,
 	\item{ichim}{a logical scalar indicating whether invalid chimeras should be counted}
 	\item{chim.dist}{an integer scalar specifying the maximum distance between segments for a valid chimeric read pair}
 	\item{output.dir}{a character string specifying a directory for temporary files}
+    \item{storage}{an integer scalar specifying the maximum number of pairs to store in memory before writing to file}
 }
 
 \section{Converting to restriction fragment indices}{
@@ -71,7 +72,11 @@ If it is specified, users should make sure that no file already exists with that
 Otherwise, an error will be raised.
 This directory is used to store intermediate files that will be eventually processed into the HDF5 output file.
 
+For low-memory systems or in cases where there are many chromosome pairs, users may need to reduce the value of \code{storage}.
+This will write data to file more frequently, which reduces memory usage at the cost of speed.
+
 Users should note that the use of a \code{pairParam} object for input is strictly for convenience.
+Only the value of \code{param$fragments} will be used.
 Any non-empty values of \code{param$discard} and \code{param$restrict} will be ignored here.
 Reads will not be discarded if they lie outside the specified chromosomes, or if they lie within blacklisted regions.
 }

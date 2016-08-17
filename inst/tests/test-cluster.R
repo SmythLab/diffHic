@@ -48,17 +48,7 @@ crisscross <- function(id1, id2) {
 clustercomp <- function(data, tol, maxw, split=FALSE, data2=NULL) {
 	if (!is.null(data2)) { 
 		original <- data
-		new.regs <- c(regions(data), regions(data2))
-		new.as <- c(anchors(data, type="first", id=TRUE), anchors(data2, type="first", id=TRUE) + length(regions(data)))
-		new.ts <- c(anchors(data, type="second", id=TRUE), anchors(data2, type="second", id=TRUE) + length(regions(data)))
-		o <- order(new.regs)
-		reordered <- integer(length(new.regs))
-		reordered[o] <- 1:length(new.regs)
-		new.as <- reordered[new.as]
-		new.ts <- reordered[new.ts]
-		new.regs <- new.regs[o]
-		data <- InteractionSet(list(counts=matrix(0L, length(new.as), 1, dimnames=list(NULL, 1))), 
-            GInteractions(anchor1=new.as, anchor2=new.ts, regions=new.regs, mode="reverse"))
+        data <- c(original, data2)
 	}
 
 	# Simulating cluster formation first, by expanding each region and checking for overlaps.
@@ -169,8 +159,11 @@ clustercomp <- function(data, tol, maxw, split=FALSE, data2=NULL) {
 	if (!identical(icomp, comp2$indices)) { stop("different behaviour with index.only=TRUE") }
 
 	# Checking the bounding boxes.
-	a1range <- range(split(anchors(data, type="first"), myid2))
-	a2range <- range(split(anchors(data, type="second"), myid2))
+    ix <- as.character(seq_len(max(id.comp)))
+	a1range <- split(anchors(data, type="first"), id.comp)
+	a1range <- range(a1range[ix])
+    a2range <- split(anchors(data, type="second"), id.comp)
+	a2range <- range(a2range[ix])
 	names(a1range) <- names(a2range) <- NULL
 	if (!identical(anchors(comp2$interactions, type="first"), unlist(a1range)) || 
         !identical(anchors(comp2$interactions, type="second"), unlist(a2range))) {
