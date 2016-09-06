@@ -1,7 +1,6 @@
 #include "read_count.h"
 
-SEXP directionality(SEXP all, SEXP bin, SEXP span, SEXP first_bin, SEXP last_bin, 
-		SEXP max_it, SEXP tolerance, SEXP offsets, SEXP dispersion) try {
+SEXP directionality(SEXP all, SEXP bin, SEXP span, SEXP first_bin, SEXP last_bin) try {
 
 	if (!isInteger(span) || LENGTH(span)!=1) { throw std::runtime_error("span to compute directionality must be an integer scalar"); }
 	const size_t sp=asInteger(span);
@@ -16,16 +15,6 @@ SEXP directionality(SEXP all, SEXP bin, SEXP span, SEXP first_bin, SEXP last_bin
 	binner engine(all, bin, fbin, lbin);
 	const int nlibs=engine.get_nlibs();
 
-	// Setting up the NB average stuff.
-	if (!isInteger(max_it) || LENGTH(max_it)!=1) { throw std::runtime_error("maximum number of iterations must be an integer scalar"); }
-	const int maxit=asInteger(max_it);
-	if (!isReal(tolerance) || LENGTH(tolerance)!=1) { throw std::runtime_error("tolerance must be a double-precision vector"); }
-	const double tol=asReal(tolerance);
-	if (!isReal(offsets) || LENGTH(offsets)!=nlibs) { throw std::runtime_error("offsets must be a double-precision vector of length equal to number of libraries"); }
-	const double* offptr=REAL(offsets);
-	if (!isReal(dispersion) || LENGTH(dispersion)!=1) { throw std::runtime_error("dispersion must be a double-precision vector"); }
-	const double disp=asReal(dispersion);
-
 	// Setting up the memory containers.
 	const int nbins=lbin-fbin+1;
 	int* curcounts=(int*)R_alloc(nlibs*nbins, sizeof(int)); 
@@ -36,17 +25,30 @@ SEXP directionality(SEXP all, SEXP bin, SEXP span, SEXP first_bin, SEXP last_bin
 	// Setting up the output vectors immediately.
 	SEXP output=PROTECT(allocVector(VECSXP, 2));
 try {
-	SET_VECTOR_ELT(output, 0, allocVector(REALSXP, nbins));
-	double* downptr=REAL(VECTOR_ELT(output, 0));
-	SET_VECTOR_ELT(output, 1, allocVector(REALSXP, nbins));
-	double* upptr=REAL(VECTOR_ELT(output, 1));
-	for (int i=0; i<nbins; ++i) { downptr[i]=upptr[i]=0; }
+	SET_VECTOR_ELT(output, 0, allocMatrix(INTSXP, nbins, nlibs));
+	int** downptrs=(int**)R_alloc(nlibs, sizeof(int*));
+	SET_VECTOR_ELT(output, 1, allocMatrix(INTSXP, nbins, nlibs));
+	int** upptrs=(int**)R_alloc(nlibs, sizeof(int*));
+    if (nlibs) {
+        downptrs[0]=INTEGER(VECTOR_ELT(output, 0));
+        upptrs[0]=INTEGER(VECTOR_ELT(output, 1));
+        for (int i=1; i<nlibs; ++i) {
+            downptrs[i]=downptrs[i-1]+nbins;
+            upptrs[i]=upptrs[i-1]+nbins;
+        }
+	    for (int i=0; i<nlibs; ++i) {
+            std::fill(downptrs[i], downptrs[i]+nbins, 0);
+            std::fill(upptrs[i], upptrs[i]+nbins, 0);
+        }
+    }
 
 	// Other assorted sundries.
 	size_t vecdex;
 	int rowdex, curanchor;
 	double current_average;
    	size_t diff;
+    int lib;
+    int * bpcounts;
 
 	while (!engine.empty()) {
 		engine.fill(curcounts, ischanged, waschanged);
@@ -57,9 +59,12 @@ try {
 			// Filling up the directionality indices.		
 			diff=curanchor-rowdex;
 			if (diff && diff <= sp) { 
-				current_average=nb_average(nlibs, maxit, tol, offptr, curcounts+rowdex*nlibs, disp);
-				downptr[curanchor]+=current_average;
-				upptr[rowdex]+=current_average;
+                bpcounts=curcounts+rowdex*nlibs;
+                for (lib=0; lib<nlibs; ++lib) {
+                    const int& thiscount=bpcounts[lib];
+                    downptrs[lib][curanchor]+=thiscount;
+                    upptrs[lib][rowdex]+=thiscount;
+                }
 			} 
 
 			// Resetting the ischanged vector for the next stretch of bin anchors.

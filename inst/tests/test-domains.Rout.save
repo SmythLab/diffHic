@@ -1,0 +1,421 @@
+
+R version 3.3.1 Patched (2016-08-05 r71041) -- "Bug in Your Hair"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ###################################################################################################
+> # This tests the directionality index calculator.
+> 
+> Sys.setlocale(category="LC_COLLATE",locale="C")
+[1] "C"
+> chromos<-c(chrA=51, chrB=31)
+> source("simcounts.R")
+> 
+> dir.create("temp-domain")
+> dir1<-"temp-domain/1.h5"
+> dir2<-"temp-domain/2.h5"
+> 
+> library(diffHic)
+Loading required package: GenomicRanges
+Loading required package: stats4
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    Filter, Find, Map, Position, Reduce, anyDuplicated, append,
+    as.data.frame, cbind, colnames, do.call, duplicated, eval, evalq,
+    get, grep, grepl, intersect, is.unsorted, lapply, lengths, mapply,
+    match, mget, order, paste, pmax, pmax.int, pmin, pmin.int, rank,
+    rbind, rownames, sapply, setdiff, sort, table, tapply, union,
+    unique, unsplit, which, which.max, which.min
+
+Loading required package: S4Vectors
+
+Attaching package: ‘S4Vectors’
+
+The following objects are masked from ‘package:base’:
+
+    colMeans, colSums, expand.grid, rowMeans, rowSums
+
+Loading required package: IRanges
+Loading required package: GenomeInfoDb
+Loading required package: InteractionSet
+Loading required package: SummarizedExperiment
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+> comp<-function(npairs1, npairs2, dist, cuts, restrict=NULL, cap=NA, span=5) {
++     simgen(dir1, npairs1, chromos)
++     simgen(dir2, npairs2, chromos)
++     param <- pairParam(fragments=cuts, restrict=restrict, cap=cap)
++     y <- squareCounts(c(dir1, dir2), param=param, width=dist, filter=1L)
++     d <- domainDirections(c(dir1, dir2), param=param, width=dist, span=span)
++     stopifnot(identical(regions(y), rowRanges(d)))
++ 
++     collected.up <- collected.down <- matrix(0L, length(regions(y)), 2)
++     for (chr in names(chromos)) {
++         selected <- as.logical(seqnames(regions(y))==chr)
++ 
++         for (lib in 1:2) {
++             curmat <- as.matrix(inflate(y, chr, chr, sample=lib))
++             up.counts <- down.counts <- integer(nrow(curmat))
++ 
++             for (x in seq_len(nrow(curmat))) {
++                 indices <- x + seq_len(min(span, ncol(curmat)-x))
++                 up.counts[x] <- as.integer(sum(curmat[x, indices], na.rm=TRUE))
++                 indices <- x - seq_len(min(span, x-1))
++                 down.counts[x] <- as.integer(sum(curmat[indices, x], na.rm=TRUE))
++             }
++ 
++             collected.up[selected,lib] <- up.counts
++             collected.down[selected,lib] <- down.counts
++         }
++     }
++ 
++     ref.up <- assay(d, "up")
++     ref.down <- assay(d, "down")
++     dimnames(ref.up) <- dimnames(ref.down) <- NULL
++     stopifnot(identical(collected.up, ref.up))
++     stopifnot(identical(collected.down, ref.down))
++ 
++     return(head(cbind(ref.up, ref.down)))
++ }
+> 
+> ###################################################################################################
+> 
+> set.seed(100)
+> comp(200, 100, dist=10000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]   44   29    0    0
+[2,]   53   21    7    7
+[3,]   45   19   25    9
+[4,]   17    6   35   20
+[5,]    7    6   53   28
+[6,]    0    0   46   17
+> comp(200, 100, dist=10000, cuts=simcuts(chromos, overlap=4))
+     [,1] [,2] [,3] [,4]
+[1,]   55   35    0    0
+[2,]   44   22   10    7
+[3,]   33   14   19   17
+[4,]   22   11   35   15
+[5,]   11    6   44   19
+[6,]    3    0   55   29
+> comp(200, 100, dist=10000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   52   24    0    0
+[2,]   41   18    9    7
+[3,]   40   20   21    7
+[4,]   29   14   39   16
+[5,]    6    3   50   26
+[6,]    4    0   41   22
+> comp(200, 100, dist=10000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]   13    8    0    0
+[2,]   15    5    6    4
+[3,]    9    7   10    7
+[4,]   31    9   17    6
+[5,]   14    4   17    9
+[6,]    5    5   28    5
+> comp(200, 100, dist=10000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]   53   28    0    0
+[2,]   51   26    7    6
+[3,]   33    6   22   12
+[4,]   20   10   32   14
+[5,]   17   12   44   19
+[6,]    1    4   46   22
+> comp(200, 100, dist=5000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]   10    6    0    0
+[2,]   13    8    2    2
+[3,]   15   10    2    3
+[4,]   10    6   10    3
+[5,]   19   10   13    7
+[6,]    9    7   12    6
+> comp(200, 100, dist=5000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   18    4    0    0
+[2,]   18   13    5    0
+[3,]   13    7    6    0
+[4,]    9    9   10    4
+[5,]   17    5   16    9
+[6,]   11    6   16   10
+> comp(200, 100, dist=5000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]    5    3    0    0
+[2,]    7    2    3    2
+[3,]    7    3    4    1
+[4,]   10    1    9    5
+[5,]    0    4    8    0
+[6,]    3    2    5    4
+> comp(200, 100, dist=5000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]   19   13    0    0
+[2,]   34   16    4    4
+[3,]   28   14    4    4
+[4,]   26    8    8    2
+[5,]   18    9    4    4
+[6,]   14    4   12    8
+> comp(200, 100, dist=1000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    1    0    0
+[3,]    1    0    0    0
+[4,]    0    0    1    0
+[5,]    2    0    0    0
+[6,]    1    1    0    0
+> comp(200, 100, dist=1000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]    2    2    0    0
+[6,]    0    0    1    1
+> comp(200, 100, dist=1000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    0    0
+[2,]    5    1    0    0
+[3,]    0    2    2    1
+[4,]    2    2    1    0
+[5,]    1    0    2    0
+[6,]    2    2    0    2
+> 
+> comp(250, 200, dist=10000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]   75   60    0    0
+[2,]   59   44   17   12
+[3,]   36   34   28   22
+[4,]   29   21   65   41
+[5,]    8    6   47   56
+[6,]    0    0   50   34
+> comp(250, 200, dist=10000, cuts=simcuts(chromos, overlap=4))
+     [,1] [,2] [,3] [,4]
+[1,]   52   46    0    0
+[2,]   66   47   14   12
+[3,]   41   29   31   18
+[4,]   27   25   35   26
+[5,]   15    8   41   33
+[6,]   10    7   45   44
+> comp(250, 200, dist=10000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   69   52    0    0
+[2,]   46   41   13    8
+[3,]   36   26   30   19
+[4,]   23   24   35   31
+[5,]   15   12   42   44
+[6,]    5    2   50   39
+> comp(250, 200, dist=10000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]   29   24    0    0
+[2,]    8    9   15   15
+[3,]   21   15   18   15
+[4,]   32   18   12   10
+[5,]   17   19   26   20
+[6,]    1    1   34   20
+> comp(250, 200, dist=10000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]   76   52    0    0
+[2,]   53   51   16    7
+[3,]   30   30   31   17
+[4,]   27   20   40   37
+[5,]   13   13   38   30
+[6,]    7    2   63   63
+> comp(250, 200, dist=5000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]   26   24    0    0
+[2,]   18    7    4    1
+[3,]   16   10    9    5
+[4,]   11   14    8    6
+[5,]   19   15   17   19
+[6,]   21   19   25   15
+> comp(250, 200, dist=5000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   24   13    0    0
+[2,]    9   18    1    1
+[3,]   22   20   11    4
+[4,]   28   17   13   11
+[5,]   23   15   18   28
+[6,]   11    9   22    5
+> comp(250, 200, dist=5000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]    7    9    0    0
+[2,]   12    9    3    3
+[3,]    9    8   12   11
+[4,]    4    8    9    9
+[5,]    4    3    7    9
+[6,]    3    4    3    3
+> comp(250, 200, dist=5000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]   54   42    0    0
+[2,]   23   17    4    1
+[3,]   25   16    2    5
+[4,]   32   22    9   11
+[5,]   17   16    8   11
+[6,]   15   19   15    4
+> comp(250, 200, dist=1000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]    3    1    0    0
+[2,]    2    0    1    0
+[3,]    2    2    0    0
+[4,]    4    0    0    1
+[5,]    1    1    7    0
+[6,]    0    2    3    2
+> comp(250, 200, dist=1000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]    0    1    0    0
+[2,]    0    0    0    1
+[3,]    1    0    0    0
+[4,]    2    0    0    0
+[5,]    0    1    2    0
+[6,]    0    0    1    0
+> comp(250, 200, dist=1000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]    4    2    0    0
+[2,]    2    0    1    0
+[3,]    2    1    0    0
+[4,]    1    3    1    0
+[5,]    1    3    0    1
+[6,]    2    2    4    0
+> 
+> comp(500, 200, dist=10000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]  170   57    0    0
+[2,]   97   48   38   17
+[3,]   68   24   75   31
+[4,]   49   29   78   29
+[5,]   22    6   88   37
+[6,]    3    5  114   47
+> comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=4))
+     [,1] [,2] [,3] [,4]
+[1,]  140   65    0    0
+[2,]   93   37   23   14
+[3,]   71   19   49   19
+[4,]   54   31   93   39
+[5,]   37   12   72   26
+[6,]    4    5  128   55
+> comp(500, 200, dist=10000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   85   45    0    0
+[2,]  133   63   20   13
+[3,]   78   28   48   24
+[4,]   77   18   92   33
+[5,]   26   10  132   48
+[6,]    0    0  107   46
+> comp(500, 200, dist=10000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]   55   21    0    0
+[2,]   50   19   31    9
+[3,]   58   25   55   21
+[4,]   50   20   43   21
+[5,]   33   14   55   20
+[6,]    6    2   61   27
+> comp(500, 200, dist=10000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]  126   54    0    0
+[2,]   95   44   21   14
+[3,]   81   35   32   16
+[4,]   58   17   63   21
+[5,]   36   20  102   48
+[6,]   14    5  106   49
+> comp(500, 200, dist=5000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]   28   19    0    0
+[2,]   42   14    6    5
+[3,]   16    8    8    1
+[4,]   23    8   14    7
+[5,]   37   10   34   13
+[6,]   36    8   26    9
+> comp(500, 200, dist=5000, cuts=simcuts(chromos, overlap=2))
+     [,1] [,2] [,3] [,4]
+[1,]   39    5    0    0
+[2,]   29   16    8    1
+[3,]   45   11   12    4
+[4,]   28    9   23    5
+[5,]   30   11   31   13
+[6,]   35   12   30    5
+> comp(500, 200, dist=5000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]   19    5    0    0
+[2,]   10    8    7    1
+[3,]   14    1   17    9
+[4,]    8    4   12    4
+[5,]    6    4   10    1
+[6,]   11    5    9    4
+> comp(500, 200, dist=5000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]   79   25    0    0
+[2,]   59   26    8    2
+[3,]   55   21    5    6
+[4,]   68   31   34    9
+[5,]   48   27   33    8
+[6,]   37   14   36   16
+> comp(500, 200, dist=1000, cuts=simcuts(chromos))
+     [,1] [,2] [,3] [,4]
+[1,]    2    0    0    0
+[2,]    1    0    1    0
+[3,]    1    2    0    0
+[4,]    1    1    1    0
+[5,]    4    0    2    1
+[6,]    6    0    1    0
+> comp(500, 200, dist=1000, cuts=simcuts(chromos), span=2)
+     [,1] [,2] [,3] [,4]
+[1,]    2    0    0    0
+[2,]    1    0    0    0
+[3,]    2    1    3    0
+[4,]    0    1    0    0
+[5,]    1    0    2    2
+[6,]    0    0    1    0
+> comp(500, 200, dist=1000, cuts=simcuts(chromos), span=10)
+     [,1] [,2] [,3] [,4]
+[1,]    7    1    0    0
+[2,]    3    0    1    1
+[3,]    8    0    1    0
+[4,]    7    1    2    0
+[5,]    6    0    0    0
+[6,]    3    2    2    0
+> 
+> ##################################################################################################
+> # Cleaning up.
+> 
+> unlink("temp-domain", recursive=TRUE)
+> 
+> ##################################################################################################
+> # End.
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 22.373   0.211  22.720 

@@ -2,12 +2,14 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.5.4}{\itemize{
+\section{Version 1.5.5}{\itemize{
 \item Relaxed checks in preparePairs(), prepPseudoPairs() when more chromosomes are supplied than needed.
 
 \item Fixed an issue with preparePairs() when too many file handles are open.
 
 \item Fixed clash between BiocGenerics and Matrix which().
+
+\item Modified domainDirections() to return a RangedSummarizedExperiment.
 
 \item Removed defunct DIList class and methods.
 }

@@ -23,7 +23,7 @@ static const R_CallMethodDef all_call_entries[] = {
 	CALLDEF(test_fragment_assign, 6),
     CALLDEF(pair_stats, 9),
     CALLDEF(get_missing_dist, 4),
-    CALLDEF(directionality, 9),
+    CALLDEF(directionality, 5),
   	{NULL, NULL, 0}
 };
 
