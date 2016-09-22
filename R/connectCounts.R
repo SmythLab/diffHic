@@ -19,6 +19,13 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	discard <- .splitDiscards(param$discard)
 	cap <- param$cap
 
+    # Pre-screening to remove entries with chromosomes beyond those in 'fragments'
+    remaining <- which(seqnames(regions) %in% seqlevelsInUse(fragments))
+    if (length(remaining)!=length(regions)) {
+        warning("chromosome present in 'regions' and not in fragments") 
+        regions <- regions[remaining]
+    }
+
 	# Checking out which regions overlap with each fragment.
 	if (any(strand(regions)!="*")) { 
 		warning("stranded region ranges have no interpretation, coercing unstrandedness") 
@@ -40,6 +47,14 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 				warning("stranded region ranges have no interpretation, coercing unstrandedness") 
 				strand(second.regions) <- "*"
 			}
+
+            # Also removing missing entries from 'second.regions'
+            remaining2 <- which(seqnames(second.regions) %in% seqlevelsInUse(fragments))
+            if (length(remaining2)!=length(second.regions)) {
+                warning("chromosome present in 'second.regions' and not in fragments") 
+                second.regions <- second.regions[remaining2]
+            }
+
 			lap2 <- suppressWarnings(findOverlaps(fragments, second.regions, type=type))
 			to.add.query <- queryHits(lap2)
 			to.add.subject <- subjectHits(lap2)
@@ -51,29 +66,31 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 			to.add.query <- seq_along(fragments)
 			to.add.subject <- binned$id
 			second.regions <- binned$region
+            remaining2 <- seq_along(second.regions)
 		}
 
 		n.first <- length(regions)
 		n.second <- length(second.regions)
 		regions <- suppressWarnings(c(regions, second.regions))
 		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
+        regions$original <- c(remaining, remaining2)
 
 		frag.ids <- c(frag.ids, to.add.query)
 		reg.ids <- c(reg.ids, to.add.subject + n.first)
 		o <- order(frag.ids, reg.ids)
 		frag.ids <- frag.ids[o]
 		reg.ids <- reg.ids[o]
-
-		regions$original <- c(seq_len(n.first), seq_len(n.second))
 	} else {
 		is.second <- NULL
-		regions$original <- seq_along(regions)
+        regions$original <- remaining
 	}
 
 	# Ordering regions, consistent with the previous definitions of anchor/targets.
 	ordered.chrs <- as.character(runValue(seqnames(fragments)))
 	matched <- match(as.character(seqnames(regions)), ordered.chrs)
-	if (any(is.na(matched))) { stop("chromosome present in regions and not in fragments") }
+	if (any(is.na(matched))) {
+        stop("chromosomes missing from 'fragments'")
+    }
 
 	nregs <- length(regions)
 	o <- order(matched, start(regions), end(regions)) # Stable sort preserves order, if expanded intervals are identical.
@@ -90,7 +107,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	out.right <- out.left <- list(integer(0))
 	idex<-1L
 
-	chrs <- seqlevels(fragments)
+	chrs <- seqlevelsInUse(fragments)
 	my.chrs <- unique(runValue(seqnames(regions)))
 	overall <- .loadIndices(files, chrs, restrict)
 

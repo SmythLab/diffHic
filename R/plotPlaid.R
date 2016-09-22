@@ -22,7 +22,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 
 	# Setting up the parameters
 	fragments <- param$fragments
-	if (!(first.chr %in% seqlevels(fragments)) || !(second.chr %in% seqlevels(fragments))) { 
+	if (!(first.chr %in% seqlevelsInUse(fragments)) || !(second.chr %in% seqlevelsInUse(fragments))) { 
 		stop("anchor chromosome names not in cut site list") 
 	}
 	discard <- .splitDiscards(param$discard)
@@ -65,7 +65,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	}
 
 	# Pulling out the read pair indices from each file, and checking whether chromosome names are flipped around.
-	all.dex <- .loadIndices(file, seqlevels(fragments))
+	all.dex <- .loadIndices(file, seqlevelsInUse(fragments))
 	flipped <- FALSE
 	if (!is.null(all.dex[[first.chr]][[second.chr]])) {
 		current <- .baseHiCParser(TRUE, file, first.chr, second.chr, 

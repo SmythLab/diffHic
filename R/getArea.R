@@ -1,14 +1,3 @@
-getDistance <- function(data, type=c("mid", "gap", "span")) 
-# Outputs an integer vector specifying the distance between the interacting bins,
-# depending on the type of distance specified.
-#
-# written by Aaron Lun
-# created 22 April 2014
-# last modified 22 November 2015
-{
-    .Defunct(new="pairdist", package="InteractionSet")
-}
-
 getArea <- function(data, bp=TRUE)
 # Computes the area of the interaction space, either in base pair-squared terms
 # or in terms of pairs of restriction fragments. This allows adjustment of

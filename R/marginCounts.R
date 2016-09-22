@@ -23,7 +23,7 @@ marginCounts <- function(files, param, width=50000)
 
 	total.counts <- matrix(0L, length(new.pts$region), nlibs)
 	full.sizes <- integer(nlibs)
-	chrs <- seqlevels(fragments)
+	chrs <- seqlevelsInUse(fragments)
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)

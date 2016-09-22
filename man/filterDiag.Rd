@@ -13,7 +13,7 @@ filterDiag(data, by.dist=0, by.diag=0L, dist, ...)
 \item{by.dist}{a numeric scalar indicating the base-pair distance threshold below which bins are considered local}
 \item{by.diag}{an integer scalar indicating the bin distance threshold below which bins are considered local}
 \item{dist}{a optional numeric vector containing pre-computed distances}
-\item{...}{other arguments to pass to \code{\link{getDistance}}, if \code{dist} is not specified}
+\item{...}{other arguments to pass to \code{\link{pairdist}}, if \code{dist} is not specified}
 }
 
 \details{

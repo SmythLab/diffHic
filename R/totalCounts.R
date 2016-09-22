@@ -11,7 +11,7 @@ totalCounts <- function(files, param)
 	if (nlibs==0L) { stop("number of libraries must be positive") }
 	fragments <- param$fragments
 	frag.by.chr <- .splitByChr(fragments)
- 	chrs <- seqlevels(fragments) 
+ 	chrs <- seqlevelsInUse(fragments) 
 	full.sizes <- integer(nlibs)
 
 	# Setting up other local references.

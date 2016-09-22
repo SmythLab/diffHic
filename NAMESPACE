@@ -7,18 +7,17 @@ export(diffHicUsersGuide,
     preparePairs, mergePairs, savePairs, prepPseudoPairs,
 	getPairData, prunePairs, 
 	loadChromos, loadData,
-	DIList, pairParam,
+	pairParam,
     squareCounts, connectCounts, marginCounts, totalCounts, 
     correctedContact, normalizeCNV, matchMargins,
-    getDistance, getArea,
+    getArea,
 	filterDirect, filterTrended, filterDiag,
 	filterPeaks, enrichedPairs, neighborCounts,
     boxPairs, clusterPairs, consolidatePairs, diClusters,
     annotatePairs,
 	compartmentalize, domainDirections,
     plotPlaid, rotPlaid, plotDI, rotDI,
-	asDGEList, normOffsets, reform, normalize, # From csaw, but also available to the user.
-    DI2IS
+	asDGEList, normOffsets, reform, normalize # From csaw, but also available to the user.
 )
 
 # Exporting classes.

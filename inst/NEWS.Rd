@@ -2,8 +2,10 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.5.5}{\itemize{
+\section{Version 1.5.6}{\itemize{
 \item Relaxed checks in preparePairs(), prepPseudoPairs() when more chromosomes are supplied than needed.
+
+\item Relaxed checks in connectCounts() when extra chromosomes are in the input ranges.
 
 \item Fixed an issue with preparePairs() when too many file handles are open.
 
@@ -12,6 +14,10 @@
 \item Modified domainDirections() to return a RangedSummarizedExperiment.
 
 \item Removed defunct DIList class and methods.
+
+\item Switched from seqlevels() to seqlevelsInUse() for fragment intervals.
+
+\item Updated user's guide, documentation.
 }
 }
 

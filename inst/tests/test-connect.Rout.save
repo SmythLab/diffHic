@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-11-22 r69685) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-pc-linux-gnu (64-bit)
+R version 3.3.1 (2016-06-21) -- "Bug in Your Hair"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -191,7 +191,18 @@ Type 'q()' to quit R.
 + 
 + 	param <- pairParam(cuts, restrict=restrict)
 + 	out <- connectCounts(c(dir1, dir2), regions=ranges, filter=filter, type=type, param=param) 
++ 
++     if (any(! seqnames(ranges) %in% seqlevels(cuts))) { # Cleaning up leftover ranges.
++         leftovers <- which(seqnames(ranges) %in% seqlevels(cuts))
++         ranges <- ranges[leftovers]        
++     } else {
++         leftovers <- NULL
++     }
 + 	ref <- refline(c(dir1, dir2), cuts=cuts, ranges=ranges, filter=filter, type=type, restrict=restrict)
++     if (!is.null(leftovers)) {
++         ref$region$original <- leftovers[ref$region$original]
++     }
++ 
 + 	if (!identical(ref$pairs$anchor1.id, anchors(out, type="first", id=TRUE))) { stop("mismatch in anchor1 identities") }
 + 	if (!identical(ref$pairs$anchor2.id, anchors(out, type="second", id=TRUE))) { stop("mismatch in anchor2 identities") }
 +     obs.counts <- assay(out)
@@ -489,6 +500,34 @@ Type 'q()' to quit R.
 5          3          2 1 2
 6          3          3 2 0
 > 
+> # Adding some extra elements to the ranges (should throw warnings but not fail).
+> my.ranges <- simranges(current.cuts, nranges=10)
+> my.ranges <- suppressWarnings(c(my.ranges, GRanges("chrX", IRanges(1:10, 1:10))))
+> samecomp(100, cuts=current.cuts, ranges=my.ranges)
+  anchor1.id anchor2.id 1 2
+1          1          1 0 1
+2          2          1 0 1
+3          2          2 0 1
+4          3          2 1 0
+5          4          2 1 0
+6          5          2 1 0
+Warning message:
+In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
+  chromosome present in 'regions' and not in fragments
+> my.ranges <- simranges(current.cuts, nranges=10)
+> my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
+> samecomp(100, cuts=current.cuts, ranges=my.ranges)
+  anchor1.id anchor2.id 1 2
+1          1          1 2 0
+2          2          1 1 0
+3          2          2 1 0
+4          3          1 1 1
+5          3          2 1 0
+6          3          3 1 1
+Warning message:
+In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
+  chromosome present in 'regions' and not in fragments
+> 
 > ###########################################################################################
 > # Repeating the analysis with first and second ranges.
 > 
@@ -646,6 +685,35 @@ Type 'q()' to quit R.
 [5,]       6       1 2 2
 [6,]       6       3 1 1
 > 
+> # Again, adding some extra elements to the ranges (should throw warnings but not fail).
+> my.ranges <- simranges(current.cuts, nranges=10)
+> my.ranges <- suppressWarnings(c(my.ranges, GRanges("chrX", IRanges(1:10, 1:10))))
+> secondcomp(100, cuts=current.cuts, ranges1=my.ranges, ranges2=r2)
+     anchor1 anchor2      
+[1,]       2       1 19 16
+[2,]       3       1 19 16
+[3,]       4       2 13 13
+[4,]       4       3 10 13
+[5,]       5       2 16 16
+[6,]       5       3 14 16
+Warning message:
+In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
+  chromosome present in 'regions' and not in fragments
+> my.ranges <- simranges(current.cuts, nranges=10)
+> my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
+> secondcomp(100, cuts=current.cuts, ranges1=my.ranges, ranges2=r2)
+     anchor1 anchor2      
+[1,]       4       1 14  9
+[2,]       4       2 10  6
+[3,]       4       3  9 12
+[4,]       5       4 13 14
+[5,]       6       1  7  8
+[6,]       6       2  9  5
+Warning message:
+In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
+  chromosome present in 'regions' and not in fragments
+> 
+> 
 > ###########################################################################################
 > # Cleaning up.
 > 
@@ -656,4 +724,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 45.559   0.444  46.209 
+ 54.146   0.964  56.583 

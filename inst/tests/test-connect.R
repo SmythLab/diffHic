@@ -172,7 +172,18 @@ samecomp <- function(nreads, cuts, ranges, filter=0L, type="any", restrict=NULL)
 
 	param <- pairParam(cuts, restrict=restrict)
 	out <- connectCounts(c(dir1, dir2), regions=ranges, filter=filter, type=type, param=param) 
+
+    if (any(! seqnames(ranges) %in% seqlevels(cuts))) { # Cleaning up leftover ranges.
+        leftovers <- which(seqnames(ranges) %in% seqlevels(cuts))
+        ranges <- ranges[leftovers]        
+    } else {
+        leftovers <- NULL
+    }
 	ref <- refline(c(dir1, dir2), cuts=cuts, ranges=ranges, filter=filter, type=type, restrict=restrict)
+    if (!is.null(leftovers)) {
+        ref$region$original <- leftovers[ref$region$original]
+    }
+
 	if (!identical(ref$pairs$anchor1.id, anchors(out, type="first", id=TRUE))) { stop("mismatch in anchor1 identities") }
 	if (!identical(ref$pairs$anchor2.id, anchors(out, type="second", id=TRUE))) { stop("mismatch in anchor2 identities") }
     obs.counts <- assay(out)
@@ -244,6 +255,14 @@ samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), rest
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=5), restrict="chrA")
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrA")
 
+# Adding some extra elements to the ranges (should throw warnings but not fail).
+my.ranges <- simranges(current.cuts, nranges=10)
+my.ranges <- suppressWarnings(c(my.ranges, GRanges("chrX", IRanges(1:10, 1:10))))
+samecomp(100, cuts=current.cuts, ranges=my.ranges)
+my.ranges <- simranges(current.cuts, nranges=10)
+my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
+samecomp(100, cuts=current.cuts, ranges=my.ranges)
+
 ###########################################################################################
 # Repeating the analysis with first and second ranges.
 
@@ -302,6 +321,15 @@ secondcomp(100, current.cuts, r1, r2)
 secondcomp(100, current.cuts, r1, r2, filter=3)
 secondcomp(100, current.cuts, r1, r2, type="within")
 secondcomp(100, current.cuts, r1, r2, restrict="chrA")
+
+# Again, adding some extra elements to the ranges (should throw warnings but not fail).
+my.ranges <- simranges(current.cuts, nranges=10)
+my.ranges <- suppressWarnings(c(my.ranges, GRanges("chrX", IRanges(1:10, 1:10))))
+secondcomp(100, cuts=current.cuts, ranges1=my.ranges, ranges2=r2)
+my.ranges <- simranges(current.cuts, nranges=10)
+my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
+secondcomp(100, cuts=current.cuts, ranges1=my.ranges, ranges2=r2)
+
 
 ###########################################################################################
 # Cleaning up.

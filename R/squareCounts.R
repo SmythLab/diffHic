@@ -19,7 +19,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	new.pts <- .getBinID(fragments, width)
 	
 	# Setting up ranges for the fragments and bins.
-	chrs <- seqlevels(fragments)
+	chrs <- seqlevelsInUse(fragments)
 	frag.by.chr <- .splitByChr(fragments)
 	bin.by.chr <- .splitByChr(new.pts$region)
 		

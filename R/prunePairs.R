@@ -16,7 +16,7 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 
 	# Parsing through the old index, counting/summing everything, and saving it to the
 	# temporary file. We also remove any specified elements.
-	allstuff <- .loadIndices(file.in, seqlevels(param$fragments))
+	allstuff <- .loadIndices(file.in, seqlevelsInUse(param$fragments))
 	for (ax in names(allstuff)) { 
 		current <- allstuff[[ax]]
 		loaded <- FALSE

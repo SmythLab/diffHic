@@ -14,7 +14,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 
 	# Setting up the parameters
 	fragments <- param$fragments
-	if (!xchr %in% seqlevels(fragments)) { stop("chromosome name not in cut site list") } 
+	if (!xchr %in% seqlevelsInUse(fragments)) { stop("chromosome name not in cut site list") } 
 	discard <- .splitDiscards(param$discard)
 	cap <- param$cap
 	frag.by.chr <- .splitByChr(fragments)
@@ -41,7 +41,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 	keep.frag[cur.chrs] <- use.bin[new.pts$id]	
 	
 	# Pulling out the read pair indices from each file.
-	all.dex <- .loadIndices(file, seqlevels(fragments))
+	all.dex <- .loadIndices(file, seqlevelsInUse(fragments))
 	if (!is.null(all.dex[[xchr]][[xchr]])) {
 		current <- .baseHiCParser(TRUE, file, xchr, xchr, chr.limits=frag.by.chr,
 			discard=discard, cap=cap)[[1]]
