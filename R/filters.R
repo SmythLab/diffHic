@@ -6,28 +6,31 @@ filterDirect <- function(data, prior.count=2, reference=NULL)
 #
 # written by Aaron Lun
 # created 5 March 2015
-# last modified 8 December 2015
+# last modified 16 November 2015
 {
     .check_StrictGI(data)
 
 	if (!is.null(reference)) { 
-		actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count)
-		ref <- Recall(reference, prior.count=prior.count)
-
 		stopifnot(identical(reference$totals, data$totals))
 		scaling <- (.getBinSize(reference)/.getBinSize(data))^2
-		adj.thresh <- .repriorAveLogCPM(ref$threshold, totals=data$totals,
-			prior.count=prior.count, scaling=scaling)
-		return(list(abundances=actual.ab, threshold=adj.thresh, ref=ref))
+        ref <- .direct_filter(reference, prior.count=prior.count, scaling=scaling)
+        actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=1)
+		return(list(abundances=actual.ab, threshold=ref$threshold, ref=ref))
 	}
 
-	all.chrs <- seqnames(regions(data))
-	is.inter <- !intrachr(data)
-	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count)
+    .direct_filter(data, prior.count=prior.count, scaling=1)
+}
 
-	threshold <- .getInterThreshold(all.chrs, ave.ab[is.inter],
-		empty=.makeEmpty(data, prior.count=prior.count))
-	return(list(abundances=ave.ab, threshold=threshold))
+.direct_filter <- function(data, prior.count, scaling) 
+# Actually does all the work of the direct filtering strategy.
+# It computes the abundances and identifies the median for inter-chromosomal bin pairs.
+{
+   	all.chrs <- seqnames(regions(data))
+	is.inter <- !intrachr(data)
+	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=scaling)
+    empty.ab <- .makeEmpty(data, prior.count=prior.count, scale=scaling) 
+	threshold <- .getInterThreshold(all.chrs, ave.ab[is.inter], empty=empty.ab)
+    return(list(abundances=ave.ab, threshold=threshold))
 }
 
 .getBinSize <- function(data) 
@@ -64,14 +67,15 @@ filterDirect <- function(data, prior.count=2, reference=NULL)
 	return(threshold)
 }
 
-.makeEmpty <- function(data, ...) { scaledAverage(DGEList(rbind(integer(ncol(data))), lib.size=data$totals), ...) }
-
-.repriorAveLogCPM <- function(AveLogCPM, totals, prior.count, scaling)
-# Adjusting the average log-CPM to use a new prior count.
-{
-	ave.count <- 2^AveLogCPM * mean(totals) / 1e6
-	ave.count <- ave.count + prior.count*(scaling - 1)
-	return(log2(ave.count * 1e6 / mean(totals) / scaling))
+.makeEmpty <- function(data, ...) { 
+    if (nrow(data)) { 
+        y <- asDGEList(data[1,])
+        y$counts[] <- 0L
+    } else {
+        y <- asDGEList(data)
+        y$counts <- rbind(integer(ncol(data)))
+    }
+    scaledAverage(y, ...) 
 }
 
 filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
@@ -80,36 +84,40 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
 #
 # written by Aaron Lun
 # created 5 March 2015
-# last modified 8 December 2015
+# last modified 16 November 2016
 {
     .check_StrictGI(data)
 
 	if (!is.null(reference)) {
-		actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count)
+        stopifnot(identical(reference$totals, data$totals))
+        scaling <- (.getBinSize(reference)/.getBinSize(data))^2
+        ref <- .trended_filter(reference, span=span, prior.count=prior.count, scaling=scaling)
+
+        actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=1)
 		actual.dist <- log10(pairdist(data, type="mid") + .getBinSize(data))
-		ref <- Recall(reference, span=span, prior.count=prior.count)
 		
 		new.threshold <- approx(x=ref$log.distance, y=ref$threshold, xout=actual.dist, rule=2)$y
 		new.threshold[is.na(actual.dist)] <- ref$threshold[is.na(ref$log.distance)][1] # Direct threshold.
 
-		stopifnot(identical(reference$totals, data$totals))
-		scaling <- (.getBinSize(reference)/.getBinSize(data))^2
-		adj.thresh <- .repriorAveLogCPM(new.threshold, totals=data$totals,
-			prior.count=prior.count, scaling=scaling)
-		return(list(abundances=actual.ab, threshold=adj.thresh, log.distance=actual.dist, ref=ref)) 
+        return(list(abundances=actual.ab, threshold=new.threshold, log.distance=actual.dist, ref=ref)) 
 	}
-        
+
+    .trended_filter(data, span=span, prior.count=prior.count, scaling=1)        
+}
+
+.trended_filter <- function(data, span, prior.count, scaling) {
 	dist <- pairdist(data, type="mid")
-	log.dist <- log10(dist + .getBinSize(data))
-	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count)
+	log.dist <- log10(dist + .getBinSize(data)) # Adding an appropriate prior.
+	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=scaling)
 
 	# Filling in the missing parts of the interaction space.
-	empty <- .makeEmpty(data, prior.count=prior.count)
+	empty <- .makeEmpty(data, prior.count=prior.count, scale=scaling)
 	is.intra <- !is.na(log.dist)
 	n.intras <- sum(is.intra)
 	all.chrs <- seqnames(regions(data))
 	n.bins <- as.numeric(runLength(all.chrs))
-	if (sum(n.bins * (n.bins + 1L)/2L) > 2*n.intras) { 
+
+    if (sum(n.bins * (n.bins + 1L)/2L) > 2*n.intras) { 
  	   	warning("too many missing regions in the intra-chromosomal interaction space to fill in") 
 		trend.threshold <- loessFit(x=log.dist, y=ave.ab, span=span)$fitted
 	} else {

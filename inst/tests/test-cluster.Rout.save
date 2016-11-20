@@ -1,5 +1,5 @@
 
-R version 3.3.0 Patched (2016-05-03 r70580) -- "Supposedly Educational"
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -265,7 +265,7 @@ Type 'q()' to quit R.
   1.000   1.000   2.000   7.937   7.000  93.000 
 > clustercomp(data, tol=200, maxw=500)
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  16.00   86.25  120.00  166.70  275.20  342.00 
+  16.00   86.25  120.00  166.67  275.25  342.00 
 > 
 > # And again, with flipped settings.	
 > data <- simgen(100, chromos, 50, 10, 20)
@@ -310,7 +310,7 @@ Type 'q()' to quit R.
    8.00   18.00   23.00   23.81   29.00   46.00 
 > clustercomp(data, tol=0, maxw=500, split=TRUE)
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   8.00   37.75   60.50   83.33  140.20  174.00 
+   8.00   37.75   60.50   83.33  140.25  174.00 
 > 
 > data <- simgen(1000, chromos, 50, 10, 20)
 > clustercomp(data, tol=0, maxw=100, split=TRUE)
@@ -321,7 +321,7 @@ Type 'q()' to quit R.
    1.00   37.50   48.00   45.45   56.00   79.00 
 > clustercomp(data, tol=0, maxw=500, split=TRUE)
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  24.00   81.75  123.50  166.70  272.50  339.00 
+  24.00   81.75  123.50  166.67  272.50  339.00 
 > 
 > data <- simgen(1000, chromos, 100, 10, 20)
 > clustercomp(data, tol=0, maxw=100, split=TRUE)
@@ -332,7 +332,7 @@ Type 'q()' to quit R.
    1.00   31.00   43.00   43.48   56.50   86.00 
 > clustercomp(data, tol=0, maxw=500, split=TRUE)
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  23.00   80.75  116.00  166.70  284.00  336.00 
+  23.00   80.75  116.00  166.67  284.00  336.00 
 > 
 > ####################################################################################################
 > # Clustering with multiple entries.
@@ -522,4 +522,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 22.543   0.215  22.761 
+ 23.560   0.144  23.723 

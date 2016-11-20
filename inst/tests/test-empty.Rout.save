@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2016-02-24 r70217) -- "Unsuffered Consequences"
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -50,7 +50,7 @@ $threshold
 [1] 0.9999942
 
 Warning message:
-In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = .makeEmpty(data,  :
+In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
   insufficient inter-chromosomal pairs for reliable threshold estimation
 > filterDirect(ghost, reference=ghost)
 $abundances
@@ -68,7 +68,7 @@ $ref$threshold
 
 
 Warning message:
-In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = .makeEmpty(data,  :
+In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
   insufficient inter-chromosomal pairs for reliable threshold estimation
 > 
 > filterTrended(ghost)
@@ -82,13 +82,13 @@ $log.distance
 numeric(0)
 
 Warning message:
-In filterTrended(ghost) :
+In .trended_filter(data, span = span, prior.count = prior.count,  :
   too many missing regions in the intra-chromosomal interaction space to fill in
 > try(filterTrended(ghost, reference=ghost)) # This will fail, as interpolation is impossible.
 Error in approx(x = ref$log.distance, y = ref$threshold, xout = actual.dist,  : 
   need at least two non-NA values to interpolate
 In addition: Warning message:
-In filterTrended(ghost, reference = ghost) :
+In .trended_filter(reference, span = span, prior.count = prior.count,  :
   too many missing regions in the intra-chromosomal interaction space to fill in
 > 
 > filterPeaks(ghost, integer(0))
@@ -101,7 +101,7 @@ numeric(0)
 Error in approxfun(x = trended$log.distance, y = trended$threshold, rule = 2) : 
   need at least two non-NA values to interpolate
 In addition: Warning message:
-In filterTrended(data) :
+In .trended_filter(data, span = span, prior.count = prior.count,  :
   too many missing regions in the intra-chromosomal interaction space to fill in
 > try(compartmentalize(ghost, dist.correct=FALSE)) # This will also fail, due to non-unique k-means.
 Error in kmeans(mat, centers = centers, ...) : 
@@ -119,10 +119,13 @@ $max
 [39] 0 0 0 0 0 0 0 0 0 0 0 0
 
 > 
-> ghost.ranges <- SummarizedExperiment(matrix(0, 0, 0), GRanges())
+> ghost.ranges <- SummarizedExperiment(matrix(0, 0, 1), GRanges())
 > try(normalizeCNV(ghost, ghost.ranges)) # locfit isn't as robust as loessFit
-Error in if (mean.lib.size == 0) { : 
-  missing value where TRUE/FALSE needed
+Error in locfit(i.fc ~ cov.fun, maxk = maxk, ..., lfproc = locfit.robust) : 
+  fewer than one row in the data
+In addition: Warning message:
+In normalizeCNV(ghost, ghost.ranges) :
+  library sizes should be identical for margin and data objects
 > 
 > matchMargins(ghost, ghost.ranges)
 [1] anchor1 anchor2
@@ -172,4 +175,4 @@ character(0)
 > 
 > proc.time()
    user  system elapsed 
-  8.064   0.192   8.344 
+  8.184   0.196   8.396 

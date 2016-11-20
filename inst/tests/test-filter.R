@@ -1,173 +1,176 @@
-# This script tests the capability of the filtering methods, on filtration 
-# of read pairs during count loading, e.g. based on gap distances. We only
-# check the .baseHiCParser function here, as the interface is common.
+#################################################################
+# This tests the filterDirect machinery.
 
-suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
-suppressPackageStartupMessages(require(rhdf5))
-source("simcounts.R")
+require(diffHic)
+set.seed(1212)
 
-dir.create("temp-filt")
-dir1<-"temp-filt/1.h5"
-dir2<-"temp-filt/2.h5"
-dir1x<-"temp-filt/1b.h5"
-dir2x<-"temp-filt/2b.h5"
+ends <- c(1:10, 1:5)*10L
+starts <- ends - 9L
+my.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 
-filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outgap=NA, max.frag=NA, discard.param=NULL, cap=NA) {
-	simgen(dir1, npairs1, chromos)
-	simgen(dir2, npairs2, chromos)
-	cuts <- simcuts(chromos, overlap=overlap)
-	augmentsim(dir1, cuts)
-	augmentsim(dir2, cuts)
-	cap <- as.integer(cap)
+all.inters <- expand.grid(1:10, 11:15) # i.e., only inter-chromosomal interactions here.
+x <- InteractionSet(matrix(10, nrow=nrow(all.inters), 1), 
+                    GInteractions(all.inters[,1], all.inters[,2], my.regions, mode="reverse"),
+                    colData=DataFrame(totals=1e6)) 
 
-	# Pruning.
-	totes1 <- prunePairs(dir1, pairParam(fragments=cuts), file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
-	totes2 <- prunePairs(dir2, pairParam(fragments=cuts), file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+# Vanilla comparison.
 
-	# Setting up parameters.
-	min.ingap <- as.integer(min.ingap)
-	min.outgap <- as.integer(min.outgap)
-	max.frag <- as.integer(max.frag)
-	if (is.null(discard.param)) { 
-		discard <- NULL
-	} else {
-		discard <- makeDiscard(discard.param[1], discard.param[2], seqlengths(cuts))
-	}
-	xdiscard <- diffHic:::.splitDiscards(discard)
-	lost.frag <- lost.in <- lost.out <- lost.disc <- 0L
-	frag.by.chr <- diffHic:::.splitByChr(cuts)
+out <- filterDirect(x)
+stopifnot(length(out$abundances) && length(out$threshold))
+stopifnot(all(out$abundances==out$threshold))
+out$threshold
 
-	combo <- c(dir1, dir2, dir1x, dir2x)
-	stuff <- diffHic:::.loadIndices(combo, seqlevels(cuts))
-	for (ax in names(stuff)) { 
-		current <- stuff[[ax]]
-		for (tx in names(current)) { 
+out <- filterDirect(x, prior.count=5)
+stopifnot(length(out$abundances) && length(out$threshold))
+stopifnot(all(out$abundances==out$threshold))
+out$threshold
 
-			everything <- list()
-			for (d in 1:2) {
-				if (current[[tx]][d]) { 
-					collected <- h5read(combo[d], file.path(ax, tx))
-				} else {
-					collected <- data.frame(anchor1.id=integer(0),
-						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
-						anchor1.len=integer(0), anchor2.len=integer(0))
-				}
-				mod.d <- d+2
-				if (current[[tx]][mod.d]) { 
-					counter <- h5read(combo[mod.d], file.path(ax, tx))
-				} else {
-					counter <- data.frame(anchor1.id=integer(0),
-						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
-						anchor1.len=integer(0), anchor2.len=integer(0))
-				}
+# Comparison with some missing entries; but these should not be the median.
 
-				# Pruning the statistics.
-				stats <- diffHic:::.getStats(collected, ax==tx, cuts)
-				keep <- !logical(nrow(collected))
-				if (!is.na(max.frag)) { 
-					nokill <- stats$length <= max.frag
-					lost.frag <- lost.frag + sum(!nokill)
-					keep <- keep & nokill
-				} 
-				if (!is.na(min.outgap)) {
-					nokill <- (ax!=tx | stats$orientation!=2L | stats$insert >= min.outgap)
-					lost.out <- lost.out + sum(!nokill)
-					keep <- keep & nokill 
-				}
-				if (!is.na(min.ingap)) { 
-					nokill <- (ax!=tx | stats$orientation!=1L | stats$insert >= min.ingap)
-					lost.in <- lost.in + sum(!nokill)
-					keep <- keep & nokill 
-				}
-				mod.col <- collected[keep,]
-				row.names(mod.col) <- NULL
-				for (x in 1:ncol(counter)) { 
-					attributes(mod.col[[x]]) <- attributes(counter[[x]]) <- NULL 
-				}
-				stopifnot(identical(counter, mod.col)) 
-				
-				# Checking discards.
-				disc.keep <- !logical(nrow(collected))
-				if (!is.null(discard)) { 
-					nokill <- !overlapsAny(GRanges(ax, IRanges(collected$anchor1.pos, collected$anchor1.pos+abs(collected$anchor1.len)-1L)), discard, type="within") & 
-						!overlapsAny(GRanges(tx, IRanges(collected$anchor2.pos, collected$anchor2.pos+abs(collected$anchor2.len)-1L)), discard, type="within")
-					lost.disc <- lost.disc + sum(!nokill)
-					disc.keep <- nokill 
-				}
-				collected <- collected[disc.keep,1:2]
+out <- filterDirect(x)
 
-				# Comparing it to the cap.
-				if (!is.na(cap)) { 
-					is.diff <- c(TRUE, diff(collected$anchor1.id)!=0L | diff(collected$anchor2.id)!=0L)
-					uniq.ids <- cumsum(is.diff)
-					by.ids <- split(1:nrow(collected), uniq.ids)
-					to.keep <- logical(nrow(collected))
-					for (x in by.ids) {
-						if (length(x)>cap) { x <- x[1:cap] } 
-						to.keep[x] <- TRUE
-					}
-					collected <- collected[to.keep,]
-				} 
+x2 <- x
+assay(x2)[1:20,] <- 50
+out2 <- filterDirect(x2)
+stopifnot(out2$threshold==out$threshold)
+stopifnot(out2$threshold==median(out2$abundances))
+out2$threshold
 
-				dim(collected$anchor1.id) <- dim(collected$anchor2.id) <- NULL
-				everything[[d]] <- collected
-			}
-									
-			# Running through them with every possible check.
-			comparator <- diffHic:::.baseHiCParser(current[[tx]][1:2], combo[1:2], ax, tx, 
-				chr.limits=frag.by.chr, discard=xdiscard, cap=cap)
-			for (d in 1:2) {
-				stopifnot(identical(everything[[d]], comparator[[d]]))
-			}
-		}
-	}
+x2 <- x2[1:30,]
+out2 <- filterDirect(x2)
+stopifnot(out2$threshold==out$threshold)
+stopifnot(out2$threshold!=median(out2$abundances))
+out2$threshold
 
-	stopifnot(identical(lost.frag, totes1[["length"]]+totes2[["length"]]))	
-	stopifnot(identical(lost.in, totes1[["inward"]]+totes2[["inward"]]))	
-	stopifnot(identical(lost.out, totes1[["outward"]]+totes2[["outward"]]))	
-	return(c(by.frag=lost.frag, by.in=lost.in, by.out=lost.out, by.disc=lost.disc))
-}
+x2 <- x2[1,]
+out2 <- filterDirect(x2) # Checking makeEmpty()
+stopifnot(out2$threshold==edgeR::aveLogCPM(0, 1e6))
 
-#########################################################################
+# Seeing what happens if we add in a whole bunch of intra-chromosomals.
 
-set.seed(38247)
-chromos <- c(chrA=50, chrB=20, chrC=30)
+all.combos <- combn(10, 2)
+xi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+                    GInteractions(all.combos[1,], all.combos[2,], my.regions, mode="reverse"),
+                    colData=DataFrame(totals=1e6)) 
+xi <- rbind(x, xi, xi)
+outi <- filterDirect(xi)
+stopifnot(outi$threshold==out$threshold)
+stopifnot(outi$threshold!=median(outi$abundances))
+outi$threshold
 
-filtsim(100, 100, chromos, 4)
-filtsim(100, 100, chromos, 4, min.ingap=100)
-filtsim(100, 100, chromos, 4, min.ingap=1000)
-filtsim(100, 100, chromos, 4, min.outgap=100)
-filtsim(100, 100, chromos, 4, min.outgap=1000)
-filtsim(100, 100, chromos, 4, max.frag=100)
-filtsim(100, 100, chromos, 4, max.frag=1000)
+# Comparison with a reference object.
 
-filtsim(200, 50, chromos, 2)
-filtsim(200, 50, chromos, 2, min.ingap=100, min.outgap=1000)
-filtsim(200, 50, chromos, 2, min.ingap=1000, min.outgap=100)
-filtsim(200, 50, chromos, 2, min.outgap=100, max.frag=100)
-filtsim(200, 50, chromos, 2, min.outgap=1000, max.frag=1000)
-filtsim(200, 50, chromos, 2, max.frag=100, min.ingap=100)
-filtsim(200, 50, chromos, 2, max.frag=1000, min.ingap=1000)
+ends <- c(1:10, 1:5)*20L
+starts <- ends - 19L
+ref.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 
-filtsim(200, 200, chromos, 2, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=1000, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.outgap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.outgap=1000, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, max.frag=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, max.frag=1000, discard.param=c(10, 100))
+all.inters <- expand.grid(1:10, 11:15)
+ref <- InteractionSet(matrix(40, nrow=nrow(all.inters), 1), 
+                    GInteractions(all.inters[,1], all.inters[,2], ref.regions, mode="reverse"),
+                    colData=DataFrame(totals=1e6)) 
 
-filtsim(200, 200, chromos, 2, cap=1, min.ingap=200)
-filtsim(200, 200, chromos, 2, cap=1, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=100, min.outgap=1000, cap=2)
-filtsim(200, 200, chromos, 2, cap=2, max.frag=100)
-filtsim(200, 200, chromos, 2, cap=5, max.frag=1000, min.ingap=1000)
-filtsim(200, 200, chromos, 2, cap=5, min.outgap=100)
-filtsim(200, 200, chromos, 2, ca=10, min.ingap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, ca=10, discard.param=c(10, 100))
+outr <- filterDirect(x, ref=ref)
+stopifnot(all(outr$threshold==outr$abundances))
+stopifnot(all(outr$threshold==outr$ref$abundances))
+outr$threshold
 
-#########################################################################
+outr <- filterDirect(x, ref=ref, prior.count=5)
+stopifnot(all(outr$threshold==outr$abundances))
+stopifnot(all(outr$threshold==outr$ref$abundances))
+outr$threshold
 
-unlink("temp-filt", recursive=TRUE)
+subref <- ref
+assay(subref)[1:20,] <- 100
+out.sub <- filterDirect(x, ref=subref)
+stopifnot(out.sub$threshold==out$threshold)
+stopifnot(all(out.sub$abundances==out$abundances))
+stopifnot(all(out.sub$ref$threshold==median(out.sub$ref$abundances)))
+out.sub$threshold
 
-#########################################################################
+subref <- subref[1:30,]
+out.sub <- filterDirect(x, ref=subref)
+stopifnot(out.sub$threshold==out$threshold)
+stopifnot(all(out.sub$abundances==out$abundances))
+stopifnot(all(out.sub$ref$threshold!=median(out.sub$ref$abundances)))
+out.sub$threshold
+
+refi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+                    GInteractions(all.combos[1,], all.combos[2,], ref.regions, mode="reverse"),
+                    colData=DataFrame(totals=1e6)) 
+refi <- rbind(ref, refi, refi)
+outi <- filterDirect(xi, ref=refi)
+stopifnot(outi$threshold==out$threshold)
+stopifnot(outi$threshold!=median(outi$abundances))
+stopifnot(outi$threshold!=median(outi$ref$abundances))
+outi$threshold
+
+#################################################################
+# This tests the filterTrended machinery, which is substantially more complex.
+
+ends <- c(1:10, 1:5)*10L
+starts <- ends - 9L
+my.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
+
+all.A1 <- sample(length(my.regions), 100, replace=TRUE)
+all.A2 <- sample(length(my.regions), 100, replace=TRUE)
+x <- InteractionSet(matrix(100, nrow=100, 1), 
+                    GInteractions(all.A1, all.A2, my.regions, mode="reverse"),
+                    colData=DataFrame(totals=1e6)) 
+
+out <- filterTrended(x)
+stopifnot(all.equal(out$log.distance, log10(pairdist(x)+median(width(my.regions)))))
+head(out$log.distance)
+stopifnot(all(out$abundances==edgeR::aveLogCPM(100, 1e6)))
+head(out$abundances)
+
+# Checking that we can fill in the missing distances.
+
+is.intra <- !is.na(pairdist(x))
+a.pts <- anchors(x, type="first", id=TRUE)[is.intra]
+t.pts <- anchors(x, type="second", id=TRUE)[is.intra]
+
+o <- order(a.pts, t.pts)
+a.pts <- a.pts[o]
+t.pts <- t.pts[o]
+
+all.chrs <- seqnames(regions(x))
+all.mids <- (start(regions(x))+end(regions(x)))/2
+extra.dist <- .Call(diffHic:::cxx_get_missing_dist, cumsum(runLength(all.chrs)),
+                    a.pts-1L, t.pts-1L, all.mids)
+
+suppressWarnings(cm <- inflate(x, rows=NULL, columns=NULL)) # Reference way to do it.
+ref.dist <- pairdist(cm)
+ref.dist <- ref.dist[as.matrix(is.na(as.matrix(cm))) & !is.na(ref.dist) & lower.tri(ref.dist, diag=TRUE)]
+stopifnot(all.equal(sort(extra.dist), sort(ref.dist)))
+head(extra.dist)
+
+# Checking that we fit a sensible trend.
+
+fit <- limma::loessFit(c(out$abundances, rep(edgeR::aveLogCPM(0, 1e6), length(ref.dist))),
+                       x=c(out$log.distance, log10(ref.dist + median(width(my.regions)))),
+                       span=formals(filterTrended)$span)$fitted
+
+ref.threshold <- fit[seq_along(out$abundances)]
+dout <- filterDirect(x)
+ref.threshold[is.na(ref.threshold)] <- dout$threshold
+stopifnot(all.equal(ref.threshold, out$threshold))
+head(out$threshold)
+
+# Checking that behaviour upon setting 'ref' is reasonable.
+
+xr <- x
+assay(xr)[] <- 40
+regions(xr) <- resize(regions(xr), width=20, fix="center")
+
+outr <- filterTrended(x, ref=xr)
+new.threshold <- approx(outr$ref$log.distance, outr$ref$threshold, xout=outr$log.distance, rule=2)$y
+doutr <- filterDirect(x, ref=xr)
+doutr$threshold
+
+new.threshold[is.na(outr$log.distance)] <- doutr$threshold
+stopifnot(all.equal(new.threshold, outr$threshold))
+head(outr$threshold)
+
+#################################################################
+# End.
+

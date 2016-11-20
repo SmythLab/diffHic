@@ -2,6 +2,11 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
+\section{Version 1.7.1}{\itemize{
+\item Streamlined filterDirect(), filterTrended(), and added tests for them.
+}
+}
+
 \section{Version 1.6.0}{\itemize{
 \item Relaxed checks in preparePairs(), prepPseudoPairs() when more chromosomes are supplied than needed.
 
