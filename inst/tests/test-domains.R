@@ -9,7 +9,7 @@ dir.create("temp-domain")
 dir1<-"temp-domain/1.h5"
 dir2<-"temp-domain/2.h5"
 
-library(diffHic)
+suppressPackageStartupMessages(library(diffHic))
 comp<-function(npairs1, npairs2, dist, cuts, restrict=NULL, cap=NA, span=5) {
     simgen(dir1, npairs1, chromos)
     simgen(dir2, npairs2, chromos)

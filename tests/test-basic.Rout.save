@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2015-12-22 r69809) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -271,7 +271,16 @@ Sample1     a       17            2
 [1] 1 2 2 3 4 4
 > 
 > head(enrichedPairs(data))
-[1]  1.0324215  0.0000000  0.5849625  0.0000000 -0.2895066  0.2630344
+class: InteractionSet 
+dim: 6 1 
+metadata(2): param width
+assays(5): counts quadrant vertical horizontal surrounding
+rownames: NULL
+rowData names(4): N.quadrant N.vertical N.horizontal N.surrounding
+colnames: NULL
+colData names(1): totals
+type: ReverseStrictGInteractions
+regions: 6
 > head(clusterPairs(data, tol=10)$indices[[1]])
 [1] 1 2 2 2 3 3
 > 
@@ -281,4 +290,4 @@ Sample1     a       17            2
 > 
 > proc.time()
    user  system elapsed 
-  7.467   0.220   7.702 
+  8.756   0.180   8.949 

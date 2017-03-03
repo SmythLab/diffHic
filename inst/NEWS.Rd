@@ -2,8 +2,17 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.7.1}{\itemize{
+\section{Version 1.7.2}{\itemize{
 \item Streamlined filterDirect(), filterTrended(), and added tests for them.
+Also allowed specification of which assay to use for the data and reference objects.
+
+\item enrichedPairs() and neighborCounts() now return counts for neighbourhood regions, not just the enrichment values.
+
+\item filterPeaks() will compute (and optionally return) enrichment values from neighbourhood counts. 
+
+\item normalizeCNV() and correctedContact() allow specification of which assay matrix to use from the SE objects.
+
+\item Refactored a great deal of the C++ code for improved clarity.
 }
 }
 

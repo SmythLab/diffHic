@@ -2,7 +2,8 @@
 # This script is designed to test the pair-identifying capabilities of the hiC machinery i.e. preparePairs. 
 # We start with unit tests for individual components of the preparePairs C++ code.
 
-suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+suppressPackageStartupMessages(require(diffHic))
+suppressPackageStartupMessages(require(GenomicAlignments))
 source("simsam.R")
 
 dir<-"hic-test"
@@ -12,16 +13,16 @@ dir.create(dir)
 
 checkCIGAR <- function(cigar, rstrand) {
     output <- simsam(file.path(dir, "whee"), "chrA", 1, !rstrand, c("chrA"=1000), 
-           cigar=cigar, len=GenomicAlignments::cigarWidthAlongQuerySpace(cigar))
+           cigar=cigar, len=cigarWidthAlongQuerySpace(cigar))
 
 	out <- .Call(diffHic:::cxx_test_parse_cigar, output)
 	if (is.character(out)) { stop(out) }
 	
-	true.alen <- GenomicAlignments::cigarWidthAlongReferenceSpace(cigar)
+	true.alen <- cigarWidthAlongReferenceSpace(cigar)
 	if (out[1]!=true.alen) { stop("mismatch in alignment length") }
 
 	offset <- 0
-	as.rle <- GenomicAlignments::cigarToRleList(cigar)[[1]]
+	as.rle <- cigarToRleList(cigar)[[1]]
 	if (rstrand) { as.rle <- rev(as.rle) }
 	if (runValue(as.rle)[1]=="H") { offset <- runLength(as.rle)[1] } 
 	if (out[2]!=offset) { stop("mismatch in offsets") }

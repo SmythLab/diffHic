@@ -1,4 +1,5 @@
-normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
+normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, 
+                         assay.data=1, assay.marg=1, ...)
 # This performs two-dimensional loess smoothing, using the counts and the 
 # marginal counts to compute the abundance and the marginal fold-changes,
 # respectively. Both are used as covariates in the model to smooth out any
@@ -7,21 +8,25 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 #
 # written by Aaron Lun
 # created 11 September 2014
-# last modified 8 December 2015
+# last modified 3 March 2017
 {
     # Checking for proper type.
     .check_StrictGI(data)
+    data.binprs <- assay(data, assay.data)
+    data.margin <- assay(margins, assay.marg)
 
+    # Smaller prior for bin pair count to calculate offsets;
+    # larger prior for margin counts to stabilize covariates.
 	cont.cor <- 0.5
 	cont.cor.scaled <- cont.cor * data$totals/mean(data$totals)
-	ab <- aveLogCPM(assay(data), lib.size=data$totals, prior.count=cont.cor)
-	mave <- aveLogCPM(assay(margins), lib.size=margins$totals, prior.count=prior.count)
+	ab <- aveLogCPM(data.binprs, lib.size=data$totals, prior.count=cont.cor)
+	mave <- aveLogCPM(data.margin, lib.size=margins$totals, prior.count=prior.count)
 	if (!identical(margins$totals, data$totals)) { 
 		warning("library sizes should be identical for margin and data objects")
 	}
 
 	# Generating covariates.
-	mab <- cpm(assay(margins), lib.size=margins$totals, log=TRUE, prior.count=prior.count) - mave
+	mab <- cpm(data.margin, lib.size=margins$totals, log=TRUE, prior.count=prior.count) - mave
 	matched <- matchMargins(data, margins)	
 	ma.adjc <- mab[matched$anchor1,,drop=FALSE] 
 	mt.adjc <- mab[matched$anchor2,,drop=FALSE]
@@ -38,7 +43,7 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500, ...)
 		all.cov <- list(mfc1, mfc2, ab)
 	
 		# Fitting a loess surface with the specified covariates.	
-		i.fc <- log2(assay(data)[,lib] + cont.cor.scaled[lib]) - ab 
+		i.fc <- log2(data.binprs[,lib] + cont.cor.scaled[lib]) - ab 
 		cov.fun <- do.call(lp, c(all.cov, nn=span, deg=1))
 		fit <- locfit(i.fc ~ cov.fun, maxk=maxk, ..., lfproc=locfit.robust) 
 		offsets[,lib] <- fitted(fit)

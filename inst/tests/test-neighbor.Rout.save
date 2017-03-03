@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2015-12-22 r69809) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -21,7 +21,6 @@ Type 'q()' to quit R.
 > # This tests the neighbor-counting code.
 > 
 > suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
-> suppressPackageStartupMessages(require(edgeR))
 > 
 > # Defining some odds and ends.
 > 
@@ -41,7 +40,7 @@ Type 'q()' to quit R.
 + 	out
 + }
 > 
-> comp <- function(npairs, chromos, flanking, exclude=0, prior=2) {
+> comp <- function(npairs, chromos, flanking, exclude=0) {
 + 	flanking <- as.integer(flanking)
 + 	exclude <- as.integer(exclude)
 + 
@@ -54,9 +53,9 @@ Type 'q()' to quit R.
 +    	npairs <- min(npairs, nrow(all.pairs))
 + 
 + 	# Setting up some data.
-+ 	counts <- do.call(cbind, lapply(1:nlibs, FUN=function(x) { as.integer(rpois(npairs, lambda) + 1) }) )
++ 	counts <- do.call(cbind, lapply(seq_len(nlibs), FUN=function(x) { as.integer(rpois(npairs, lambda) + 1) }) )
 + 	chosen <- sample(nrow(all.pairs), npairs)
-+ 	indices <- unlist(sapply(chromos, FUN=function(x) { 1:x }), use.names=FALSE)
++ 	indices <- unlist(sapply(chromos, FUN=function(x) { seq_len(x) }), use.names=FALSE)
 + 	data <- InteractionSet(list(counts=counts), 
 +         GInteractions(anchor1=aid[chosen], anchor2=tid[chosen],
 +             regions=GRanges(rep(names(chromos), chromos), IRanges(indices, indices)), mode="reverse"),
@@ -64,21 +63,20 @@ Type 'q()' to quit R.
 + 	regions(data)$nfrags <- rep(1:3, length.out=nbins)
 + 	
 + 	# Computing the reference enrichment value.
-+ 	bg <- enrichedPairs(data, flank=flanking, prior.count=prior, exclude=exclude)
++ 	bg <- enrichedPairs(data, flank=flanking, exclude=exclude)
 + 	final.ref <- numeric(length(bg))
 + 
 + 	# Sorting them by chromosome pairs.
 + 	all.chrs <- as.character(seqnames(regions(data)))
 + 	chr.pair <- paste0(all.chrs[anchors(data, type="first", id=TRUE)], ".", all.chrs[anchors(data, type="second", id=TRUE)])
-+ 	by.chr.pair <- split(1:npairs, chr.pair)
-+ 	first.id <- lapply(split(1:nbins, all.chrs), FUN=min)
++ 	by.chr.pair <- split(seq_len(npairs), chr.pair)
++ 	first.id <- lapply(split(seq_len(nbins), all.chrs), FUN=min)
 + 
 + 	for (cpair in names(by.chr.pair)) { 
 + 		cur.pairs <- by.chr.pair[[cpair]]
 + 		two.chrs <- strsplit(cpair, "\\.")[[1]]
 + 		current <- data[cur.pairs,]
-+ 		rel.ab <- 2^(aveLogCPM(assay(current), lib.size=current$totals, prior.count=0) 
-+ 			+ log2(mean(current$totals)/1e6))
++         counts <- assay(current)
 + 
 + 		# Setting up the interaction space.
 + 		a.dex <- anchors(current, type="first", id=TRUE) - first.id[[two.chrs[1]]] + 1L
@@ -96,12 +94,11 @@ Type 'q()' to quit R.
 + 		} else {
 + 			starting.dex <- 2L
 + 		}
++     	total.num <- 4L
++         output <- lapply(seq_len(total.num), FUN=function(x) matrix(0L, nrow(current), nlibs))
++         output.n <- lapply(seq_len(total.num), FUN=function(x) integer(nrow(current)))
 + 
-+ 		output <- numeric(nrow(current))
-+ 		for (pair in 1:nrow(current)) {
-+ 			total.num <- 4L
-+ 			collected <- numeric(total.num)
-+ 			collected.n <- numeric(total.num)
++ 		for (pair in seq_len(nrow(current))) {
 + 			ax <- a.dex[pair]
 + 			tx <- t.dex[pair]
 + 
@@ -136,24 +133,35 @@ Type 'q()' to quit R.
 + 
 + 				# Computing the average across this quadrant.
 + 				relevant.rows <- inter.space[indices]
-+ 				is.zero <- relevant.rows==0L			
-+ 				collected[quad] <- sum(rel.ab[relevant.rows[!is.zero]])/length(relevant.rows)
-+ 				collected.n[quad] <- length(relevant.rows)
++ 				is.zero <- relevant.rows==0L
++                 for (lib in seq_len(nlibs)) { 
++                     output[[quad]][pair,lib] <- sum(counts[relevant.rows[!is.zero],lib])
++                 }
++                 output.n[[quad]][pair] <- length(relevant.rows)
 + 			}
 + 
 + #			if (exclude) { # Troubleshooting.
 + #				print(c(aid[pair], tid[pair]))
 + #				print(collected)
 + #				print(collected.n)
-+ #			}
-+ 		
-+ 			output[pair] <- log2((rel.ab[pair]+prior)/(max(collected, na.rm=TRUE)+prior))
++ #			}	
 + 		}
-+ 		final.ref[cur.pairs] <- output
-+ 	}
-+ 
-+ 	if (any(abs(bg-final.ref) > (0.001+abs(bg))*1e-6)) { stop("mismatch in relative enrichment values") }
-+ 	return(head(bg))
++         
++         for (quad in starting.dex:total.num) {
++             mat <- assay(bg, diffHic:::.neighbor_locales()[quad])
++             chosen.mat <- mat[cur.pairs,]
++             dimnames(chosen.mat) <- NULL
++             if (!identical(chosen.mat, output[[quad]])) { 
++                 stop("counts don't match up for one neighbourhood")
++             }
++             mat.n <- rowData(bg)[[paste0("N.", diffHic:::.neighbor_locales()[quad])]]
++             chosen.mat.n <- as.integer(mat.n[cur.pairs])
++             if (!identical(chosen.mat.n, output.n[[quad]])) { 
++                 stop("neighbourhood sizes don't match up")
++             }
++         }
++     }
++ 	return(head(assay(bg, diffHic:::.neighbor_locales()[1])))
 + }
 > 
 > ###################################################################################################
@@ -161,51 +169,177 @@ Type 'q()' to quit R.
 > 
 > set.seed(3427675)
 > comp(10, c(chrA=10), 5)
-[1] 0.7155466 1.0155969 0.6863395 1.1037479 0.9447176 0.9475326
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]   36   43   40   34
+[3,]   30   39   33   31
+[4,]    5    3    7    3
+[5,]    6    8    6    6
+[6,]    5    3    7    3
 > comp(100, c(chrA=10, chrB=30, chrC=20), 5)
-[1] 1.603110 1.431157 1.858204 1.393481 1.354957 2.057898
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]   14   11   11    9
+[6,]    0    0    0    0
 > comp(100, c(chrA=10, chrC=20), 5)
-[1] 1.1575413 0.7058169 1.5849625 1.4152845 0.8624965 0.8744691
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]   14    8    3   10
+[4,]   21   22   19   21
+[5,]    0    0    0    0
+[6,]   27   30   22   27
 > comp(100, c(chrA=10, chrB=5, chrC=20), 5)
-[1] 0.8845228 1.2531189 1.2334901 1.1686818 0.9429691 1.0000000
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]   21   23   14    9
+[3,]    0    0    0    0
+[4,]   28   37   28   31
+[5,]   43   25   30   29
+[6,]    0    0    0    0
 > comp(100, c(chrA=20, chrB=5), 5)
-[1] 1.2527661 0.9315203 0.0000000 0.8780095 0.4918531 0.6951454
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]   21   21   16   25
+[3,]    4    6    6    8
+[4,]    0    0    0    0
+[5,]   39   48   39   63
+[6,]    6    6    6    8
 > 
 > comp(100, c(chrA=10, chrB=30, chrC=20), 10)
-[1] 1.522678 1.845812 1.767496 1.335867 1.802672 1.375509
+     [,1] [,2] [,3] [,4]
+[1,]   19   21   19   20
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]   17   12   13   10
 > comp(100, c(chrA=10, chrC=20), 10)
-[1] 0.1666499 1.5114458 1.1546965 1.4118136 1.0223678 0.9434165
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]  123  140  140  138
+[3,]    0    0    0    0
+[4,]    3    5    9    7
+[5,]  123  136  112  126
+[6,]   33   37   22   26
 > comp(100, c(chrA=10, chrB=5, chrC=20), 10)
-[1] 1.6424480 1.7163472 1.4806258 0.6611981 1.1089344 1.4199530
+     [,1] [,2] [,3] [,4]
+[1,]   13   13   13   12
+[2,]   17    9   11    8
+[3,]   32   16   19   23
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(100, c(chrA=20, chrB=10), 10)
-[1]  0.3468028  1.4949588  1.7647219 -0.1663584  0.8091777  1.1527703
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]   24   26   28   21
+[5,]    6    6    8    8
+[6,]  146  106  120  118
 > 
 > comp(200, c(chrA=10, chrB=30, chrC=20), 3)
-[1] 1.567827 1.687532 1.766801 1.479610 1.439532 1.440779
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]    8    4    6    5
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=10, chrC=20), 3)
-[1]  0.2630344  1.0109711 -0.3514724  0.1500254  0.6355886  0.3699496
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]   30   32   22   29
+[3,]   44   41   46   39
+[4,]   34   39   41   39
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=10, chrB=5, chrC=20), 3)
-[1] 0.7097441 0.8069097 0.4999264 0.5478095 0.3677318 1.0443941
+     [,1] [,2] [,3] [,4]
+[1,]   17   10   21   12
+[2,]    0    0    0    0
+[3,]   21   13   13   15
+[4,]   31   28   29   28
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=20, chrB=3), 3)
-[1]  0.14684139  0.14684139 -0.06413034  0.86875547  0.27573087 -0.16349873
+     [,1] [,2] [,3] [,4]
+[1,]   54   58   66   66
+[2,]   44   54   41   43
+[3,]    0    0    0    0
+[4,]   35   45   47   59
+[5,]   62   64   71   53
+[6,]   30   29   39   30
 > 
 > comp(200, c(chrA=10, chrB=30, chrC=20), 1)
-[1]  1.8579810  2.1699250 -0.3312059  1.2374993  1.1375035  0.5849625
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    8    8    4   11
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=10, chrC=20), 1)
-[1]  0.9240511  0.3439544  1.0000000  0.2247063  0.8123730 -0.1876270
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]   14   12   14   14
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=10, chrB=5, chrC=20), 1)
-[1] -0.12553088 -0.09953567  0.14201900  1.75424359  0.71459778  1.14684139
+     [,1] [,2] [,3] [,4]
+[1,]    8    9   11   13
+[2,]    8    6    8    7
+[3,]    5    3    6    7
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=20, chrB=5), 1)
-[1] -0.11150832 -0.49642583  0.08572987 -0.02106162 -0.36564947  0.99297957
+     [,1] [,2] [,3] [,4]
+[1,]   12   13   10   16
+[2,]   11   19   16   12
+[3,]    8    9   13    3
+[4,]   15   11    7   13
+[5,]   10    9   13   11
+[6,]    0    0    0    0
 > 
 > comp(200, c(chrA=10, chrB=30, chrC=20), 3, exclude=1)
-[1] -0.03394733  1.53115606  1.09019781  1.51255401 -0.32192809  0.47846288
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]   12    5   19   11
+[5,]    0    0    0    0
+[6,]    0    0    0    0
 > comp(200, c(chrA=10, chrC=20), 3, exclude=1)
-[1] 0.9177729 1.4823928 0.6076826 0.6100535 0.4639471 0.9855004
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    0    0
+[2,]    0    0    0    0
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]    5   10    6    5
 > comp(200, c(chrA=10, chrB=5, chrC=20), 3, exclude=1)
-[1]  1.1803590 -0.3870231  1.3440294  1.4636562  1.0533811  0.8349408
+     [,1] [,2] [,3] [,4]
+[1,]   26   32   24   29
+[2,]    0    0    0    0
+[3,]   14   18   12   16
+[4,]    0    0    0    0
+[5,]    0    0    0    0
+[6,]   26   36   23   28
 > comp(200, c(chrA=20, chrB=5), 3, exclude=1)
-[1]  0.49749966  0.64114534 -0.04439412 -0.07275634  0.18737014  0.46174548
+     [,1] [,2] [,3] [,4]
+[1,]   52   54   37   45
+[2,]   50   42   42   47
+[3,]    0    0    0    0
+[4,]    0    0    0    0
+[5,]   35   43   42   41
+[6,]    0    0    0    0
 > 
 > ###################################################################################################
 > # Same sort of simulation, but direct from read data, for neighborCounts testing.
@@ -217,74 +351,180 @@ Type 'q()' to quit R.
 > dir1<-"temp-neighbor/1.h5"
 > dir2<-"temp-neighbor/2.h5"
 > 
-> comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, exclude=0, prior.count=2) {
+> comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, exclude=0) {
 + 	simgen(dir1, npairs1, chromos)
 + 	simgen(dir2, npairs2, chromos)
 + 	param <- pairParam(fragments=cuts)
 + 
-+ 	out <- neighborCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, prior.count=prior.count, 
-+ 		exclude=exclude)
++ 	out <- neighborCounts(c(dir1, dir2), param, width=width, filter=filter, flank=flank, exclude=exclude)
 + 
 + 	ref <- squareCounts(c(dir1, dir2), width=width, param, filter=1)
 + 	keep <- rowSums(assay(ref)) >= filter
-+ 	enrichment <- enrichedPairs(ref, flank=flank, prior.count=prior.count, exclude=exclude)
++ 	subref <- enrichedPairs(ref, flank=flank, exclude=exclude)[keep,]
 + 
-+     subref <- ref[keep,]
 + 	if (!identical(regions(subref), regions(out))) { stop("extracted regions don't match up") }
-+ 	if (!identical(anchors(subref), anchors(out))) { stop("extracted anchors don't match up") }
++ 	if (!identical(anchors(subref, id=TRUE), anchors(out, id=TRUE))) { stop("extracted anchors don't match up") }
 + 	if (!identical(assays(subref), assays(out))) { stop("extracted counts don't match up") }
 + 	if (!identical(colData(subref), colData(out))) { stop("extracted colData doesn't match up") }
 + 	if (!identical(metadata(subref), metadata(out))) { stop("extracted metadata doesn't match up") }
-+ 	if (any(abs(enrichment[keep] - mcols(out)$enrichment) > 1e-6)) { stop("enrichment values don't match up") }
-+ 	return(head(enrichment[keep]))
++ 
++     return(head(assay(out, diffHic:::.neighbor_locales()[1])))
 + }
 > 
 > set.seed(2384)
 > comp2(100, 50, 10000, cuts=simcuts(chromos))
-[1] -0.53942058  0.05566542 -0.98421213 -0.08485202 -0.21387570 -0.97916725
+     [,1] [,2]
+[1,]    0    0
+[2,]    2    2
+[3,]    0    0
+[4,]   11    6
+[5,]    3    1
+[6,]    0    0
 > comp2(100, 50, 10000, cuts=simcuts(chromos), filter=10)
-[1] 0.2853725 0.3376211 0.3529720 0.2174724 0.3709576 0.2174724
+     [,1] [,2]
+[1,]   10    5
+[2,]   16    7
+[3,]   85   41
+[4,]   59   23
+[5,]   38   13
+[6,]    7    0
 > comp2(100, 50, 10000, cuts=simcuts(chromos), flank=3)
-[1] -0.3074373  0.3531941 -0.9166039 -0.1067788  0.2037269 -1.2010494
-> comp2(100, 50, 10000, cuts=simcuts(chromos), prior.count=1)
-[1] -0.6915537  0.5634763 -0.5634762 -0.1251084 -0.2994913 -0.2429704
+     [,1] [,2]
+[1,]    0    0
+[2,]    4    4
+[3,]    0    0
+[4,]   17   10
+[5,]    4    0
+[6,]    0    0
+> comp2(100, 50, 10000, cuts=simcuts(chromos))
+     [,1] [,2]
+[1,]    0    0
+[2,]    6    3
+[3,]    0    0
+[4,]   17    8
+[5,]    3    3
+[6,]   35   14
 > 
 > comp2(50, 200, 5000, cuts=simcuts(chromos))
-[1]  0.535850580 -0.761718010  0.032986357  0.001033872 -0.379678473
-[6] -0.470316507
+     [,1] [,2]
+[1,]    0    2
+[2,]    0    0
+[3,]    2   11
+[4,]    0    4
+[5,]    0    0
+[6,]    6   24
 > comp2(50, 200, 5000, cuts=simcuts(chromos), filter=10)
-[1] 0.9680413 0.9672167 0.6700266 0.2949188 0.2871594 0.4454393
+     [,1] [,2]
+[1,]   19   48
+[2,]    0    0
+[3,]    2    8
+[4,]   17   51
+[5,]    0    0
+[6,]   30  120
 > comp2(50, 200, 5000, cuts=simcuts(chromos), flank=3)
-[1] -0.56670245  0.16194906 -0.25694679 -0.03389262 -0.22118535  0.46852242
-> comp2(50, 200, 5000, cuts=simcuts(chromos), prior.count=1)
-[1] -1.05623987  0.18676914 -0.78749408 -0.34528297 -0.01239711  0.02468858
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    2
+[3,]    0   14
+[4,]    0    3
+[5,]    0    0
+[6,]    2   23
+> comp2(50, 200, 5000, cuts=simcuts(chromos))
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    3
+[3,]    0    0
+[4,]    1   13
+[5,]    1    4
+[6,]    0    0
 > 
 > comp2(100, 200, 1000, cuts=simcuts(chromos))
-[1] 0.2394428 0.2226192 0.2054902 0.2205634 0.2380906 0.2333634
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    0    0
+[4,]    2    2
+[5,]    0    0
+[6,]    1    1
 > comp2(100, 200, 1000, cuts=simcuts(chromos), filter=5)
-[1] 0.8976907
+     [,1] [,2]
+[1,]   11   12
 > comp2(100, 200, 1000, cuts=simcuts(chromos), flank=3)
-[1] 0.5665827 0.2319725 0.1872252 0.2093078 0.1814237 0.2522411
-> comp2(100, 200, 1000, cuts=simcuts(chromos), prior.count=1)
-[1] 0.164380552 0.722338347 0.299500344 0.005164271 0.528635697 0.003932588
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    1    2
+[4,]    0    1
+[5,]    0    0
+[6,]    2    1
+> comp2(100, 200, 1000, cuts=simcuts(chromos))
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    1
+[3,]    0    0
+[4,]    3    5
+[5,]    2    1
+[6,]    1    1
 > 
 > comp2(10, 20, 1000, cuts=simcuts(chromos))
-[1] 0.3134744 0.2492235 0.2747375 0.3211366 0.3094545 0.3218073
+     [,1] [,2]
+[1,]    0    0
+[2,]    2    0
+[3,]    1    0
+[4,]    0    0
+[5,]    0    0
+[6,]    0    0
 > comp2(10, 20, 1000, cuts=simcuts(chromos), filter=5)
-numeric(0)
+     [,1] [,2]
 > comp2(10, 20, 1000, cuts=simcuts(chromos), flank=3)
-[1] 0.3250946 0.3129133 0.3053756 0.3176405 0.3250946 0.2617857
-> comp2(10, 20, 1000, cuts=simcuts(chromos), prior.count=1)
-[1] 0.5556565 0.5494439 0.5123425 0.5123425 0.5659609 0.5620062
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    0    0
+[4,]    0    0
+[5,]    0    0
+[6,]    0    0
+> comp2(10, 20, 1000, cuts=simcuts(chromos))
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    1    1
+[4,]    0    2
+[5,]    0    0
+[6,]    0    1
 > 
 > comp2(10, 20, 1000, cuts=simcuts(chromos), exclude=1)
-[1] 0.2333634 0.2617857 0.3156551 0.3203674 0.3071017 0.2802203
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    1
+[3,]    0    0
+[4,]    0    0
+[5,]    0    1
+[6,]    1    1
 > comp2(50, 20, 1000, cuts=simcuts(chromos), exclude=1)
-[1] 0.2393575 0.2314517 0.2759848 0.2487711 0.2332494 0.2502265
+     [,1] [,2]
+[1,]    1    0
+[2,]    0    0
+[3,]    2    0
+[4,]    0    0
+[5,]    1    2
+[6,]    2    1
 > comp2(100, 50, 1000, cuts=simcuts(chromos), exclude=2)
-[1] 0.2782308 0.3050583 0.5465546 0.2617857 0.2036715 0.1560364
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    0    0
+[4,]    1    0
+[5,]    0    0
+[6,]    3    0
 > comp2(50, 200, 1000, cuts=simcuts(chromos), exclude=2)
-[1] 0.09905107 0.26167813 0.26713529 0.26081098 0.15124940 0.24708803
+     [,1] [,2]
+[1,]    0    0
+[2,]    0    0
+[3,]    0    0
+[4,]    1    1
+[5,]    0    0
+[6,]    1    1
 > 
 > #####################################################################################################
 > # Cleaning up
@@ -298,4 +538,4 @@ numeric(0)
 > 
 > proc.time()
    user  system elapsed 
- 16.843   0.266  17.116 
+ 15.888   0.160  16.059 

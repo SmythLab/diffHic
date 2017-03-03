@@ -7,7 +7,7 @@
 
 \usage{
 correctedContact(data, iterations=50, exclude.local=1, ignore.low=0.02, 
-    winsor.high=0.02, average=TRUE, dist.correct=FALSE)
+    winsor.high=0.02, average=TRUE, dist.correct=FALSE, assay=1)
 }
 
 \arguments{
@@ -18,6 +18,7 @@ correctedContact(data, iterations=50, exclude.local=1, ignore.low=0.02,
 	\item{winsor.high}{a numeric scalar indicating the proportion of high-abundance bin pairs to winsorize}
 	\item{average}{a logical scalar specifying whether counts should be averaged across libraries}
 	\item{dist.correct}{a logical scalar indicating whether to correct for distance effects}
+    \item{assay}{a string or integer scalar specifying the matrix to use from \code{data}}
 }
 
 \value{

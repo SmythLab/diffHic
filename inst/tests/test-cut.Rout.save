@@ -1,7 +1,7 @@
 
-R version 3.1.1 (2014-07-10) -- "Sock it to Me"
-Copyright (C) 2014 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -42,12 +42,7 @@ Type 'q()' to quit R.
 > 
 > ###################################################################################################
 > 
-> require(BSgenome.Ecoli.NCBI.20080805)
-Loading required package: BSgenome.Ecoli.NCBI.20080805
-Loading required package: BSgenome
-Loading required package: Biostrings
-Loading required package: XVector
-Loading required package: rtracklayer
+> suppressPackageStartupMessages(require(BSgenome.Ecoli.NCBI.20080805))
 > 
 > comp<-function(target, overhang=4L) {
 + 	current<-cutGenome(Ecoli, target, overhang=overhang)
@@ -168,4 +163,4 @@ GRanges object with 6 ranges and 0 metadata columns:
 > 
 > proc.time()
    user  system elapsed 
- 27.516   0.237  27.823 
+ 22.768   0.200  22.980 

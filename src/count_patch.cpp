@@ -14,21 +14,17 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) t
 	binner engine(all, bin, fbin, lbin);
 	const int nlibs=engine.get_nlibs();
 
-	// Setting up the memory containers.
-	const int nbins=lbin-fbin+1;
-	int* curcounts=(int*)R_alloc(nlibs*nbins, sizeof(int)); 
-	bool* ischanged=(bool*)R_alloc(nbins, sizeof(bool));
-	for (int i=0; i<nbins; ++i) { ischanged[i]=false; }
-	std::deque<int> waschanged, counts, anchors, targets;
-
 	// Sundries.
+	std::deque<int> counts, anchors, targets;
 	size_t vecdex;
 	int rowdex, countsum, curlib, curanchor;
 
 	// Running through all libraries.
 	while (!engine.empty()) {
-		engine.fill(curcounts, ischanged, waschanged);
+		engine.fill();
 		curanchor=engine.get_anchor();
+        const std::deque<int>& waschanged=engine.get_changed();
+        const int* curcounts=engine.get_counts();
 
 		// Adding it to the main list, if it's large enough.
 		for (vecdex=0; vecdex<waschanged.size(); ++vecdex) {
@@ -40,11 +36,7 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) t
 				targets.push_back(waschanged[vecdex]+fbin);
 				for (curlib=0; curlib<nlibs; ++curlib) { counts.push_back(curcounts[rowdex+curlib]); }
 			}
-
-			// Resetting the ischanged vector for the next stretch of bin anchors.
-			ischanged[waschanged[vecdex]]=false;
 		}
-		waschanged.clear();
 	}
 
 	SEXP output=PROTECT(allocVector(VECSXP, 3));

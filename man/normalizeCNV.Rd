@@ -6,7 +6,9 @@
 \description{Compute normalization offsets to remove CNV-driven and abundance-dependent biases}
 
 \usage{
-normalizeCNV(data, margins, prior.count=3, span=0.3, maxk=500, ...)
+normalizeCNV(data, margins, prior.count=3, span=0.3, maxk=500, 
+    assay.data=1, assay.marg=1, ...)
+
 matchMargins(data, margins)
 }
 
@@ -16,6 +18,8 @@ matchMargins(data, margins)
 \item{prior.count}{a numeric scalar specifying the prior count to use in computing marginal log-ratios}
 \item{span}{a numeric scalar between 0 and 1, describing the span of the fit}
 \item{maxk}{a integer scalar specifying the number of vertices to use during local fitting}
+\item{assay.data}{a string or integer scalar specifying the matrix to use from \code{data}}
+\item{assay.marg}{a string or integer scalar specifying the matrix to use from \code{margins}}
 \item{...}{other arguments to pass to \code{\link{locfit}}}
 }
 

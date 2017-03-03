@@ -1,4 +1,4 @@
-filterDirect <- function(data, prior.count=2, reference=NULL)
+filterDirect <- function(data, prior.count=2, reference=NULL, assay.data=1, assay.ref=1)
 # Implements the direct filtering method on the abundances of 
 # inter-chromosomal bin pairs. Also allows for specification of
 # a reference set of bin pairs (usually larger bins from which
@@ -13,21 +13,21 @@ filterDirect <- function(data, prior.count=2, reference=NULL)
 	if (!is.null(reference)) { 
 		stopifnot(identical(reference$totals, data$totals))
 		scaling <- (.getBinSize(reference)/.getBinSize(data))^2
-        ref <- .direct_filter(reference, prior.count=prior.count, scaling=scaling)
-        actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=1)
+        ref <- .direct_filter(reference, prior.count=prior.count, scaling=scaling, assay=assay.ref)
+        actual.ab <- scaledAverage(asDGEList(data, assay=assay.data), prior.count=prior.count, scale=1)
 		return(list(abundances=actual.ab, threshold=ref$threshold, ref=ref))
 	}
 
-    .direct_filter(data, prior.count=prior.count, scaling=1)
+    .direct_filter(data, prior.count=prior.count, scaling=1, assay=assay.data)
 }
 
-.direct_filter <- function(data, prior.count, scaling) 
+.direct_filter <- function(data, prior.count, scaling, assay) 
 # Actually does all the work of the direct filtering strategy.
 # It computes the abundances and identifies the median for inter-chromosomal bin pairs.
 {
    	all.chrs <- seqnames(regions(data))
 	is.inter <- !intrachr(data)
-	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=scaling)
+	ave.ab <- scaledAverage(asDGEList(data, assay=assay), prior.count=prior.count, scale=scaling)
     empty.ab <- .makeEmpty(data, prior.count=prior.count, scale=scaling) 
 	threshold <- .getInterThreshold(all.chrs, ave.ab[is.inter], empty=empty.ab)
     return(list(abundances=ave.ab, threshold=threshold))
@@ -78,7 +78,7 @@ filterDirect <- function(data, prior.count=2, reference=NULL)
     scaledAverage(y, ...) 
 }
 
-filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
+filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.data=1, assay.ref=1)
 # Implements the trended filtering method on the abundances of 
 # inter-chromosomal bin pairs. Again, with allowances for a reference set.
 #
@@ -91,9 +91,9 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
 	if (!is.null(reference)) {
         stopifnot(identical(reference$totals, data$totals))
         scaling <- (.getBinSize(reference)/.getBinSize(data))^2
-        ref <- .trended_filter(reference, span=span, prior.count=prior.count, scaling=scaling)
+        ref <- .trended_filter(reference, span=span, prior.count=prior.count, scaling=scaling, assay=assay.ref)
 
-        actual.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=1)
+        actual.ab <- scaledAverage(asDGEList(data, assay=assay.data), prior.count=prior.count, scale=1)
 		actual.dist <- log10(pairdist(data, type="mid") + .getBinSize(data))
 		
 		new.threshold <- approx(x=ref$log.distance, y=ref$threshold, xout=actual.dist, rule=2)$y
@@ -102,13 +102,13 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL)
         return(list(abundances=actual.ab, threshold=new.threshold, log.distance=actual.dist, ref=ref)) 
 	}
 
-    .trended_filter(data, span=span, prior.count=prior.count, scaling=1)        
+    .trended_filter(data, span=span, prior.count=prior.count, scaling=1, assay=assay.data)        
 }
 
-.trended_filter <- function(data, span, prior.count, scaling) {
+.trended_filter <- function(data, span, prior.count, scaling, assay) {
 	dist <- pairdist(data, type="mid")
 	log.dist <- log10(dist + .getBinSize(data)) # Adding an appropriate prior.
-	ave.ab <- scaledAverage(asDGEList(data), prior.count=prior.count, scale=scaling)
+	ave.ab <- scaledAverage(asDGEList(data, assay=assay), prior.count=prior.count, scale=scaling)
 
 	# Filling in the missing parts of the interaction space.
 	empty <- .makeEmpty(data, prior.count=prior.count, scale=scaling)

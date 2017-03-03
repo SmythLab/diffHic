@@ -94,8 +94,17 @@ In .trended_filter(reference, span = span, prior.count = prior.count,  :
 > filterPeaks(ghost, integer(0))
 logical(0)
 > 
-> enrichedPairs(ghost, abundances=numeric(0))
-numeric(0)
+> enrichedPairs(ghost)
+class: InteractionSet 
+dim: 0 1 
+metadata(0):
+assays(5): '' quadrant vertical horizontal surrounding
+rownames: NULL
+rowData names(4): N.quadrant N.vertical N.horizontal N.surrounding
+colnames: NULL
+colData names(1): totals
+type: ReverseStrictGInteractions
+regions: 5
 > 
 > try(compartmentalize(ghost)) # This will fail, as interpolation is impossible.
 Error in approxfun(x = trended$log.distance, y = trended$threshold, rule = 2) : 
@@ -175,4 +184,4 @@ character(0)
 > 
 > proc.time()
    user  system elapsed 
-  8.184   0.196   8.396 
+  7.844   0.200   8.046 

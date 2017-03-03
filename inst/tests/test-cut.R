@@ -23,7 +23,7 @@ findRestrictionSites <- function(bs, pattern, ref=NULL) {
 
 ###################################################################################################
 
-require(BSgenome.Ecoli.NCBI.20080805)
+suppressPackageStartupMessages(require(BSgenome.Ecoli.NCBI.20080805))
 
 comp<-function(target, overhang=4L) {
 	current<-cutGenome(Ecoli, target, overhang=overhang)

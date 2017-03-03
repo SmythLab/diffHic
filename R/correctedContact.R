@@ -1,5 +1,5 @@
 correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.02, winsor.high=0.02, 
-	average=TRUE, dist.correct=FALSE)
+	average=TRUE, dist.correct=FALSE, assay=1)
 # This performs the iterative correction method of Mirny et al. (2012) to
 # identify the true contact probability of each patch of the interaction
 # space. The idea is to use the true contact probability as a filter
@@ -51,12 +51,13 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 	} else {
 		is.local <- intrachr(data)
    		log.lib <- log(data$totals)
+        cur.counts <- assay(data, i=assay)
 		if (length(log.lib)>1L) {
-			ave.counts <- exp(edgeR::mglmOneGroup(assay(data), offset=log.lib - mean(log.lib)))
+			ave.counts <- exp(edgeR::mglmOneGroup(cur.counts, offset=log.lib - mean(log.lib)))
 			nzero <- !is.na(ave.counts)
 		} else {
-			nzero <- assay(data) != 0L
-			ave.counts <- as.double(assay(data))
+			nzero <- cur.counts != 0L
+			ave.counts <- as.double(cur.counts)
 		}
 	}
 

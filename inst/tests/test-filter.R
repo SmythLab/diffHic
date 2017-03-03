@@ -1,7 +1,7 @@
 #################################################################
 # This tests the filterDirect machinery.
 
-require(diffHic)
+suppressPackageStartupMessages(require(diffHic))
 set.seed(1212)
 
 ends <- c(1:10, 1:5)*10L

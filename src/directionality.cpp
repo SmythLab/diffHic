@@ -14,13 +14,10 @@ SEXP directionality(SEXP all, SEXP bin, SEXP span, SEXP first_bin, SEXP last_bin
 	// Setting up the binning engine.
 	binner engine(all, bin, fbin, lbin);
 	const int nlibs=engine.get_nlibs();
+	const int nbins=engine.get_nbins();
 
-	// Setting up the memory containers.
-	const int nbins=lbin-fbin+1;
-	int* curcounts=(int*)R_alloc(nlibs*nbins, sizeof(int)); 
-	bool* ischanged=(bool*)R_alloc(nbins, sizeof(bool));
-	for (int i=0; i<nbins; ++i) { ischanged[i]=false; }
-	std::deque<int> waschanged, counts, anchors, targets;
+    // Settin gup the memory containers.
+	std::deque<int> counts, anchors, targets;
 
 	// Setting up the output vectors immediately.
 	SEXP output=PROTECT(allocVector(VECSXP, 2));
@@ -48,11 +45,14 @@ try {
 	double current_average;
    	size_t diff;
     int lib;
-    int * bpcounts;
+    const int * bpcounts;
 
 	while (!engine.empty()) {
-		engine.fill(curcounts, ischanged, waschanged);
+		engine.fill();
 		curanchor=engine.get_anchor() - fbin;
+        const std::deque<int>& waschanged=engine.get_changed();
+        const int* curcounts=engine.get_counts();
+
 		for (vecdex=0; vecdex<waschanged.size(); ++vecdex) {
 			rowdex=waschanged[vecdex];
 	
@@ -66,11 +66,7 @@ try {
                     upptrs[lib][rowdex]+=thiscount;
                 }
 			} 
-
-			// Resetting the ischanged vector for the next stretch of bin anchors.
-			ischanged[waschanged[vecdex]]=false;
 		}
-		waschanged.clear();
 	}
 } catch (std::exception& e) { 
 	UNPROTECT(1);

@@ -1,5 +1,5 @@
 
-R version 3.3.1 Patched (2016-08-05 r71041) -- "Bug in Your Hair"
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -29,52 +29,7 @@ Type 'q()' to quit R.
 > dir1<-"temp-domain/1.h5"
 > dir2<-"temp-domain/2.h5"
 > 
-> library(diffHic)
-Loading required package: GenomicRanges
-Loading required package: stats4
-Loading required package: BiocGenerics
-Loading required package: parallel
-
-Attaching package: ‘BiocGenerics’
-
-The following objects are masked from ‘package:parallel’:
-
-    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-    clusterExport, clusterMap, parApply, parCapply, parLapply,
-    parLapplyLB, parRapply, parSapply, parSapplyLB
-
-The following objects are masked from ‘package:stats’:
-
-    IQR, mad, xtabs
-
-The following objects are masked from ‘package:base’:
-
-    Filter, Find, Map, Position, Reduce, anyDuplicated, append,
-    as.data.frame, cbind, colnames, do.call, duplicated, eval, evalq,
-    get, grep, grepl, intersect, is.unsorted, lapply, lengths, mapply,
-    match, mget, order, paste, pmax, pmax.int, pmin, pmin.int, rank,
-    rbind, rownames, sapply, setdiff, sort, table, tapply, union,
-    unique, unsplit, which, which.max, which.min
-
-Loading required package: S4Vectors
-
-Attaching package: ‘S4Vectors’
-
-The following objects are masked from ‘package:base’:
-
-    colMeans, colSums, expand.grid, rowMeans, rowSums
-
-Loading required package: IRanges
-Loading required package: GenomeInfoDb
-Loading required package: InteractionSet
-Loading required package: SummarizedExperiment
-Loading required package: Biobase
-Welcome to Bioconductor
-
-    Vignettes contain introductory material; view with
-    'browseVignettes()'. To cite Bioconductor, see
-    'citation("Biobase")', and for packages 'citation("pkgname")'.
-
+> suppressPackageStartupMessages(library(diffHic))
 > comp<-function(npairs1, npairs2, dist, cuts, restrict=NULL, cap=NA, span=5) {
 +     simgen(dir1, npairs1, chromos)
 +     simgen(dir2, npairs2, chromos)
@@ -418,4 +373,4 @@ Welcome to Bioconductor
 > 
 > proc.time()
    user  system elapsed 
- 22.373   0.211  22.720 
+ 21.956   0.252  22.218 

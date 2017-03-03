@@ -27,7 +27,7 @@ try(filterTrended(ghost, reference=ghost)) # This will fail, as interpolation is
 
 filterPeaks(ghost, integer(0))
 
-enrichedPairs(ghost, abundances=numeric(0))
+enrichedPairs(ghost)
 
 try(compartmentalize(ghost)) # This will fail, as interpolation is impossible.
 try(compartmentalize(ghost, dist.correct=FALSE)) # This will also fail, due to non-unique k-means.

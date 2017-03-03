@@ -6,8 +6,9 @@
 \description{Implementations of the direct and trended filtering strategies for bin pair abundances.}
 
 \usage{
-filterDirect(data, prior.count=2, reference=NULL)
-filterTrended(data, span=0.25, prior.count=2, reference=NULL)
+filterDirect(data, prior.count=2, reference=NULL, assay.data=1, assay.ref=1)
+
+filterTrended(data, span=0.25, prior.count=2, reference=NULL, assay.data=1, assay.ref=1)
 }
 
 \arguments{
@@ -15,6 +16,8 @@ filterTrended(data, span=0.25, prior.count=2, reference=NULL)
 \item{span}{a numeric scalar specifying the bandwidth for loess curve fitting}
 \item{prior.count}{a numeric scalar indicating the prior count to use for calculating the average abundance}
 \item{reference}{another InteractionSet object, usually containing data for larger bin pairs}
+\item{assay.data}{a string or integer scalar specifying the count matrix to use from \code{data}}
+\item{assay.ref}{a string or integer scalar specifying the count matrix to use from \code{reference}}
 }
 
 \details{

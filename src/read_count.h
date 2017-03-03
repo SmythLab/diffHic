@@ -16,23 +16,33 @@ struct coord {
 class binner {
 public:
 	binner(SEXP, SEXP, int, int);
-	void fill(int*, bool*, std::deque<int>&);
+    ~binner();
+
+	void fill();
 	bool empty() const;
 	int get_nlibs() const;
+	int get_nbins() const;
 	int get_anchor() const;
+
+    const int* get_counts() const;
+    const std::deque<int>& get_changed() const;
 private:
-	const int fbin, lbin;
+	const int fbin, lbin, nbins;
 	const int* bptr;
 	int nlibs;
-	
-	std::deque<const int*> aptrs, tptrs;
+
+    std::deque<const int*> aptrs, tptrs;
 	std::deque<int> nums, indices;
 	std::priority_queue<coord, std::deque<coord>, std::greater<coord> > next;
 	
 	int curab, curtb, curlib, curdex, lib;
 	bool failed;
-};
 
-double nb_average(const int&, const int&, const double&, const double*, const int*, const double&);
+    // Stuff that is visible to the calling class.
+    int* curcounts;
+    bool* ischanged;
+    std::deque<int> waschanged;
+    size_t changedex;
+};
 
 #endif

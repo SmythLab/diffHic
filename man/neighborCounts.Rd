@@ -6,8 +6,7 @@
 \description{Collate count combinations for interactions between pairs of bins across multiple Hi-C libraries.}
 
 \usage{
-neighborCounts(files, param, width=50000, filter=1L, flank=NULL, 
-    exclude=NULL, prior.count=NULL)
+neighborCounts(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL)
 }
 
 \arguments{
@@ -17,20 +16,20 @@ neighborCounts(files, param, width=50000, filter=1L, flank=NULL,
 	\item{filter}{an integer scalar specifying the minimum count for each square}
 	\item{flank}{an integer scalar, specifying the number of bins to consider as the local neighborhood}
 	\item{exclude}{an integer scalar, specifying the number of bins to exclude from the neighborhood}
-	\item{prior.count}{a numeric scalar indicating the prior count to use in computing the log-fold increase}
 }
 
 \value{
 An InteractionSet object is returned with the number of read pairs for each bin pair across all libraries.
-In the \code{mcols}, the \code{enrichment} field contains a numeric vector of enrichment statistics for each bin pair.
+For each bin pair, the number of read pairs in each neighborhood region is also returned in separate \code{assay} fields.
+\code{mcols} contains the size of each neighborhood in terms of the number of bin pairs.
 }
 
 \details{
 This function combines the functionality of \code{\link{squareCounts}} and \code{\link{enrichedPairs}}.
-The idea is to allow calculation of local enrichment values when there is insufficient memory to load all bin pairs with \code{filter=1L} in \code{\link{squareCounts}}. 
+The idea is to allow counting of neighborhoods when there is insufficient memory to load all bin pairs with \code{filter=1L} in \code{\link{squareCounts}}. 
 Here, the interaction space around each bin pair is examined as the counts are loaded for that bin pair, avoiding the need to hold the entire interaction space at once.
 Only the counts and local enrichment values for those bin pairs with row sums above \code{filter} are reported to save memory.
-The returned \code{enrichment} values are equivalent to that computed with \code{\link{enrichedPairs}} with the default settings.
+The returned \code{assay} matrices are equivalent to that computed with \code{\link{enrichedPairs}} with the default settings.
 }
 
 \examples{
@@ -43,18 +42,8 @@ fout <- "output.h5"
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
-y <- neighborCounts(fout, param, width=50, filter=2, 
-    flank=5, prior.count=2)
+y <- neighborCounts(fout, param, width=50, filter=2, flank=5)
 y
-mcols(y)$enrichment
-
-# Practically identical to a more memory-intensive call.
-ref <- squareCounts(fout, param, width=50, filter=1)
-keep <- rowSums(assay(ref)) >= 2
-enriched <- enrichedPairs(ref, flank=5, prior.count=2)
-
-stopifnot(identical(anchors(ref[keep,]), anchors(y)))
-stopifnot(all(abs(enriched[keep] - mcols(y)$enrichment) < 1e-6))
 
 \dontshow{
 unlink(fout, recursive=TRUE)

@@ -1,5 +1,5 @@
 
-R version 3.3.1 Patched (2016-08-05 r71041) -- "Bug in Your Hair"
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -21,7 +21,8 @@ Type 'q()' to quit R.
 > # This script is designed to test the pair-identifying capabilities of the hiC machinery i.e. preparePairs. 
 > # We start with unit tests for individual components of the preparePairs C++ code.
 > 
-> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> suppressPackageStartupMessages(require(diffHic))
+> suppressPackageStartupMessages(require(GenomicAlignments))
 > source("simsam.R")
 > 
 > dir<-"hic-test"
@@ -31,16 +32,16 @@ Type 'q()' to quit R.
 > 
 > checkCIGAR <- function(cigar, rstrand) {
 +     output <- simsam(file.path(dir, "whee"), "chrA", 1, !rstrand, c("chrA"=1000), 
-+            cigar=cigar, len=GenomicAlignments::cigarWidthAlongQuerySpace(cigar))
++            cigar=cigar, len=cigarWidthAlongQuerySpace(cigar))
 + 
 + 	out <- .Call(diffHic:::cxx_test_parse_cigar, output)
 + 	if (is.character(out)) { stop(out) }
 + 	
-+ 	true.alen <- GenomicAlignments::cigarWidthAlongReferenceSpace(cigar)
++ 	true.alen <- cigarWidthAlongReferenceSpace(cigar)
 + 	if (out[1]!=true.alen) { stop("mismatch in alignment length") }
 + 
 + 	offset <- 0
-+ 	as.rle <- GenomicAlignments::cigarToRleList(cigar)[[1]]
++ 	as.rle <- cigarToRleList(cigar)[[1]]
 + 	if (rstrand) { as.rle <- rev(as.rle) }
 + 	if (runValue(as.rle)[1]=="H") { offset <- runLength(as.rle)[1] } 
 + 	if (out[2]!=offset) { stop("mismatch in offsets") }
@@ -49,9 +50,6 @@ Type 'q()' to quit R.
 + }
 > 
 > checkCIGAR("5H20M", TRUE)
-Loading required package: Rsamtools
-Loading required package: Biostrings
-Loading required package: XVector
   alen offset 
     20      0 
 > checkCIGAR("5H20M", FALSE)
@@ -1361,4 +1359,4 @@ other.2                  7          7     30           2     13
 > 
 > proc.time()
    user  system elapsed 
- 18.287   0.723  19.039 
+ 29.808   0.468  30.472 

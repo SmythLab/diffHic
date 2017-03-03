@@ -1,11 +1,11 @@
-neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL, prior.count=NULL)
+neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exclude=NULL)
 # This does the same thing as squareCounts, except that it simultaneously computes the 
 # filter statistic for each extracted bin pair. This has lower memory requirements as
 # it doesn't need to hold the entire `filter=1` output in memory at once.
 #
 # written by Aaron Lun
 # created 21 May 2015
-# last modified 22 November 2015
+# last modified 2 March 2017
 {
 	nlibs <- length(files)
 	if (nlibs==0L) {
@@ -31,16 +31,13 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 	# Output vectors.
 	out.counts <- list(matrix(0L, 0, nlibs))
 	out.a <- out.t <- list(integer(0))
-	out.filter <- list(double(0))
+    full.sizes <- integer(nlibs)
+
+    modes <- .neighbor_locales()
+    neighbor.counts <- lapply(modes, FUN=function(x) list(matrix(0L, 0, nlibs)))
+    neighbor.N <- lapply(modes, FUN=function(x) list(double(0)))
 	idex <- 1L
 	
-	# Getting the full library sizes and computing offsets.
-	full.sizes <- totalCounts(files, param)
-	offsets <- log(full.sizes) - log(mean(full.sizes))
-	maxit <- as.integer(formals(mglmOneGroup)$maxit)
-	tol <- formals(mglmOneGroup)$tol
-	disp <- 0.05
-
 	# Other stuff related to calculation of the neighborhood regions.	
 	if (is.null(flank)) { flank <- formals(enrichedPairs)$flank }
 	if (is.null(exclude)) { exclude <- formals(enrichedPairs)$exclude }
@@ -49,8 +46,6 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 	if (flank <= 0L) { stop("flank width must be a positive integer") }
 	if (exclude < 0L) { stop("exclude width must be a positive integer") }
 	if (flank <= exclude) { stop("exclude width must be less than the flank width") }
-	if (is.null(prior.count)) { prior.count <- formals(enrichedPairs)$prior.count } 
-	prior.count <- as.double(prior.count)    
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)
@@ -59,11 +54,11 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 		for (anchor2 in names(current)) {
 			pairs <- .baseHiCParser(current[[anchor2]], files, anchor1, anchor2, 
 				chr.limits=frag.by.chr, discard=discard, cap=cap)
-			
+            full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+
 			# Aggregating counts in C++ to obtain count combinations for each bin pair.
 			out <- .Call(cxx_count_background, pairs, new.pts$id, flank, exclude, filter, 
-				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]],
-				maxit, tol, offsets, disp, prior.count)
+				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]])
 			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
@@ -72,22 +67,33 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 			out.a[[idex]] <- out[[1]]
  			out.t[[idex]] <- out[[2]]
 			out.counts[[idex]] <- out[[3]]
-			out.filter[[idex]] <- out[[4]]
-			idex<-idex+1L
+
+            # Adding the neighbourhood statistics.
+            for (m in seq_along(modes)) {
+                neighbor.counts[[m]][[idex]] <- out[[4]][[m]]
+                neighbor.N[[m]][[idex]] <- out[[5]][[m]]
+            }
+			idex <- idex+1L
 		}
 	}
 
 	# Collating all the other results.
 	out.a <- unlist(out.a)
 	out.t <- unlist(out.t)
-	out.f <- log2(unlist(out.filter))
 	out.counts <- do.call(rbind, out.counts)
 
-	out.IS <- InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
+    all.assays <- list(counts=out.counts)
+    for (m in seq_along(modes)) { 
+        all.assays[[modes[m]]] <- do.call(rbind, neighbor.counts[[m]])
+    }
+
+	out.IS <- InteractionSet(all.assays, colData=DataFrame(totals=full.sizes), 
 		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=new.pts$region, mode="reverse"), 
         metadata=List(param=param, width=width))
-    mcols(out.IS)$enrichment <- out.f
+   
+    n.names <- .neighbor_numbers() 
+    for (m in seq_along(modes)) { 
+        mcols(out.IS)[[n.names[m]]] <- unlist(neighbor.N[[m]])
+    }
     return(out.IS)
 }
-
-

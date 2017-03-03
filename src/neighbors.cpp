@@ -13,6 +13,10 @@ void basic::restrain () {
 	if (left > right) { left=right; } // Avoid negative areas in calling function.
 }
 
+/* The bottomright class identifies all bin pairs in a square with sides 'w'.
+ * The bin pair of interest lies at the topleft corner.
+ */
+
 bottomright::bottomright(int w, int t, bool i, int x) : basic(w, t, i, x) { level=-w; }
 
 bool bottomright::bump_level () { 
@@ -27,6 +31,10 @@ void bottomright::set(int a, int t) {
 	right=t+width+1; 
 	restrain();
 }
+
+/* The updown class identifies all bin pairs in a vertical line of length 'w*2+1'.
+ * The bin pair of interest lies in the centre.
+ */
 
 updown::updown(int w, int t, bool i, int x) : basic(w, t, i, x) { level=-w; }
 	
@@ -44,65 +52,74 @@ void updown::set(int a, int t) {
 	restrain();
 }
 
-/* `leftright` is split into two regions, one for the left of the excluded zone
- * and another for the right of that zone.
+/* The leftright class identifies all bin pairs in a horizontal line of length 'w*2+1'.
+ * The bin pair of interest lies in the centre. Here, bumping is done to cycle twice over 
+ * each level; once to get the left side of the line, and again to get the right side.
  */
 
-leftright1::leftright1(int w, int t, bool i, int x) : basic(w, t, i, x) {} 
+leftright::leftright(int w, int t, bool i, int x) : basic(w, t, i, x), onleft(true) {} 
 	
-bool leftright1::bump_level() { return false; }
+bool leftright::bump_level() { 
+    if (onleft) { 
+        onleft=false;
+        return true;
+    } else {
+        return false; 
+    }
+}
 
-void leftright1::set(int a, int t) { 
+void leftright::set(int a, int t) { 
 	row=a;
-	left=t-width;
-	right=t-exclude;
+    if (onleft) {
+        left=t-width;
+        right=t-exclude;
+    } else {
+        left=t+exclude+1;
+        right=t+width+1;
+    } 
 	restrain(); 
 }	
 
-leftright2::leftright2(int w, int t, bool i, int x) : basic(w, t, i, x) {} 
-
-bool leftright2::bump_level() { return false; }
-
-void leftright2::set(int a, int t) { 
-	row=a;
-	left=t+exclude+1;
-	right=t+width+1;
-	restrain(); 
-}	
-
-/* `allaround` is split into two rotationally-symmetric shapes; sort of
- * like the L-blocks in tetris, which - when fitted against each other
- * - form a 3x3 square with a hole in the middle. That hole is the 
- * excluded zone in this context, generalized for WxW squares.
+/* The allaround class identifies all bin pairs in a surrounding square centred at the
+ * bin pair of interest and excluding it. Here, bumping switches between the left and 
+ * right sides if the stretch of bins is interrupted by the bin pairs to be excluded.
  */
 
-allaround1::allaround1(int w, int t, bool i, int x) : basic(w, t, i, x) { level=-w; } 
+allaround::allaround(int w, int t, bool i, int x) : basic(w, t, i, x), rangemode(FULLRANGE) { level=-w; } 
 
-bool allaround1::bump_level () { 
-	if (level >= width) { return false; }
-	++level;
-	return true;
+bool allaround::bump_level () { 
+    if (rangemode==FULLRANGE) {
+        if (level==-exclude-1) { 
+            rangemode=LEFTSIDE;
+        } else if (level >= width) { 
+            return false; 
+        }
+        ++level;
+    } else if (rangemode==LEFTSIDE) {
+        rangemode=RIGHTSIDE; 
+    } else if (rangemode==RIGHTSIDE) {
+        if (level==exclude) {
+            rangemode=FULLRANGE;
+        } else {
+            rangemode=LEFTSIDE;
+        }
+        ++level;
+    }
+    return true;
 }
 
-void allaround1::set(int a, int t) {
+void allaround::set(int a, int t) {
 	row=a+level;
-	left=t-width;
-	right=(level < -exclude ? t+exclude+1 : t-exclude);
-	restrain();		
-}
-
-allaround2::allaround2(int w, int t, bool i, int x) : basic(w, t, i, x) { level=-w; }
-
-bool allaround2::bump_level () { 
-	if (level >= width) { return false; }
-	++level;
-	return true;
-}
-
-void allaround2::set(int a, int t) {
-	row=a+level;
-	left=(level > exclude ? t-exclude : t+exclude+1);
-	right=t+width+1;
-	restrain();		
+    if (rangemode==FULLRANGE) {
+        left=t-width;
+        right=t+width+1;
+    } else if (rangemode==LEFTSIDE) {
+        left=t-width;
+        right=t-exclude;
+    } else if (rangemode==RIGHTSIDE) {
+    	left=t+exclude+1;
+        right=t+width+1;
+    } 
+    restrain();		
 }
 

@@ -1,27 +1,22 @@
 #include "diffhic.h"
 #include "neighbors.h"
 
-SEXP quadrant_bg (SEXP anchor, SEXP target, 
-		SEXP abundance_int, SEXP abundance_dec, SEXP mult,
+SEXP quadrant_bg (SEXP anchor, SEXP target, SEXP count, 
 		SEXP width, SEXP exclude, 
 		SEXP alen, SEXP tlen, SEXP issame) try {
 
 	if (!isInteger(anchor) || !isInteger(target)) { throw std::runtime_error("anchor/target vectors must be integer"); }
 	const int npair=LENGTH(anchor);
 	if (LENGTH(target)!=npair) { throw std::runtime_error("anchor/target vectors must have the same length"); }
-	if (!isInteger(abundance_int) || !isInteger(abundance_dec)) { throw std::runtime_error("vector of abundances should be integer"); }
-	if (LENGTH(abundance_int)!=npair || LENGTH(abundance_dec)!=npair) { 
-		throw std::runtime_error("vector of abundances should be the same length as that of the indices"); }
+	if (!isInteger(count)) { throw std::runtime_error("vector of abundances should be integer"); }
+	if (LENGTH(count)!=npair) { throw std::runtime_error("vector of counts should be the same length as that of the indices"); }
   	
 	// Setting up pointers.
 	const int * aptr=INTEGER(anchor), 
 	  * tptr=INTEGER(target),
-	  * biptr=INTEGER(abundance_int),
-	  * bdptr=INTEGER(abundance_dec);
+      * cptr=INTEGER(count);
 
 	// Determining the flank width.
-	if (!isReal(mult) || LENGTH(mult)!=1) { throw std::runtime_error("multiplier must be a double-precision scalar"); }
-	const double multiplier=asReal(mult);
 	if (!isInteger(width) || LENGTH(width)!=1) { throw std::runtime_error("flank width must be an integer scalar"); }
 	const int flank_width=asInteger(width);
 	if (!isInteger(exclude) || LENGTH(exclude)!=1) { throw std::runtime_error("exclusion width must be an integer scalar"); }
@@ -34,51 +29,53 @@ SEXP quadrant_bg (SEXP anchor, SEXP target,
 	if (!isLogical(issame) || LENGTH(issame)!=1) { throw std::runtime_error("same chromosome specifier must be a logical scalar"); }
 	const bool intrachr=asLogical(issame);
 
-	SEXP output=PROTECT(allocVector(REALSXP, npair));
+	SEXP output=PROTECT(allocVector(VECSXP, 2));
 	try {
-		double * optr=REAL(output);
-		int curpair;
-		for (curpair=0; curpair<npair; ++curpair) { optr[curpair]=0; }
-		int running_sum_int, running_sum_dec, 
+        // Setting up output for the counts.
+        SET_VECTOR_ELT(output, 0, allocVector(VECSXP, 4));
+        SEXP count_out=VECTOR_ELT(output, 0); 
+        int** optrs=(int**)R_alloc(4, sizeof(int*));
+        for (int i=0; i<4; ++i) {
+            SET_VECTOR_ELT(count_out, i, allocVector(INTSXP, npair));
+            optrs[i]=INTEGER(VECTOR_ELT(count_out, i));
+            std::fill(optrs[i], optrs[i]+npair, 0);
+        }
+
+        // Setting up output for the neighbourhood size.
+        SET_VECTOR_ELT(output, 1, allocVector(VECSXP, 4));
+        SEXP n_out=VECTOR_ELT(output, 1); 
+        int** nptrs=(int**)R_alloc(4, sizeof(int*));
+        for (int i=0; i<4; ++i) {
+            SET_VECTOR_ELT(n_out, i, allocVector(INTSXP, npair));
+            nptrs[i]=INTEGER(VECTOR_ELT(n_out, i));
+            std::fill(nptrs[i], nptrs[i]+npair, 0);
+        }
+
+        int* optr=NULL, *nptr=NULL;
+		int curpair, running_sum,
 			left_index, right_index,
 			left_edge, right_edge, cur_anchor; 
-
-		int* nptr=(int*)R_alloc(npair, sizeof(int));
-		double* temp_int=(double*)R_alloc(npair, sizeof(double));
-		double* temp_dec=(double*)R_alloc(npair, sizeof(double));
-		double temp_val;
 
 		// Iterating over all quadrants.
 		bottomright br(flank_width, tlength, intrachr, exwidth);		
 		updown ud(flank_width, tlength, intrachr, exwidth);
-		leftright1 lr1(flank_width, tlength, intrachr, exwidth);
-		leftright2 lr2(flank_width, tlength, intrachr, exwidth);
-		allaround1 aa1(flank_width, tlength, intrachr, exwidth);
-		allaround2 aa2(flank_width, tlength, intrachr, exwidth);
+		leftright lr(flank_width, tlength, intrachr, exwidth);
+		allaround aa(flank_width, tlength, intrachr, exwidth);
 		basic* current=NULL;
 
-		for (int quadtype=(intrachr ? 0 : 1); quadtype<6; ++quadtype) {
+		for (int quadtype=(intrachr ? 0 : 1); quadtype<4; ++quadtype) {
 			switch(quadtype) { 
 				case 0: current=&br; break;
 				case 1: current=&ud; break;
-				case 2: current=&lr1; break;
-				case 3: current=&lr2; break;
-				case 4: current=&aa1; break;
-				case 5: current=&aa2; break;
+				case 2: current=&lr; break;
+				case 3: current=&aa; break;
 			}
-
-			if (quadtype!=3 && quadtype!=5) { // Don't clear them, we want them added on from 2 and 4, respectively.
-				for (curpair=0; curpair<npair; ++curpair) { 
-					nptr[curpair]=0; 
-					temp_int[curpair]=0;
-					temp_dec[curpair]=0;
-				}
-			}
+            optr=optrs[quadtype];
+            nptr=nptrs[quadtype];
 
 			// Iterating across all flank widths.
 			do {
-				running_sum_int=0;
-				running_sum_dec=0;
+				running_sum=0;
 				left_index=0;
 				right_index=0;
 				
@@ -92,36 +89,23 @@ SEXP quadrant_bg (SEXP anchor, SEXP target,
 					// Identifying all bin pairs in the relevant range.
 					while (left_index < npair && (aptr[left_index] < cur_anchor || 
 							(aptr[left_index]==cur_anchor && tptr[left_index] < left_edge))) {
-						running_sum_int -= biptr[left_index];
-						running_sum_dec -= bdptr[left_index];
+						running_sum -= cptr[left_index];
 						++left_index;
 					}
 
 					while (right_index < npair && (aptr[right_index]<cur_anchor || 
 							(aptr[right_index]==cur_anchor && tptr[right_index] < right_edge))) { 
-						running_sum_int += biptr[right_index];
-						running_sum_dec += bdptr[right_index];
+						running_sum += cptr[right_index];
 						++right_index;		
 					}
 
-					if (cur_anchor >= 0) {
-						temp_int[curpair] += running_sum_int;
-						temp_dec[curpair] += running_sum_dec;
-						nptr[curpair] += right_edge - left_edge; // Figuring out the actual number of boxes.
-					}
+                    // Adding them onto the current location (except if the anchor is negative;
+                    // skipping needs to be done here, as running_sum still needs to be calculated).
+                    if (cur_anchor <  0) { continue; }
+				    optr[curpair] += running_sum;
+                    nptr[curpair] += right_edge - left_edge;
 				}
 			} while (current->bump_level());
-
-			// Checking if it exceeds the previous maxima (2 and 4 are only half done, so we skip them).
-			if (quadtype!=2 && quadtype!=4) { 
-				for (curpair=0; curpair<npair; ++curpair) {
-					if (nptr[curpair]) {
-						temp_val = (temp_int[curpair] + temp_dec[curpair]/multiplier)/nptr[curpair];
-						if (optr[curpair] < temp_val) { optr[curpair]=temp_val; }
-//						if (exwidth) { Rprintf("%i %i %.3f %i\n", aptr[curpair]+1, tptr[curpair]+1, temp_val, nptr[curpair]); }
-					}
-				}
-			}
 		}
 	} catch (std::exception &e) {
 		UNPROTECT(1);

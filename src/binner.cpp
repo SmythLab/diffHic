@@ -1,8 +1,9 @@
 #include "read_count.h"
 
-binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l) {
+binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(NULL), curcounts(NULL) {
 	if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
 	bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
+    if (nbins <= 0) { throw std::runtime_error("number of bins must be positive"); }
 
 	// Setting up other structures, including pointers. We assume it's sorted on R's side.
 	if (!isNewList(all)) { throw std::runtime_error("data on interacting read pairs must be contained within a list"); }
@@ -37,16 +38,39 @@ binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l) {
 		// Populating the priority queue.
 		if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
 	}
+
+    try {
+        ischanged=new bool[nbins];
+        std::fill(ischanged, ischanged+nbins, false);
+        curcounts=new int[nbins*nlibs];
+    } catch (std::exception& e) {
+        delete [] ischanged;
+        delete [] curcounts;
+        throw;
+    }
 	return;
 }
 
-void binner::fill(int* curcounts, bool* ischanged, std::deque<int>& waschanged) {
+binner::~binner () {
+    delete [] ischanged;
+    delete [] curcounts;
+    return;
+}
+
+void binner::fill() { 
+    /* Resetting 'ischanged' (which indicates whether we need to set all counts to zero) and 
+     * 'waschanged' (which provides a fast way to get to true values of 'ischanged').
+     */
+    for (changedex=0; changedex<waschanged.size(); ++changedex) {
+        ischanged[waschanged[changedex]]=false;
+    }
+    waschanged.clear();
+
 	/* Running through all libraries. The idea is to use stretches of identical bin anchors, such that
 	 * we only need to worry about different bin targets (i.e., the problem becomes 1-dimensional).
 	 * This assumes that the bin transformation is monotonic, and that anchors are sorted. The function 
 	 * will stop once all identical bin anchors have been processed. Counts for all bins 
-	 * in this stretch are stored in passing through curcounts. We also assume that all 'ischanged' 
-	 * is false, and waschanged is empty (for sake of speed, it won't bother actually checking them).
+	 * in this stretch are stored in passing through curcounts. 
 	 */
 	curab=next.top().anchor;
 	failed=false;
@@ -61,7 +85,7 @@ void binner::fill(int* curcounts, bool* ischanged, std::deque<int>& waschanged) 
 			waschanged.push_back(curdex);
 			ischanged[curdex]=true;
 			curdex*=nlibs;
-			for (lib=0; lib<nlibs; ++lib) { curcounts[curdex+lib]=0; }
+            std::fill(curcounts+curdex, curcounts+curdex+nlibs, 0);
 		} else {
 			curdex*=nlibs;
 		}
@@ -94,6 +118,10 @@ bool binner::empty() const { return next.empty(); }
 
 int binner::get_nlibs() const { return nlibs; }
 
+int binner::get_nbins() const { return nbins; }
+
 int binner::get_anchor() const { return curab; }
 
+const int* binner::get_counts() const { return curcounts; }
 
+const std::deque<int>& binner::get_changed()  const { return waschanged; }
