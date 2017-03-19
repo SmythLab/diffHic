@@ -18,7 +18,7 @@ connectCounts(files, param, regions, filter=1L, type="any", second.regions=NULL)
 }
 
 \value{
-An InteractionSet is returned, specifying the number of read pairs in each library that are mapped between pairs of \code{regions}, or between \code{regions} and \code{second.regions}.
+An InteractionSet containing the number of read pairs in each library that are mapped between pairs of \code{regions}, or between \code{regions} and \code{second.regions}.
 Interacting regions are returned as a ReverseStrictGInteractions object containing the concatenated \code{regions} and \code{second.regions}.
 }
 
@@ -27,27 +27,30 @@ Interactions of interest are defined as those formed by pairs of elements in \co
 The number of read pairs connecting each pair of elements can then be counted in each library. 
 This can be useful for quantifying/summarizing interactions between genomic features, e.g., promoters or gene bodies.
 
-For a pair of intervals in \code{regions}, the interaction count is defined as the number of read pairs with one read in each interval (after rounding each interval to a fragment; see below).
-To avoid reporting weak interactions, pairs can be filtered to retain only those with a count sum across all libraries above \code{filter}.
+For a pair of intervals in \code{regions}, the interaction count is defined as the number of read pairs with one read in each interval.
+To save memory, pairs of intervals can be filtered to retain only those with a count sum across all libraries above \code{filter}.
 In each pair, the anchor interval is defined as that with the higher start position.
-Note that the end position may not be higher, due to the possibility of nested intervals in \code{regions}.
+Note that the end position may not be higher if nested intervals are present in \code{regions}.
 
+Mapping of read pairs into intervals is performed at the level of restriction fragments.
 The value of \code{type} feeds into \code{\link{findOverlaps}} and controls the manner in which restriction fragments are assigned to each region. 
 By default, a restriction fragment is assigned to one or more regions if said fragment overlaps with any part of those regions.
-This means that the boundaries of each region are expanded outwards to obtain the effective coordinates in the output \code{region}.
-In contrast, setting \code{type="within"} would contract each region inwards.
+This expands the effective boundaries of each entry of \code{regions} to the nearest restriction site.
+In contrast, setting \code{type="within"} would contract each interval 
 
 The modified regions can be extracted from the \code{regions} slot in the output InteractionSet object.
 These will be reordered according to the new start positions.
 The ordering permutation can be recovered from the \code{original} metadata field of the GRanges object.
 Similarly, the number of restriction fragments assigned to each interval is stored in the \code{nfrags} metadata field.
+(This is set to zero for DNase Hi-C experiments.)
 
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
 See \code{\link{pairParam}} for more details.
 }
 
 \section{Matching to a second set of regions}{
-The \code{second.regions} argument allows specification of a second set of regions, where interactions are only considered between one entry in \code{regions} and one entry in \code{second.regions}.
+The \code{second.regions} argument allows specification of a second set of regions.
+Interactions are only considered between one entry in \code{regions} and one entry in \code{second.regions}.
 This differs from supplying all regions to \code{regions}, which would consider all pairwise interactions between regions regardless of whether they belong in the first or second set.
 If an integer scalar is supplied as \code{second.regions}, this value is used as a width to partition the genome into bins.
 These bins are then used as the set of second regions.
@@ -64,7 +67,7 @@ Similarly, if \code{is.second=FALSE}, the index will point towards the correspon
 
 Note that this function does \emph{not} guarantee that the second set of regions will be treated as the second anchor region (or the first) for each interaction.
 Those definitions are dependent on the sorting order of the coordinates for all regions.
-Users should use the \code{is.second} field to identify the region from the second set in each interaction.
+Users should only use the \code{is.second} field to identify the region from the second set in each interaction.
 }
 
 \seealso{

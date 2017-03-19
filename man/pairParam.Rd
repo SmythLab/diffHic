@@ -16,7 +16,7 @@ Each pairParam object stores a number of parameters to extract reads from a BAM 
 Slots are defined as:
 \describe{
 	\item{\code{fragments}:}{a \code{GRanges} object containing the coordinates of the restriction fragments}
-	\item{\code{restrict}:}{a character vector or 1-by-2 matrix containing the names of allowable chromosomes from which reads will be extracted}
+	\item{\code{restrict}:}{a character vector or 2-column matrix containing the names of allowable chromosomes from which reads will be extracted}
 	\item{\code{discard}:}{a \code{GRanges} object containing intervals in which any alignments will be discarded}
 	\item{\code{cap}:}{an integer scalar, specifying the maximum number of read pairs per pair of restriction fragments}
 }
@@ -27,7 +27,7 @@ The object can be can be obtained by applying \code{\link{cutGenome}} on an appr
 
 If \code{restrict} is supplied, reads will only be extracted for the specified chromosomes. 
 This is useful to restrict the analysis to interesting chromosomes, e.g., no contigs/scaffolds or mitochondria. 
-\code{restrict} can also be a \code{n}-by-2 matrix, specifying \code{n} pairs of chromosomes over which read pairs are to be counted.
+\code{restrict} can also be a N-by-2 matrix, specifying N pairs of chromosomes over which read pairs are to be counted.
 
 If \code{discard} is set, a read will be removed if the corresponding alignment is wholly contained within the supplied ranges. 
 Any pairs involving reads discarded in this manner will be ignored.

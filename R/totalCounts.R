@@ -5,19 +5,19 @@ totalCounts <- function(files, param)
 #
 # written by Aaron Lun
 # created 17 September 2014
-# last modified 20 March 2015
+# last modified 17 March 2017
 {
 	nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") }
-	fragments <- param$fragments
-	frag.by.chr <- .splitByChr(fragments)
- 	chrs <- seqlevelsInUse(fragments) 
 	full.sizes <- integer(nlibs)
 
 	# Setting up other local references.
-	restrict <- param$restrict
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
+    parsed <- .parseParam(param)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    cap <- parsed$cap
+    discard <- parsed$discard
+    restrict <- param$restrict
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)
@@ -27,7 +27,7 @@ totalCounts <- function(files, param)
 
 			# Getting totals.
 			pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
-				chr.limits=frag.by.chr, discard=discard, cap=cap)
+				chr.limits=frag.by.chr, discard=discard, cap=cap, width=NA_integer_)
 			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 		}
 	}

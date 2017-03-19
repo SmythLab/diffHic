@@ -6,17 +6,18 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 #
 # written by Aaron Lun
 # created 9 September 2014
-# last modified 20 March 2015
+# last modified 17 March 2017
 {
     # Use a temporary file as a placeholder, in case file.out==file.in.
 	tmpf <- tempfile(tmpdir=".")
 	on.exit({ if (file.exists(tmpf)) { unlink(tmpf) } })
 	.initializeH5(tmpf)
 	retained <- total <- by.len <- by.in <- by.out <- 0L
-
+   
 	# Parsing through the old index, counting/summing everything, and saving it to the
 	# temporary file. We also remove any specified elements.
-	allstuff <- .loadIndices(file.in, seqlevelsInUse(param$fragments))
+    chrs <- .parseParam(param)$chrs
+	allstuff <- .loadIndices(file.in, chrs)
 	for (ax in names(allstuff)) { 
 		current <- allstuff[[ax]]
 		loaded <- FALSE

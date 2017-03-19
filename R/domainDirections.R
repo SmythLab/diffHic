@@ -12,19 +12,20 @@ domainDirections <- function(files, param, width=50000, span=10)
 		stop("width must be a non-negative integer")
 	} 
 	width<-as.integer(width) 
-	span <- as.integer(span) 
-	fragments <- param$fragments
-	new.pts <- .getBinID(fragments, width)
-								
-	# Setting up ranges for the fragments and bins.
-	chrs <- seqlevelsInUse(fragments)
-	frag.by.chr <- .splitByChr(fragments)
-	bin.by.chr <- .splitByChr(new.pts$region)
-	
-	# Setting up other local references.
-	restrict <- param$restrict
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
+	span <- as.integer(span)
+
+    # Setting up the bins.
+    new.pts <- .getBinID(param$fragments, width)
+    bin.by.chr <- .splitByChr(new.pts$region)
+
+    # Setting up the other statistics.
+    parsed <- .parseParam(param, width)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    cap <- parsed$cap
+    bwidth <- parsed$bwidth
+    discard <- parsed$discard
+    restrict <- param$restrict
 	
 	# Running through each pair of chromosomes.
     nlibs <- length(files)
@@ -36,7 +37,7 @@ domainDirections <- function(files, param, width=50000, span=10)
 		if (!(chr %in% names(current))) { next }
 
 		pairs <- .baseHiCParser(current[[chr]], files, chr, chr,
-			chr.limits=frag.by.chr, discard=discard, cap=cap)
+			chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)
 		first.index <- bin.by.chr$first[[chr]]
 		last.index <- bin.by.chr$last[[chr]]
 	

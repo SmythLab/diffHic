@@ -6,10 +6,11 @@ mergePairs <- function(files, file.out)
 #
 # written by Aaron Lun
 # some time ago
-# last modified 22 November 2015
+# last modified 17 March 2017
 {
+	overall <- .loadIndices(files)
+
 	# Use a temporary file as a placeholder just in case 'file.out' is in 'files'.
-	overall <- suppressWarnings(.loadIndices(files))
 	tmpf <- tempfile(tmpdir=".")
 	.initializeH5(tmpf) 
 	on.exit({ if (file.exists(tmpf)) { unlink(tmpf, recursive=TRUE) } })

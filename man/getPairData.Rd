@@ -23,6 +23,7 @@ The aim is to examine the distribution of each returned value to determine the a
 
 The \code{length} refers to the length of the DNA fragment used in sequencing.
 It is computed for each read pair by adding the distance of each read to the closest restriction site in the direction of the read. 
+This will be set to \code{NA} if the fragment IDs are non-positive, e.g., for DNase Hi-C data (where the concept of fragments is irrelevant anyway).
 
 The \code{insert} simply refers to the insert size for each read pair.
 This is defined as the distance between the extremes of each read on the same chromosome.

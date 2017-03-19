@@ -35,6 +35,10 @@ Users are recommended to put in \code{anchor1.pos}, \code{anchor1.len}, \code{an
 This will allow removal of reads in \code{param$discard} during counting (e.g., with \code{\link{squareCounts}}).
 It will also allow proper calculation of statistics with \code{\link{getPairData}}, and quality control with \code{\link{prunePairs}}.
 See the output of \code{\link{preparePairs}} for more details on the specification of the fields.
+
+For storing DNase Hi-C data, \code{param$fragments} should be empty, and \code{anchor1.id} and \code{anchor2.id} should contain the indices of the \code{seqlengths}.
+Note that both of these fields will be set to zero in the index file - see \code{\link{prepPseudoPairs}} for more details.
+In this case, it is essential to store the position and length fields mentioned above.
 }
 
 \examples{

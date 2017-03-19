@@ -23,10 +23,12 @@ Bin pairs are stored as a ReverseStrictGInteractions object.
 
 \details{
 The genome is first split into non-overlapping adjacent bins of size \code{width}.
-These bins are rounded to the nearest restriction site, forming the sides of potential squares.
-The number of restriction fragments in each bin is stored as \code{nfrags} in the metadata of the output \code{region}.
-Each square represents an interaction between the corresponding rounded bins on the genome. 
+In the two-dimensional space, squares are formed from pairs of bins and represent interactions between the corresponding intervals on the genome. 
 The number of read pairs between each pair of sides is counted for each library to obtain the count for the corresponding square.
+
+For standard Hi-C data, bins are rounded to the nearest restriction site.
+The number of restriction fragments in each bin is stored as \code{nfrags} in the metadata of the output \code{region}.
+For DNase Hi-C data, no rounding is performed as restriction fragments are irrelevant during DNase digestion, and all \code{nfrags} are set to zero.
 
 % Can't use sliding mats because they're too difficult to interpret. Unlike ChIP-seq, there is no easy aggregation as there are no
 % obvious peaks. Abundance aggregation will generally give meaningless results as you end up with massive clusters for local interactions.
@@ -38,7 +40,7 @@ This can improve detection power by increasing the evidence for significant diff
 However, this comes at the cost of spatial resolution as adjacent events in the same bin or square can no longer be distinguished.
 This may reduce detection power if counts for differential interactions are contaminated by counts for non-differential interactions.
 
-Low abundance squares with count sums below \code{filter} are not reported.
+Low-abundance squares with count sums below \code{filter} are not reported.
 This reduces memory usage for large datasets.
 These squares are probably uninteresting as detection power will be poor for low counts.
 Another option is to increase \code{width} to reduce the total number of bins in the genome (and hence, the possible number of bin pairs).

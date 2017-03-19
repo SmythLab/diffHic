@@ -68,10 +68,19 @@ try {
 			 */
 		}
 
- 	    // Computing fragment lengths.
+ 	    // Computing fragment lengths, unless fragment IDs are invalid.
 		int& curflen=(foptr[pair]=0);
-		curflen += (arev ? curaend - fsptr[aiptr[pair]] : feptr[aiptr[pair]] - curap + 1);
-		curflen += (trev ? curtend - fsptr[tiptr[pair]] : feptr[tiptr[pair]] - curtp + 1);
+        const int& aI=aiptr[pair];
+        const int& tI=tiptr[pair];
+        if (aI > 0 && tI > 0) { 
+            if (aI > nf || tI > nf) {
+                throw std::runtime_error("anchor indices out of range of fragments");
+            }
+            curflen += (arev ? curaend - fsptr[aI] : feptr[aI] - curap + 1);
+            curflen += (trev ? curtend - fsptr[tI] : feptr[tI] - curtp + 1);
+        } else {
+            curflen = NA_INTEGER;
+        }
 	}
 } catch (std::exception& e){
 	UNPROTECT(1);

@@ -1,7 +1,7 @@
 
-R version 3.3.1 (2016-06-21) -- "Bug in Your Hair"
+R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin13.4.0 (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -512,7 +512,7 @@ Type 'q()' to quit R.
 5          4          2 1 0
 6          5          2 1 0
 Warning message:
-In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
+In .processRegions(regions, chrs, fragments, type, second.regions) :
   chromosome present in 'regions' and not in fragments
 > my.ranges <- simranges(current.cuts, nranges=10)
 > my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
@@ -525,7 +525,7 @@ In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
 5          3          2 1 0
 6          3          3 1 1
 Warning message:
-In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
+In .processRegions(regions, chrs, fragments, type, second.regions) :
   chromosome present in 'regions' and not in fragments
 > 
 > ###########################################################################################
@@ -697,7 +697,7 @@ In connectCounts(c(dir1, dir2), regions = ranges, filter = filter,  :
 [5,]       5       2 16 16
 [6,]       5       3 14 16
 Warning message:
-In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
+In .processRegions(regions, chrs, fragments, type, second.regions) :
   chromosome present in 'regions' and not in fragments
 > my.ranges <- simranges(current.cuts, nranges=10)
 > my.ranges <- suppressWarnings(c(GRanges("chrX", IRanges(1:10, 1:10)), my.ranges))
@@ -710,7 +710,7 @@ In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
 [5,]       6       1  7  8
 [6,]       6       2  9  5
 Warning message:
-In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
+In .processRegions(regions, chrs, fragments, type, second.regions) :
   chromosome present in 'regions' and not in fragments
 > 
 > 
@@ -724,4 +724,4 @@ In connectCounts(c(dir1, dir2), regions = ranges1, filter = filter,  :
 > 
 > proc.time()
    user  system elapsed 
- 54.146   0.964  56.583 
+ 67.400   0.352  67.776 

@@ -9,7 +9,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # sometime in 2012.
-# last modified 22 November 2015
+# last modified 17 March 2017 
 {
 	first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
@@ -21,35 +21,46 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	if (length(second.chr)!=1L) { stop("exactly one second range is required for plotting") }
 
 	# Setting up the parameters
-	fragments <- param$fragments
-	if (!(first.chr %in% seqlevelsInUse(fragments)) || !(second.chr %in% seqlevelsInUse(fragments))) { 
+	width <- as.integer(width) 
+    parsed <- .parseParam(param, width)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    discard <- parsed$discard
+    cap <- parsed$cap
+    bwidth <- parsed$bwidth
+
+	if (!(first.chr %in% chrs) || !(second.chr %in% chrs)) { 
 		stop("anchor chromosome names not in cut site list") 
 	}
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
-	frag.by.chr <- .splitByChr(fragments)
-	width <- as.integer(width) 
 	
+    # Setting up the boxes/pixels.
+    fragments <- param$fragments
+    cur.chrs <- frag.by.chr$first[[first.chr]]:frag.by.chr$last[[first.chr]]
+    if (first.chr!=second.chr) {
+        second.set <- frag.by.chr$first[[second.chr]]:frag.by.chr$last[[second.chr]]
+        if (cur.chrs[1] < second.set[1]) { # Distinction isn't strictly necessary, but it simplifies interpretation. 
+            cur.chrs <- c(cur.chrs, second.set) 
+        } else {
+            cur.chrs <- c(second.set, cur.chrs) 
+        }
+    }
+    if (length(fragments)==0L){ # For DNase-C, we set up boxes first and then redefine the fragments.
+        new.pts <- .getBinID(fragments, width)
+        fragments <- new.pts$region
+        new.pts$region <- new.pts$region[cur.chrs]
+        new.pts$id <- seq_along(cur.chrs)
+    } else {
+        new.pts <- .getBinID(fragments[cur.chrs], width)
+    }
+    out.id <- integer(length(fragments))
+    out.id[cur.chrs] <- new.pts$id
+    
 	# Setting up the boundaries.
 	first.min <- max(1L, first.start)
 	first.max <- min(seqlengths(fragments)[[first.chr]], first.end)
 	second.min <- max(1L, second.start)
 	second.max <- min(seqlengths(fragments)[[second.chr]], second.end)
 	if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
-
-	# Setting up the boxes.
-	cur.chrs <- frag.by.chr$first[[first.chr]]:frag.by.chr$last[[first.chr]]
-	if (first.chr!=second.chr) {
-		second.set <- frag.by.chr$first[[second.chr]]:frag.by.chr$last[[second.chr]]
-		if (cur.chrs[1] < second.set[1]) { # Distinction isn't strictly necessary, but it simplifies interpretation. 
-			cur.chrs <- c(cur.chrs, second.set) 
-		} else {
-			cur.chrs <- c(second.set, cur.chrs) 
-		}
-	}
-	new.pts <- .getBinID(fragments[cur.chrs], width)
-	out.id <- integer(length(fragments))
-	out.id[cur.chrs] <- new.pts$id
 
 	# Identifying the boxes that lie within our ranges of interest. We give it some leeway
 	# to ensure that edges of the plot are retained.
@@ -65,14 +76,14 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	}
 
 	# Pulling out the read pair indices from each file, and checking whether chromosome names are flipped around.
-	all.dex <- .loadIndices(file, seqlevelsInUse(fragments))
+	all.dex <- .loadIndices(file, chrs)
 	flipped <- FALSE
 	if (!is.null(all.dex[[first.chr]][[second.chr]])) {
 		current <- .baseHiCParser(TRUE, file, first.chr, second.chr, 
-			chr.limits=frag.by.chr, discard=discard, cap=cap)[[1]]
+			chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)[[1]]
 	} else if (!is.null(all.dex[[second.chr]][[first.chr]])) { 
 		current <- .baseHiCParser(TRUE, file, second.chr, first.chr, 
-			chr.limits=frag.by.chr, discard=discard, cap=cap)[[1]]
+			chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)[[1]]
 		flipped <- TRUE
 	} else { current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0)) }
 

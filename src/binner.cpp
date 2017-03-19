@@ -1,20 +1,15 @@
 #include "read_count.h"
 
-binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(NULL), curcounts(NULL) {
-	if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
-	bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
-    if (nbins <= 0) { throw std::runtime_error("number of bins must be positive"); }
-
-	// Setting up other structures, including pointers. We assume it's sorted on R's side.
-	if (!isNewList(all)) { throw std::runtime_error("data on interacting read pairs must be contained within a list"); }
-	nlibs=LENGTH(all);
+void setup_pair_data (SEXP pairs, const int nlibs, std::deque<const int*>& aptrs, 
+    std::deque<const int*>& tptrs, std::deque<int>& nums, std::deque<int>& indices)
+{
 	aptrs.resize(nlibs);
 	tptrs.resize(nlibs);
 	indices.resize(nlibs);
 	nums.resize(nlibs);
 	
 	for (int i=0; i<nlibs; ++i) {
-		SEXP current=VECTOR_ELT(all, i);
+		SEXP current=VECTOR_ELT(pairs, i);
 		if (!isNewList(current) || LENGTH(current)!=2) { 
 			throw std::runtime_error("interactions must be supplied as a data.frame with anchor.id and target.id"); }
 
@@ -34,10 +29,23 @@ binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1
 				default: break;
 			}
 		}
-		
-		// Populating the priority queue.
-		if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
 	}
+    return;
+}
+
+binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(NULL), curcounts(NULL) {
+	if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
+	bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
+    if (nbins <= 0) { throw std::runtime_error("number of bins must be positive"); }
+
+	// Setting up other structures, including pointers. We assume it's sorted on R's side.
+	if (!isNewList(all)) { throw std::runtime_error("data on interacting read pairs must be contained within a list"); }
+	nlibs=LENGTH(all);
+    setup_pair_data(all, nlibs, aptrs, tptrs, nums, indices);
+	for (int i=0; i<nlibs; ++i) {
+        // Populating the priority queue.
+        if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
+    }
 
     try {
         ischanged=new bool[nbins];

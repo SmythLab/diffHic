@@ -49,15 +49,13 @@ fragment_finder::fragment_finder(SEXP starts, SEXP ends) {
 int fragment_finder::find_fragment(const int& c, const int& p, const bool& r, const int& l) const {
 	// Binary search to obtain the fragment index with 5' end coordinates.
 	int index=0;
+    const int& nfrag=pos[c].num;
 	if (r) {
 		int pos5=p+l-1;
 		const int* eptr=pos[c].end_ptr;
-		index= std::lower_bound(eptr, eptr+pos[c].num, pos5)-eptr;
-		if (index==pos[c].num) {
+		index=std::lower_bound(eptr, eptr+nfrag, pos5)-eptr;
+		if (index==nfrag) {
 			warning("read aligned off end of chromosome");
-			--index;
-		} else if (pos[c].start_ptr[index] > pos5) {
-			warning("read aligned into spacer region for a filled-in genome");
 			--index;
 		}
 	} else {
@@ -67,11 +65,7 @@ int fragment_finder::find_fragment(const int& c, const int& p, const bool& r, co
  		 * in the spacer for filled-in genomes. We then simply kick up the index.
  		 */
 		const int* sptr=pos[c].start_ptr;
-		index=std::upper_bound(sptr, sptr+pos[c].num, p)-sptr-1;
-		if (pos[c].end_ptr[index] < p) {
-			warning("read starts in spacer region for a filled genome");
-			++index;
-		}
+		index=std::upper_bound(sptr, sptr+nfrag, p)-sptr-1;
 	}
 	return index;
 }
@@ -575,33 +569,23 @@ SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP chrconvert, SEXP bam
 
 class simple_finder : public base_finder {
 public:
-	simple_finder(SEXP, SEXP);
+	simple_finder(SEXP);
 	int find_fragment(const int&, const int&, const bool&, const int&) const;
 private:
 	int bin_width;
 };
 
-simple_finder::simple_finder(SEXP n_per_chr, SEXP bwidth) {
-	if (!isInteger(bwidth)|| LENGTH(bwidth)!=1) { throw std::runtime_error("bin width must be an integer scalar"); }
-	bin_width=asInteger(bwidth);
-
-    if (!isInteger(n_per_chr)) { throw std::runtime_error("number of fragments per chromosome must be an integer vector"); }
-    const int nchrs=LENGTH(n_per_chr);
-    const int* nptr=INTEGER(n_per_chr);
+simple_finder::simple_finder(SEXP chrlens) { 
+    if (!isInteger(chrlens)) { throw std::runtime_error("chromosome lengths must be an integer vector"); }
+    const int nchrs=LENGTH(chrlens);
+    const int* nptr=INTEGER(chrlens);
 	for (int i=0; i<nchrs; ++i) { pos.push_back(chr_stats(NULL, NULL, nptr[i])); }
 	return;	
 }
 
 int simple_finder::find_fragment(const int& c, const int& p, const bool& r, const int& l) const {
-	if (r) {
-		int index=int((p+l-2)/bin_width); // -1, to get position of last base; -1 again, to get into the right bin.
-		if (index >= pos[c].num) {
-			warning("read aligned off end of chromosome");
-			--index;
-		}
-		return index;
-	}
-	return int((p-1)/bin_width);
+	if (r && p + l - 1 > pos[c].num) { warning("read aligned off end of chromosome"); }
+    return 0;
 }
 
 status no_status_check (const segment& left, const segment& right) {
@@ -613,9 +597,9 @@ status no_status_check (const segment& left, const segment& right) {
 	return NEITHER;
 }
 
-SEXP report_hic_binned_pairs (SEXP num_in_chrs, SEXP bwidth, SEXP chrconvert, SEXP bamfile, SEXP outfile, SEXP storage,
+SEXP report_hic_binned_pairs (SEXP chrlens, SEXP chrconvert, SEXP bamfile, SEXP outfile, SEXP storage,
         SEXP chimera_strict, SEXP chimera_span, SEXP minqual, SEXP do_dedup) try {
-	simple_finder ff(num_in_chrs, bwidth);
+	simple_finder ff(chrlens);
 	check_invalid_by_dist invchim(chimera_span);
 	return internal_loop(&ff, &no_status_check, &invchim, chrconvert, bamfile, outfile, storage, chimera_strict, minqual, do_dedup);
 } catch (std::exception& e) {

@@ -5,7 +5,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 #
 # written by Aaron Lun
 # created 18 September 2014
-# last modified 22 November 2015
+# last modified 17 March 2017
 {
 	xchr <- as.character(seqnames(region))
 	xstart <- start(region)
@@ -13,24 +13,35 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 	if (length(xchr)!=1L) { stop("exactly one region is required for plotting") }
 
 	# Setting up the parameters
+    width <- as.integer(width) 
+    parsed <- .parseParam(param, width)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    discard <- parsed$discard
+    cap <- parsed$cap
+    bwidth <- parsed$bwidth
+
+	if (!xchr %in% chrs) { stop("chromosome name not in cut site list") } 
+
+    # Setting up the boxes.		
 	fragments <- param$fragments
-	if (!xchr %in% seqlevelsInUse(fragments)) { stop("chromosome name not in cut site list") } 
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
-	frag.by.chr <- .splitByChr(fragments)
+	cur.chrs <- frag.by.chr$first[[xchr]]:frag.by.chr$last[[xchr]]
+    if (length(fragments)==0L){ # For DNase-C, we set up boxes first and then redefine the fragments.
+        new.pts <- .getBinID(fragments, width)
+        fragments <- new.pts$region
+        new.pts$region <- new.pts$region[cur.chrs]
+        new.pts$id <- seq_along(cur.chrs)
+    } else {
+        new.pts <- .getBinID(fragments[cur.chrs], width)
+    }
+	out.id <- integer(length(fragments))
+	out.id[cur.chrs] <- new.pts$id
 
 	# Setting up the boundaries.
 	x.min <- max(1L, xstart)
 	x.max <- min(seqlengths(fragments)[[xchr]], xend)
 	if (x.min >= x.max) { stop("invalid ranges supplied") }
     if (is.null(max.height)) { max.height <- x.max - x.min }
-
-	# Setting up the boxes.		
-	width<-as.integer(width) 
-	cur.chrs <- frag.by.chr$first[[xchr]]:frag.by.chr$last[[xchr]]
-	new.pts <- .getBinID(fragments[cur.chrs], width)
-	out.id <- integer(length(fragments))
-	out.id[cur.chrs] <- new.pts$id
 						
 	# Identifying the boxes in our ranges of interest (with some leeway, to ensure that 
 	# there's stuff in the corners of the rotated plot). Specifically, you need to include 
@@ -44,7 +55,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 	all.dex <- .loadIndices(file, seqlevelsInUse(fragments))
 	if (!is.null(all.dex[[xchr]][[xchr]])) {
 		current <- .baseHiCParser(TRUE, file, xchr, xchr, chr.limits=frag.by.chr,
-			discard=discard, cap=cap)[[1]]
+			discard=discard, cap=cap, width=bwidth)[[1]]
 	} else { 
 		current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0))
 	}

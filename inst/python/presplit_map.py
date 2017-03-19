@@ -171,7 +171,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
 
 		add_hard_clip(read5, True, len3)
 		sout.write(read5)
-		read3.is_secondary=True
+		read3.is_supplementary=True
 		add_hard_clip(read3, False, len5)
 		sout.write(read3)
 	sin5.close()

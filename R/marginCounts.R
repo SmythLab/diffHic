@@ -5,25 +5,28 @@ marginCounts <- function(files, param, width=50000)
 #
 # written by Aaron Lun
 # some time ago.
-# last modified 22 November 2015
+# last modified 17 March 2017
 {
 	nlibs <- length(files)
 	width <- as.integer(width)
-	fragments <- param$fragments
-	frag.by.chr <- .splitByChr(fragments)
-
-	# Setting up other local references.
-	restrict <- param$restrict
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
-
 	if (width < 0) { stop("width must be a non-negative integer") }
-	new.pts <- .getBinID(fragments, width)
-	bin.by.chr <- .splitByChr(new.pts$region)
 
+    # Setting up the bins.
+    new.pts <- .getBinID(param$fragments, width)
+    bin.by.chr <- .splitByChr(new.pts$region)
+    
+    # Setting up the other statistics.
+    parsed <- .parseParam(param, width)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    cap <- parsed$cap
+    bwidth <- parsed$bwidth
+    discard <- parsed$discard
+    restrict <- param$restrict
+
+    # Setting up output elements.
 	total.counts <- matrix(0L, length(new.pts$region), nlibs)
 	full.sizes <- integer(nlibs)
-	chrs <- seqlevelsInUse(fragments)
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)
@@ -41,7 +44,7 @@ marginCounts <- function(files, param, width=50000)
 			keep.t <- first.anchor2:last.anchor2
 
 			pairs <- .baseHiCParser(current[[anchor2]], files, anchor1, anchor2,
-				chr.limits=frag.by.chr, discard=discard, cap=cap)
+				chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)
 
 			# Aggregating them for each library.
 			for (lib in seq_len(nlibs)) {

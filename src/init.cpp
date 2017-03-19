@@ -9,21 +9,27 @@ extern "C" {
 static const R_CallMethodDef all_call_entries[] = {
 	CALLDEF(check_input, 2),
 	CALLDEF(cap_input, 3),
-	CALLDEF(cluster_2d, 6),
+	
+    CALLDEF(cluster_2d, 6),
 	CALLDEF(split_clusters, 6),
 	CALLDEF(get_bounding_box, 3),
-	CALLDEF(quadrant_bg, 8),
+    CALLDEF(quadrant_bg, 8),
+
 	CALLDEF(count_background, 9),
-	CALLDEF(count_connect, 6),
+	CALLDEF(count_connect, 8),
+	CALLDEF(count_reconnect, 2),
 	CALLDEF(count_patch, 5),
-	CALLDEF(iterative_correction, 9),
-	CALLDEF(report_hic_pairs, 10),
-	CALLDEF(report_hic_binned_pairs, 10),
+    CALLDEF(directionality, 5),
+	
+    CALLDEF(iterative_correction, 9),
+    CALLDEF(get_missing_dist, 4),
+	
+    CALLDEF(report_hic_pairs, 10),
+	CALLDEF(report_hic_binned_pairs, 9),
 	CALLDEF(test_parse_cigar, 1),
 	CALLDEF(test_fragment_assign, 6),
     CALLDEF(pair_stats, 9),
-    CALLDEF(get_missing_dist, 4),
-    CALLDEF(directionality, 5),
+    
   	{NULL, NULL, 0}
 };
 

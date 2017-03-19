@@ -5,7 +5,7 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 #
 # written by Aaron Lun
 # created 21 May 2015
-# last modified 2 March 2017
+# last modified 17 March 2017
 {
 	nlibs <- length(files)
 	if (nlibs==0L) {
@@ -15,18 +15,19 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 	} 
 	width<-as.integer(width) 
 	filter<-as.integer(filter) 
-	fragments <- param$fragments
-	new.pts <- .getBinID(fragments, width)
-	
-	# Setting up ranges for the fragments and bins.
-	chrs <- seqlevelsInUse(fragments)
-	frag.by.chr <- .splitByChr(fragments)
-	bin.by.chr <- .splitByChr(new.pts$region)
-		
-	# Setting up other local references.
-	restrict <- param$restrict
-	discard <- .splitDiscards(param$discard)
-	cap <- param$cap
+
+    # Setting up the bins.
+    new.pts <- .getBinID(param$fragments, width)
+    bin.by.chr <- .splitByChr(new.pts$region)
+    
+    # Setting up the other statistics.
+    parsed <- .parseParam(param, width)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    cap <- parsed$cap
+    bwidth <- parsed$bwidth
+    discard <- parsed$discard
+    restrict <- param$restrict
 
 	# Output vectors.
 	out.counts <- list(matrix(0L, 0, nlibs))
@@ -53,7 +54,7 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
         current <- overall[[anchor1]]
 		for (anchor2 in names(current)) {
 			pairs <- .baseHiCParser(current[[anchor2]], files, anchor1, anchor2, 
-				chr.limits=frag.by.chr, discard=discard, cap=cap)
+				chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)
             full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
 			# Aggregating counts in C++ to obtain count combinations for each bin pair.

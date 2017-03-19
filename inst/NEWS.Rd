@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.7.2}{\itemize{
+\section{Version 1.7.3}{\itemize{
 \item Streamlined filterDirect(), filterTrended(), and added tests for them.
 Also allowed specification of which assay to use for the data and reference objects.
 
@@ -13,6 +13,9 @@ Also allowed specification of which assay to use for the data and reference obje
 \item normalizeCNV() and correctedContact() allow specification of which assay matrix to use from the SE objects.
 
 \item Refactored a great deal of the C++ code for improved clarity.
+
+\item Overhauled handling of DNase Hi-C data, so that pseudo-fragments are no longer necessary.
+Most functions now automatically recognise DNase-C data from an empty GRanges in param$fragments. 
 }
 }
 

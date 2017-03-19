@@ -13,6 +13,10 @@ struct coord {
 	int anchor, target, library;
 };
 
+typedef std::priority_queue<coord, std::deque<coord>, std::greater<coord> > pair_queue;
+
+void setup_pair_data (SEXP, const int, std::deque<const int*>&, std::deque<const int*>&, std::deque<int>&, std::deque<int>&);
+
 class binner {
 public:
 	binner(SEXP, SEXP, int, int);
@@ -33,7 +37,7 @@ private:
 
     std::deque<const int*> aptrs, tptrs;
 	std::deque<int> nums, indices;
-	std::priority_queue<coord, std::deque<coord>, std::greater<coord> > next;
+    pair_queue next;
 	
 	int curab, curtb, curlib, curdex, lib;
 	bool failed;

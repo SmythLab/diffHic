@@ -6,21 +6,19 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, c
 #
 # written by Aaron Lun
 # created 27 March 2015
-# last modified 9 December 2015
+# last modified 16 March 2017
 {
 	fragments <- param$fragments
-	n.per.chr <- runLength(seqnames(fragments))
-	frag.data <- .splitByChr(fragments)
-
-	chrs <- frag.data$chr
-	last.in.chr <- frag.data$last
-	before.first <- as.list(c(0L, last.in.chr[-length(chrs)]))
-	names(before.first) <- chrs
-
-	bin.width <- max(width(fragments))
-	if (!all(bin.width==width(fragments)[-last.in.chr])) {
-		stop("pseudo-fragments should be constant size") 
-	}
+    if (length(fragments)) { 
+        stop("fragments should be empty for DNase-C experiments")
+    }
+    chrlens <- seqlengths(fragments)
+    if (length(chrlens)==0L) { 
+        stop("seqlengths were not specified in fragments")
+    }
+    chrs <- names(chrlens)
+    before.first <- as.list(integer(length(chrs))-1L) # to undo 1-indexing.
+    names(before.first) <- chrs
 
 	# Checking consistency between SAM chromosome lengths and the ones in the cuts.
 	chromosomes<-scanBamHeader(bam)[[1]]$targets
@@ -28,8 +26,8 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, c
     m <- match(bam.chrs, chrs)
     if (any(is.na(m))) { stop("missing chromosomes in cut site list") }
 	for (x in seq_along(bam.chrs)) {
-		if (chromosomes[x]!=end(fragments)[last.in.chr[m[x]]]) {
-			stop("length of ", bam.chrs[x], " is not consistent between BAM file and fragment ranges")
+		if (chromosomes[x]!=chrlens[m[x]]) { 
+			stop("length of ", bam.chrs[x], " is not consistent between BAM file and fragments")
 		}
 	}
 
@@ -55,43 +53,33 @@ prepPseudoPairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, c
     on.exit({ unlink(output.dir, recursive=TRUE) })
     prefix <- file.path(output.dir, "")
 
-    out <- .Call(cxx_report_hic_binned_pairs, n.per.chr, bin.width, m-1L, path.expand(bam), prefix, storage, !ichim, chim.span, minq, dedup)
+    out <- .Call(cxx_report_hic_binned_pairs, chrlens, m-1L, path.expand(bam), prefix, storage, !ichim, chim.span, minq, dedup)
     if (is.character(out)) { stop(out) }
     final <- .process_output(out, file, chrs, before.first)
     final$same.id <- NULL
     return(final)
 }
 
-segmentGenome <- function(bs, size=500) 
-# Segments the genome into pseudo-fragments, for use in assigning reads 
-# from a DNase Hi-C experiment.
+segmentGenome <- function(bs) 
+# Returns an empty 'fragments' but with filled-out seqlengths,
+# for use in assigning reads from a DNase Hi-C experiment.
 #
 # written by Aaron Lun
 # created 27 March 2015
+# last modified 17 March 2017
 {
 	if (is(bs, "BSgenome")) {
 		ref.len <- seqlengths(bs)
-		gen <- genome(bs)
 	} else if (is.character(bs)) {
 		bs <- readDNAStringSet(bs)
 		ref.len <- width(bs)
 		names(ref.len) <- names(bs)
-		gen <- NA
 	} else {
 		ref.len <- bs
-		gen <- NA
 	}
-
-	everything <- list()
-	for (chr in names(ref.len)) {
-		bin.dex <- seq_len(ceiling(ref.len[[chr]]/size))
-		current <- GRanges(chr, IRanges((bin.dex - 1L)*size + 1L, bin.dex*size))
-		if (end(current)[length(current)] > ref.len[[chr]]) { 
-			end(current)[length(current)] <- ref.len[[chr]]
-		}
-		everything[[length(everything)+1L]] <- current
-	}
-	suppressWarnings(everything <- do.call(c, everything))
-	seqlengths(everything) <- ref.len
-	return(everything)
+    
+    nothing <- GRanges()
+    seqlevels(nothing) <- names(ref.len)
+	seqlengths(nothing) <- ref.len
+	return(nothing)
 }

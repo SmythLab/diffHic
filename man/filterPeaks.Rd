@@ -34,7 +34,7 @@ Filtering on the diagonals prevents calling of high-abundance short-range intera
 If either \code{min.count} or \code{min.diag} are \code{NULL}, no filtering will be performed on the average counts and diagonals, respectively.
 
 To compute enrichment values, we assume that the number of read pairs in neighborhood areas have been counted using \code{\link{enrichedPairs}} or \code{\link{neighborCounts}}.
-For a given bin pair in \code{data}, this function computes the mean abundance across libraries for each surrounding neighborhood.
+For a given bin pair in \code{data}, this function computes the mean abundance across libraries for each surrounding neighborhood, scaled by the neighborhood area (i.e., the number of bin pairs it contains).
 The local background for the target bin pair is defined as the maximum of the mean abundances for all neighborhoods.
 The enrichment value is then defined as the the difference between the target bin pair's abundance and its local background.
 The idea is that bin pairs with high enrichments are likely to represent punctate interactions between clearly defined loci.
