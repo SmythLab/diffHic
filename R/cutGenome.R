@@ -6,7 +6,7 @@ cutGenome <- function(bs, pattern, overhang=4L)
 #
 # written by Aaron Lun
 # a long time ago. 
-# last modified 22 March 2014
+# last modified 22 March 2017
 {
 	if (nchar(pattern)%%2L!=0) { stop("recognition site must be even in size") }
 	ps <- DNAString(pattern)
@@ -15,7 +15,6 @@ cutGenome <- function(bs, pattern, overhang=4L)
 	if (overhang > nchar(pattern) || overhang < 0L || overhang%%2L!=0) { stop("overhang must be a non-negative even integer that is not greater than pattern length") }
 	remainder <- (nchar(pattern)-overhang)/2L
 
-	original <- list()
 	if (is(bs, "BSgenome")) {
 		ref.names <- seqnames(bs)
 		gen <- genome(bs)
@@ -25,7 +24,10 @@ cutGenome <- function(bs, pattern, overhang=4L)
 		gen <- NA
 	}	
 
-	for (chr in ref.names) {
+    nchrs <- length(ref.names)
+	original <- vector("list", nchrs)
+	for (i in seq_len(nchrs)) {
+        chr <- ref.names[i]        
        	x <- matchPattern(pattern, bs[[chr]])
 		match.start <- start(x)
 		if (is.unsorted(match.start)) { match.start <- sort(match.start) }
@@ -33,10 +35,9 @@ cutGenome <- function(bs, pattern, overhang=4L)
 		chrlen <- length(bs[[chr]])
    		starts <- c(1L, match.start+remainder)
    		ends <- c(match.start+remainder-1L+overhang, chrlen)
-		original[[chr]] <- GRanges(chr, IRanges(starts, ends))
+		original[[i]] <- GRanges(chr, IRanges(starts, ends))
 	}
 		
-	names(original) <- NULL
 	suppressWarnings(original <- do.call(c, original))
     seqlevels(original) <- ref.names
     suppressWarnings(seqinfo(original) <- Seqinfo(ref.names, seqlengths=seqlengths(bs), genome=gen))

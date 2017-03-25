@@ -13,8 +13,9 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 # last modified 22 November 2015
 {
 	if (!average & ncol(data)>1L) {
-		collected.truth <- collected.bias <- collected.max <- collected.trend <- list()
-		for (lib in seq_len(ncol(data))) {
+        nlibs <- ncol(data)
+		collected.truth <- collected.bias <- collected.max <- collected.trend <- vector("list", nlibs)
+		for (lib in seq_len(nlibs)) {
 			out <- Recall(data[,lib], iterations=iterations, exclude.local=exclude.local, ignore.low=ignore.low, 
 				winsor.high=winsor.high, average=FALSE, dist.correct=dist.correct)
 			collected.truth[[lib]] <- out$truth

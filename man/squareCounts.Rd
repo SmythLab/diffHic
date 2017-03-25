@@ -28,7 +28,8 @@ The number of read pairs between each pair of sides is counted for each library 
 
 For standard Hi-C data, bins are rounded to the nearest restriction site.
 The number of restriction fragments in each bin is stored as \code{nfrags} in the metadata of the output \code{region}.
-For DNase Hi-C data, no rounding is performed as restriction fragments are irrelevant during DNase digestion, and all \code{nfrags} are set to zero.
+For DNase Hi-C data, no rounding is performed as restriction fragments are irrelevant during DNase digestion.
+Each read is placed into a bin based on the location of its 5' end, and \code{nfrags} for all bins are set to zero.
 
 % Can't use sliding mats because they're too difficult to interpret. Unlike ChIP-seq, there is no easy aggregation as there are no
 % obvious peaks. Abundance aggregation will generally give meaningless results as you end up with massive clusters for local interactions.

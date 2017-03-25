@@ -3,7 +3,7 @@ useDynLib(diffHic, .registration=TRUE, .fixes="cxx_")
 
 #  All functions exported, sorted by approximate function:
 export(diffHicUsersGuide,
-	cutGenome, segmentGenome,
+	cutGenome, segmentGenome, emptyGenome,
     preparePairs, mergePairs, savePairs, prepPseudoPairs,
 	getPairData, prunePairs, 
 	loadChromos, loadData,

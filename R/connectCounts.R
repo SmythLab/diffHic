@@ -263,7 +263,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }
 
             # Forming a GInteractions object.  
-            collected <- list()
+            collected <- vector("list", length(pairs))
             for (lib in seq_along(pairs)) {
                 cpair <- pairs[[lib]] 
                 sgi <- suppressWarnings(GInteractions(GRanges(anchor, IRanges(cpair$anchor1.pos, width=abs(cpair$anchor1.len))),

@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.7.3}{\itemize{
+\section{Version 1.7.4}{\itemize{
 \item Streamlined filterDirect(), filterTrended(), and added tests for them.
 Also allowed specification of which assay to use for the data and reference objects.
 
@@ -16,6 +16,7 @@ Also allowed specification of which assay to use for the data and reference obje
 
 \item Overhauled handling of DNase Hi-C data, so that pseudo-fragments are no longer necessary.
 Most functions now automatically recognise DNase-C data from an empty GRanges in param$fragments. 
+Deprecated segmentGenome() and prepPseudoPairs(), added the emptyGenome() function.
 }
 }
 

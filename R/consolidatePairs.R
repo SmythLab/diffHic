@@ -16,7 +16,7 @@ consolidatePairs <- function(indices, result.list, equiweight=TRUE, combine.args
 
 	# Boxing them and getting their weights.
 	if (equiweight) {
-		weights <- list()
+		weights <- vector("list", nset)
 		for (x in seq_len(nset)) {
 			freq <- tabulate(indices[[x]])
 			weights[[x]] <- 1/freq[indices[[x]]] 

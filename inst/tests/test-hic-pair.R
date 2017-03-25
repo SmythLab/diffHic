@@ -299,7 +299,7 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 		# Special behaviour; faster assignment into bins, no removal of dangling ends/self-cirlces
 		# (as these concepts are meaningless for arbitrary bins).
         param <- pairParam(outfrags[0])
-		diagnostics <- prepPseudoPairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
+		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 	} else {
 		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 		

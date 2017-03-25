@@ -6,7 +6,7 @@ mergePairs <- function(files, file.out)
 #
 # written by Aaron Lun
 # some time ago
-# last modified 17 March 2017
+# last modified 22 March 2017
 {
 	overall <- .loadIndices(files)
 
@@ -22,17 +22,16 @@ mergePairs <- function(files, file.out)
 		for (tc in names(current)) {
 			fnames<-current[[tc]]
 
-			out <- list()
+			out <- vector("list", length(fnames)) 
 			my.names <- NULL	
-			for (ix in seq_along(fnames)) {
-				if (!fnames[ix]) { next }
+			for (ix in which(fnames)) {
 				xx <- .getPairs(files[ix], ac, tc)
 				if (is.null(my.names)) {
 					my.names <- colnames(xx) 
 				} else if (!identical(my.names, colnames(xx))) {
 					warning("column names are not identical between objects to be merged")
 				}
-				out[[length(out)+1L]] <- xx
+				out[[ix]] <- xx
 			}
 
 			# No need to protect against an empty list; there must be one non-empty element for .loadIndices to get here.

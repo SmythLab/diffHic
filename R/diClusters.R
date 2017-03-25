@@ -41,22 +41,17 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
         weights <- rep(1, sum(nentries))
     }
 
-    all.ps <- list()
+    all.ps <- in.each.group <- vector("list", nset)
+    last <- 0L
     for (x in seq_len(nset)) { 
         all.ps[[x]] <- result.list[[x]][,pval.col]
+        in.each.group[[x]] <- last + seq_len(nrow(result.list[[x]]))
+        last <- last + nrow(result.list[[x]])
     }
     all.ps <- unlist(all.ps)
     adjp <- csaw:::.weightedFDR(all.ps, weights)
 
-    in.each.group <- list()
-    last <- 0L
-    for (x in seq_len(nset)) { 
-        in.each.group[[x]] <- last + seq_len(nrow(result.list[[x]]))
-        last <- last + nrow(result.list[[x]])
-    }
-
     # Getting the sign.
-    all.signs <- list()
     if (is.na(fc.col)) { 
         all.signs <- lapply(nentries, logical)
     } else {
@@ -65,7 +60,7 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
 
 	# Controlling the cluster-level FDR.
     FUN <- function(sig, index.only=TRUE) {
-        pos.data.list <- neg.data.list <- list()
+        pos.data.list <- neg.data.list <- vector("list", nset)
         for (x in seq_len(nset)) { 
             cur.sig <- sig[in.each.group[[x]]]
             pos.data.list[[x]] <- data.list[[x]][cur.sig & all.signs[[x]],]
@@ -90,7 +85,7 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
         }
     
         # Assembling it back into a single return value.
-        clust.indices <- list()
+        clust.indices <- vector("list", nset)
         for (x in seq_len(nset)) {
             cur.sig <- sig[in.each.group[[x]]]
             cur.signs <- all.signs[[x]][cur.sig] 

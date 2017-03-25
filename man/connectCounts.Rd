@@ -36,13 +36,16 @@ Mapping of read pairs into intervals is performed at the level of restriction fr
 The value of \code{type} feeds into \code{\link{findOverlaps}} and controls the manner in which restriction fragments are assigned to each region. 
 By default, a restriction fragment is assigned to one or more regions if said fragment overlaps with any part of those regions.
 This expands the effective boundaries of each entry of \code{regions} to the nearest restriction site.
-In contrast, setting \code{type="within"} would contract each interval 
+In contrast, setting \code{type="within"} would contract each interval.
 
 The modified regions can be extracted from the \code{regions} slot in the output InteractionSet object.
 These will be reordered according to the new start positions.
 The ordering permutation can be recovered from the \code{original} metadata field of the GRanges object.
 Similarly, the number of restriction fragments assigned to each interval is stored in the \code{nfrags} metadata field.
-(This is set to zero for DNase Hi-C experiments.)
+
+For DNase Hi-C experiments, the interval spanned by the alignment of each read is overlapped against the intervals in \code{regions}.
+This uses \code{\link{linkOverlaps}} and responds to any specification of \code{type}. 
+The boundaries of \code{regions} are not modified as no restriction fragments are involved, and all \code{nfrags} are set to zero.
 
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
 See \code{\link{pairParam}} for more details.

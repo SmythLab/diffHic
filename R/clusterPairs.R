@@ -15,8 +15,10 @@ clusterPairs <- function(..., tol, upper=1e6, index.only=FALSE)
 
 	all.data <- list(...)
     lapply(all.data, FUN=.check_StrictGI)
-	achrs <- tchrs <- astarts <- aends <- tstarts <- tends <- list()
-	for (x in seq_along(all.data)) {
+    ndata <- length(all.data)
+	achrs <- tchrs <- astarts <- aends <- tstarts <- tends <- vector("list", ndata)
+
+	for (x in seq_len(ndata)) { 
 		data <- all.data[[x]]
 		region <- regions(data)
 		allchrs <- as.character(seqnames(region))
@@ -85,9 +87,10 @@ clusterPairs <- function(..., tol, upper=1e6, index.only=FALSE)
         min.box <- .minBoundingBox(all.ids, achrs, astarts, aends, tchrs, tstarts, tends, seqinfo(region))
     }
     all.ids[ro] <- all.ids	
-	indices <- list()
+
+    indices <- vector("list", ndata)
 	last <- 0
-	for (x in seq_along(all.data)) {
+	for (x in seq_len(ndata)) { 
 		currows <- nrow(all.data[[x]])
 		indices[[x]] <- all.ids[last + seq_len(currows)]
 		last <- last + currows

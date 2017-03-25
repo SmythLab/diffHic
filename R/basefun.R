@@ -12,42 +12,6 @@
 
 ####################################################################################################
 
-.process_output <- function(c_out, file, chrs, chr.start) 
-# Converts the output of the C++ code in preparePairs or prepPseudoPairs
-# into HDF5 files. Also formats and returns the diagnostics.
-{
-    .initializeH5(file)
-    for (a1.dex in seq_along(c_out[[1]])) { 
-        curnames <- c_out[[1]][[a1.dex]]
-        not.empty <- curnames!=""
-        if (!any(not.empty)) { next }
-        anchor1 <- chrs[a1.dex]
-        .addGroup(file, anchor1)
-
-        for (a2.dex in which(not.empty)) { 
-            anchor2 <- chrs[a2.dex]
-            current.file <- curnames[a2.dex]
-            out <- read.table(current.file, header=FALSE, colClasses="integer")
-            colnames(out) <- c("anchor1.id", "anchor2.id", "anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
-
-            out$anchor1.id <- out$anchor1.id+chr.start[[anchor1]]
-            out$anchor2.id <- out$anchor2.id+chr.start[[anchor2]]
-            out <- out[order(out$anchor1.id, out$anchor2.id),,drop=FALSE]
-            rownames(out)<-NULL
-            .writePairs(out, file, anchor1, anchor2)
-        }
-    }
-
-    c_out <- c_out[-1]
-    names(c_out) <- c("pairs", "same.id", "singles", "chimeras")
-    names(c_out$pairs) <-c("total", "marked", "filtered", "mapped")
-    names(c_out$same.id) <- c("dangling", "self.circle")
-    names(c_out$chimeras) <- c("total", "mapped", "multi", "invalid")
-    return(c_out)
-}
-
-####################################################################################################
-
 .getBinID <- function(fragments, width) 
 # Determines which bin each restriction fragment is in. Also records the rounded
 # start and stop site for each bin. Returns a set of bin ids for each restriction
@@ -58,13 +22,13 @@
         return(.createBins(fragments, width))
     }
 
-    out.ids<-integer(length(fragments))
-    out.ranges<-list()
-    last<-0L
+    out.ids <- integer(length(fragments))
+    last <- 0L 
     frag.data <- .splitByChr(fragments)
-    nfrags <- list() 
+    nchrs <- length(frag.data$chr)
+    out.ranges <- nfrags <- vector("list", nchrs)
     
-    for (x in seq_along(frag.data$chr)) {
+    for (x in seq_len(nchrs)) {
         curindex <- frag.data$first[x]:frag.data$last[x]
         curf <- fragments[curindex]
         mids <- (start(curf)+end(curf))/2
@@ -99,13 +63,18 @@
 # This allows free-floating bins for use with DNase-C data.
 {
     ref.len <- seqlengths(fragments)
-    everything <- list()
-    for (chr in names(ref.len)) {
-        bin.dex <- seq_len(ceiling(ref.len[[chr]]/width))
-        end.pt <- pmin(bin.dex * width, ref.len[[chr]])
-        current <- GRanges(chr, IRanges((bin.dex - 1L)*width + 1L, end.pt))
-        everything[[length(everything)+1L]] <- current
+    chr.names <- names(ref.len)
+    nchrs <- length(ref.len)
+    everything <- vector("list", nchrs)
+
+    for (i in seq_len(nchrs)) {
+        chr.len <- ref.len[i]
+        bin.dex <- seq_len(ceiling(chr.len/width))
+        end.pt <- pmin(bin.dex * width, chr.len)
+        current <- GRanges(chr.names[i], IRanges((bin.dex - 1L)*width + 1L, end.pt))
+        everything[[i]] <- current
     }
+
     suppressWarnings(everything <- do.call(c, everything))
     seqlengths(everything) <- ref.len
     everything$nfrags <- 0L
@@ -118,12 +87,11 @@
 # Parses the parameters and returns all values, depending on
 # whether we're dealing with a DNase-C experiment or not.
 {
-    output <- list()
     fragments <- param$fragments
 
     if (length(fragments)==0L) {
         all.lengths <- seqlengths(fragments)
-        chrs <- output$chrs <- names(all.lengths)
+        chrs <- names(all.lengths)
 
         if (!is.na(width)) {
             # Calculating the first and last bin for each chromosome.
@@ -136,18 +104,19 @@
         }
             
         names(first) <- names(last) <- chrs
-        output$frag.by.chr <- list(chr=chrs, first=first, last=last)
-        output$cap <- NA_integer_ # Doesn't make much sense when each 'fragment' is now a bin.
-        output$bwidth <- width
+        frag.by.chr <- list(chr=chrs, first=first, last=last)
+        cap <- NA_integer_ # Doesn't make much sense when each 'fragment' is now a bin.
+        bwidth <- width
 
     } else {
-        output$chrs <- seqlevelsInUse(fragments)
-        output$frag.by.chr <- .splitByChr(fragments) 
-        output$cap <- param$cap
-        output$bwidth <- NA_integer_
+        chrs <- seqlevelsInUse(fragments)
+        frag.by.chr <- .splitByChr(fragments) 
+        cap <- param$cap
+        bwidth <- NA_integer_
     }
 
-    output$discard <- .splitDiscards(param$discard)
+    output <- list(chrs=chrs, frag.by.chr=frag.by.chr, cap=cap, bwidth=bwidth, 
+                   discard=.splitDiscards(param$discard))
     return(output)
 }
 
@@ -163,8 +132,9 @@
     chr.ends <- cumsum(all.len)
     chr.starts <- c(1L, chr.ends[-length(chr.ends)]+1L)
 
-    output <- list()
-    for (i in seq_along(all.chrs)) {
+    nchrs <- length(all.chrs)
+    output <- vector("list", nchrs)
+    for (i in seq_len(nchrs)) { 
         chr <- all.chrs[i]
         ix <- chr.starts[i]:chr.ends[i]
         output[[chr]] <- reduce(ranges(discard[ix]))
@@ -179,11 +149,11 @@
 # A convenience function for loading counts from file for a given anchor/anchor pair.
 # It will also bin the read pairs if 'width' is specified (for DNase-C experiments).
 {
-    overall<-list()
     adisc <- discard[[anchor1]]
     tdisc <- discard[[anchor2]]
     do.cap <- !is.na(cap) 
     do.bin <- !is.na(width)
+    overall <- vector("list", length(ok))
 
     for (x in seq_along(ok)) {
         if (!ok[x]) { 

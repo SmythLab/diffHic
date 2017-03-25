@@ -5,14 +5,14 @@ getPairData <- function(file, param)
 #
 # written by Aaron Lun
 # created 20 September 2014
-# last modified 17 March 2017
+# last modified 22 March 2017
 {
-	alll <- allo <- alli <- list()
-	ix <- 1L
     parsed <- .parseParam(param)
+	allstuff <- .loadIndices(file, parsed$chrs)
+	alll <- allo <- alli <- vector("list", sum(lengths(allstuff)))
+	ix <- 1L
 
 	# Running through all pairs.	
-	allstuff <- .loadIndices(file, parsed$chrs)
 	for (ax in names(allstuff)) {
 		current <- allstuff[[ax]] 
 		for (tx in names(current)) { 

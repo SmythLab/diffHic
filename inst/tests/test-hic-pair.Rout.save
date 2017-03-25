@@ -382,7 +382,7 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 + 		# Special behaviour; faster assignment into bins, no removal of dangling ends/self-cirlces
 + 		# (as these concepts are meaningless for arbitrary bins).
 +         param <- pairParam(outfrags[0])
-+ 		diagnostics <- prepPseudoPairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
++ 		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 + 	} else {
 + 		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 + 		
@@ -911,7 +911,7 @@ Error in preparePairs(out, param, tmpdir, output.dir = file.path(dir,  :
 > try({
 +     comp(fname, npairs=20, max.cuts=max.cuts, overhang=0, sizes=c(100, 100), extras=-1L, pseudo=TRUE)
 + })
-Error in prepPseudoPairs(out, param, tmpdir, output.dir = file.path(dir,  : 
+Error in .prepFreePairs(bam = bam, fragments = fragments, file = file,  : 
   missing chromosomes in cut site list
 > 
 > # Throwing more than 5000 read pairs in, to check that it still behaves past the 5000 read pair threshold for file dumping. 
@@ -1394,4 +1394,4 @@ other.2                  7          7     30           2     13
 > 
 > proc.time()
    user  system elapsed 
- 29.756   0.412  30.212 
+ 29.168   0.372  29.573 

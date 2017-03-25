@@ -23,8 +23,7 @@ boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 	parents <- .getBinID(fragments, reference)$region
 
 	# Collating all results in terms of parents.
-	all.a <- all.t <- all.mode <- all.idx <- list()
-	num.pairs <- list()
+	all.a <- all.t <- all.mode <- all.idx <- num.pairs <- vector("list", nk)
 	seq.it.nk <- seq_len(nk)
 	for (x in seq.it.nk) {
 		current <- all.hits[[x]]
@@ -55,7 +54,7 @@ boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 	now.index <- cumsum(is.diff)
 	by.mode <- split(seq_along(is.diff), all.mode)
 	
-	indices <- list()
+	indices <- vector("list", nk)
 	for (x in seq.it.nk) {
 		chosen <- by.mode[[as.character(x)]]
 		current.out <- integer(length(chosen))
@@ -69,7 +68,7 @@ boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 	
 	# Selecting the boundaries to report.
 	if (minbox) {
-		a.chrs <- a.starts <- a.ends <- t.chrs <- t.starts <- t.ends <- list()
+		a.chrs <- a.starts <- a.ends <- t.chrs <- t.starts <- t.ends <- vector("list", nk)
 		for (x in seq.it.nk) {
 			current <- all.hits[[x]]
 			aid <- anchors(current, type="first", id=TRUE)

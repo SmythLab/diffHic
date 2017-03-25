@@ -25,9 +25,9 @@ annotatePairs <- function(data.list, regions, rnames=names(regions), indices, ..
     }
 
     # Identifying all overlapping features.
-    collected.anno1 <- collected.anno2 <- list()
-    collected.index1 <- collected.index2 <- list()
-    for (x in seq_along(data.list)) { 
+    ndata <- length(data.list)
+    collected.anno1 <- collected.anno2 <- collected.index1 <- collected.index2 <- vector("list", ndata)
+    for (x in seq_len(ndata)) { 
         curdata <- data.list[[x]]
         curdex <- indices[[x]]
         keep <- !is.na(curdex)
