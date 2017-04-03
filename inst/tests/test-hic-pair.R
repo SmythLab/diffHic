@@ -140,20 +140,6 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
     seq.names <- names(max.cuts)
     seq.lengths <- chromosomes
        
-    # Adding an extra chromosome to the start, to see if the match is still correct when it's not 1:1.
-    # Also deleting a chromosome to trigger an error.
-    if (!is.null(extras)) { 
-        if (extras[1]==-1L) {
-            outfrags <- outfrags[-1]
-            seq.names <- seq.names[-1]
-            seq.lengths <- seq.lengths[-1]
-        } else {
-            outfrags <- c(list(GRanges(extras, IRanges(1, 100))), outfrags)
-            seq.names <- c(extras, seq.names)
-            seq.lengths <- c(rep(100L, length(extras)), seq.lengths)
-        }
-    }
-
 	suppressWarnings(outfrags <- do.call(c, outfrags))
     seqlevels(outfrags) <- seq.names
     seqlengths(outfrags) <- setNames(seq.lengths, seq.names)
@@ -293,12 +279,25 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 	################ ACTUAL MATCH ###################
 	# Assembling the output list for comparison.
 
+    # Adding an extra chromosome to the start, to see if the match is still correct when it's not 1:1.
+    # Also deleting a chromosome to trigger an error.
+    chrs.of.interest <- seqlevels(outfrags)
+    if (!is.null(extras)) { 
+        if (extras[1]==-1L) {
+            used.frags <- dropSeqlevels(outfrags, seqnames(outfrags)[1], pruning.mode="coarse")
+        } else { 
+            used.frags <- suppressWarnings(c(GRanges(extras, IRanges(1, 100)), outfrags))
+        }
+    } else {
+        used.frags <- outfrags
+    }
+
 	tmpdir<-paste0(fname, "_temp")
-	param <- pairParam(fragments=outfrags)
+	param <- pairParam(fragments=used.frags)
 	if (pseudo) {
 		# Special behaviour; faster assignment into bins, no removal of dangling ends/self-cirlces
 		# (as these concepts are meaningless for arbitrary bins).
-        param <- pairParam(outfrags[0])
+        param <- pairParam(used.frags[0])
 		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
 	} else {
 		diagnostics <- preparePairs(out, param, tmpdir, output.dir=file.path(dir, "whee"), storage=storage)
@@ -318,16 +317,15 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 	# Anchor1/anchor2 synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
     if (pseudo) { 
         offset <- integer(length(chromosomes))
+        # 'extras' don't matter, as ID is set to zero anyway.
     } else { 
         offset <- c(0L, cumsum(max.cuts))
-        if (!is.null(extras)) { 
-            offset <- offset + length(extras) # adding values to match up with 'outfrags'.
-        }
         names(offset) <- NULL
+        offset <- offset + length(extras)
     }
-	indices <- diffHic:::.loadIndices(tmpdir, seqlevels(outfrags))
+	indices <- diffHic:::.loadIndices(tmpdir, chrs.of.interest)
 	used <- indices
-	fchrs <- as.character(seqnames(outfrags))
+	fchrs <- as.character(seqnames(used.frags))
 
 	for (i in seq_along(max.cuts)) {
 		for (j in seq_len(i)) {
@@ -361,28 +359,28 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 				if (length(o)) { stop("true interactions are missing") }
 				next
 			}
-			current<-h5read(tmpdir, file.path(achr, tchr))
+			current <- h5read(tmpdir, file.path(achr, tchr))
 			for (x in seq_len(ncol(current))) { attributes(current[,x]) <- NULL }
-			collated <- diffHic:::.getStats(current, achr==tchr, outfrags)
+			collated <- diffHic:::.getStats(current, achr==tchr, used.frags)
 			
 			o2 <- order(current$anchor1.id, current$anchor2.id, current$anchor1.pos, current$anchor2.pos, 
                         current$anchor1.len, current$anchor2.len, collated$length, collated$orientation, collated$insert)
-   
+
             stopifnot(identical(current$anchor1.id[o2], anchor1[o]))
             stopifnot(identical(current$anchor2.id[o2], anchor2[o]))
             stopifnot(identical(current$anchor1.pos[o2], ap1[o]))
             stopifnot(identical(current$anchor2.pos[o2], ap2[o]))
             stopifnot(identical(current$anchor1.len[o2], al1[o]))
             stopifnot(identical(current$anchor2.len[o2], al2[o]))
-   
+
             stopifnot(identical(collated$length[o2], totes[o]))
 			stopifnot(identical(collated$orientation[o2], cur.ori[o]))
 			stopifnot(identical(collated$insert[o2], cur.insert[o]))
 				
 			# Checking that we're looking at the right combination.
             if (!pseudo) { 
-                uniq.a <- unique(fchrs[current[,1]])
-                uniq.t <- unique(fchrs[current[,2]])
+                uniq.a <- unique(fchrs[current$anchor1.id])
+                uniq.t <- unique(fchrs[current$anchor2.id])
                 if (length(uniq.a)!=1L || length(uniq.t)!=1L) { stop("file contains more than one combination") }
                 if (achr!=uniq.a || tchr!=uniq.t) { stop("file contains the incorrect combination") }
             }
@@ -412,7 +410,7 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 	curdex <- h5ls(tmpdir)
 	curdex <- curdex[curdex$otype=="H5I_DATASET",][1,]
 	returned <- h5read(tmpdir, file.path(curdex$group, curdex$name))
-	processed <- diffHic:::.getStats(returned, basename(curdex$group)==curdex$name, outfrags)
+	processed <- diffHic:::.getStats(returned, basename(curdex$group)==curdex$name, used.frags)
 	return(head(data.frame(anchor1.id=returned$anchor1.id, anchor2.id=returned$anchor2.id, length=processed$length,
 		orientation=processed$orientation, insert=processed$insert)))
 }
