@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.7.5}{\itemize{
+\section{Version 1.8.0}{\itemize{
 \item Streamlined filterDirect(), filterTrended(), and added tests for them.
 Also allowed specification of which assay to use for the data and reference objects.
 
