@@ -10,7 +10,7 @@ checkResults <- function(data.list, result.list, pval.col="PValue", tol, ..., tr
     all.ids <- unlist(out$indices)
     was.sig <- !is.na(all.ids)
     if (is.list(data.list)) { 
-        ref <- do.call(c, data.list)[was.sig,]
+        ref <- do.call(rbind, data.list)[was.sig,]
     } else {
         ref <- data.list[was.sig,]
     }

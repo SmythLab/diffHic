@@ -109,37 +109,44 @@ void parse_cigar (const bam1_t* read, int& alen, int& offset) {
  * Something to hold segment, pair information.
  ***********************************************/
 
-enum status { ISPET, ISMATE, NEITHER };
-
 struct segment {
 	int offset, alen, fragid, chrid, pos;
 	bool reverse;
 	bool operator<(const segment& rhs) const { return offset < rhs.offset; }
 };
 
-// These internal codes need to be negative, as fragment lengths are positive in return value.
-#define internal_neither -1 
-#define internal_ismate -2
+enum status { ISPET, ISMATE, NEITHER };
 
-int get_pet_dist (const segment& left, const segment& right) {
-	if (right.chrid!=left.chrid || right.reverse==left.reverse) { return internal_neither; }
-	const segment& fs=(left.reverse ? right : left);
-	const segment& rs=(left.reverse ? left : right);
-	if (fs.pos <= rs.pos) {
-		if (fs.pos + fs.alen > rs.pos + rs.alen) { return internal_neither; }
-		return rs.pos + rs.alen - fs.pos; // Assuming that alignment lengths are positive.
-	}
-	if (fs.pos < rs.pos+rs.alen) { return internal_neither; }
-	return internal_ismate;
+int get_pet_dist (const segment& left, const segment& right, status& flag) { 
+    /* Computing distances between 5' ends. Overextended and nested reads are just truncated here,
+     * attributable to trimming failures, as they are impossible to generate from a single DNA
+     * fragment or ligation product. We also assume that alignment lengths are positive. 
+     */
+	if (right.chrid!=left.chrid || right.reverse==left.reverse) { 
+        flag=NEITHER;
+        return 0;
+    }
+    int f5, r5;
+    if (left.reverse) {
+        f5=right.pos;
+        r5=left.pos+left.alen;
+    } else {
+        f5=left.pos;
+        r5=right.pos+right.alen;
+    }
+    if (r5 <= f5) { 
+        flag=ISMATE;
+        return 0;
+    }
+    flag=ISPET;
+    return r5 - f5;
 }
 
 status get_status (const segment& left, const segment& right) {
 	if (right.fragid!=left.fragid) { return NEITHER; }
-	switch (get_pet_dist(left, right)) { 
-		case internal_neither: return NEITHER;
-		case internal_ismate: return ISMATE;
-		default: return ISPET;
-	}
+    status flag;
+    get_pet_dist(left, right, flag);
+    return flag;
 }
 
 /***********************************************
@@ -166,22 +173,23 @@ struct check_invalid_by_dist : public check_invalid_chimera {
 		if (!isInteger(span) || LENGTH(span)!=1) { throw std::runtime_error("maximum chimeric span must be a positive integer"); }
 		maxspan=asInteger(span);
 	};
+
 	~check_invalid_by_dist() {};
+
 	bool operator()(const std::deque<segment>& read1, const std::deque<segment>& read2) const {
+        status flag;
+        int temp;
 		if (read1.size()==2) {
-			int temp=get_pet_dist(read2[0], read1[1]);
-			if (temp < 0 || temp > maxspan) { return true; }
+			temp=get_pet_dist(read2[0], read1[1], flag);
+			if (flag!=ISPET || temp > maxspan) { return true; }
 		}
 		if (read2.size()==2) {
-			int temp=get_pet_dist(read1[0], read2[1]);
-			if (temp < 0 || temp > maxspan) { return true; }
+			temp=get_pet_dist(read1[0], read2[1], flag);
+			if (flag!=ISPET || temp > maxspan) { return true; }
 		}
-		/* Doesn't account for cases where the 5' end is nested inside the 3' end and the mate.
-		 * These are physically impossible from a single linear DNA molecule. I suppose we can
-		 * forgive this, because it could form from interactions betwen homologous chromosomes.
- 		 */
 		return false;
 	};
+
 	int get_span() const { return maxspan; }
 private:
 	int maxspan;

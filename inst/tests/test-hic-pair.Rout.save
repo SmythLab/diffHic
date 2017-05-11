@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -314,10 +314,12 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 +         self.circle <- (str1 & pos2+rlen <= pos1) | (str2 & pos1+rlen <= pos2);
 +         codes[ self.circle & potentials ] <- 3L
 +         potentials <- potentials & !self.circle
-+         
-+         overextension <- (str1 & pos1 > pos2) | (str2 & pos2 > pos1) # Don't need to check +rlen, as they're al the same.
-+         codes[ overextension & potentials ] <- 2L
-+         potentials <- potentials & !overextension
++ 
++         # Not worrying about overextension; these are now considered to be dangling ends,
++         # as sequencing/trimming/alignment errors can often result in a few overextended bases.
++ #        overextension <- (str1 & pos1 > pos2) | (str2 & pos2 > pos1) # Don't need to check +rlen, as they're al the same.
++ #        codes[ overextension & potentials ] <- 2L
++ #        potentials <- potentials & !overextension
 +         
 +         codes[potentials] <- 1L
 +         return(codes)
@@ -553,8 +555,8 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 2          1          1    502           0     16
 3          1          1    205           3     93
 4          1          1    423           0    111
-5          1          1    280           2     12
-6          1          1    206           3     26
+5          1          1    206           3     26
+6          2          1    169           3    275
 > 
 > # Increasing the number of reads all round.
 > 
@@ -633,12 +635,12 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 6          5          3    672           1   1301
 > comp(fname, npairs=200, size=c(500, 1000), overhang=4, max.cuts=max.cuts);
   anchor1.id anchor2.id length orientation insert
-1          2          2    644           2     19
-2          5          4    821           0   1134
-3          6          5    625           0    582
-4          9          4   1046           1   3885
-5          9          5    988           0   2417
-6         11          3   1669           0   6388
+1          5          4    821           0   1134
+2          6          5    625           0    582
+3          9          4   1046           1   3885
+4          9          5    988           0   2417
+5         11          3   1669           0   6388
+6         11          9   1060           3   2204
 > comp(fname, npairs=1000, size=c(500, 1000), overhang=4, max.cuts=max.cuts);
   anchor1.id anchor2.id length orientation insert
 1          3          1   1037           2   1267
@@ -735,11 +737,11 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 > comp(fname, npairs=1000, size=c(20, 50), max.cuts=c(chrA=1L))
   anchor1.id anchor2.id length orientation insert
 1          1          1     32           0     18
-2          1          1     49           2     11
-3          1          1     49           2     11
-4          1          1     58           3     32
-5          1          1     25           0     29
-6          1          1     51           3     11
+2          1          1     58           3     32
+3          1          1     25           0     29
+4          1          1     51           3     11
+5          1          1     46           0     12
+6          1          1     48           3     14
 > 
 > # Adding lots of chromosomes.
 > 
@@ -958,25 +960,47 @@ Error in .prepFreePairs(bam = bam, fragments = fragments, file = file,  :
 > tmpdir<-file.path(dir, "gunk")
 > cntdir<-file.path(dir, "gunkcount")
 > 
-> # Check out generator.R in inst/exdata for cross-referencing to names. 
-> # In order of appearance in printfun, all mapped read pairs are (for
-> # each data.frame in the list):
+> # Setting up a function to name all read pairs based on their position, length and strand.
 > 
-> named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6", "other.1"),
-+ 		c("good.8", "good.5", "chimeric.good.4", "chimeric.good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.1", "chimeric.invalid.3", "chimeric.invalid.7", "chimeric.good.2"),
-+ 		c("good.7", "good.6", "chimeric.good.3", "other.2"))
+> what <- c("qname", "rname", "pos", "qwidth", "strand")
+> first.read <- Rsamtools::scanBam(hic.file, param=ScanBamParam(flag=scanBamFlag(isPaired=TRUE, isFirstMateRead=TRUE, isSecondary=FALSE), what=what))[[1]]
+> second.read <- Rsamtools::scanBam(hic.file, param=ScanBamParam(flag=scanBamFlag(isPaired=TRUE, isFirstMateRead=FALSE, isSecondary=FALSE), what=what))[[1]]
+> fchar <- paste(first.read$rname, first.read$pos, first.read$strand, first.read$qwidth, sep=".")
+> schar <- paste(second.read$rname, second.read$pos, second.read$strand, second.read$qwidth, sep=".")
+> fqnames <- first.read$qname
+> sqnames <- second.read$qname
 > 
-> # We also have 3 unmapped reads, 3 dangling ends, 2 self-circles, 2 singletons.
-> # For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
+> namefun <- function(extracted) {
++     xchar <- paste(seqnames(cuts[as.vector(extracted$anchor1.id)]), extracted$anchor1.pos, 
++                    ifelse(extracted$anchor1.len > 0, "+", "-"), abs(extracted$anchor1.len), sep=".")
++     ychar <- paste(seqnames(cuts[as.vector(extracted$anchor2.id)]), extracted$anchor2.pos, 
++                    ifelse(extracted$anchor2.len > 0, "+", "-"), abs(extracted$anchor2.len), sep=".")
++ 
++     output <- integer(nrow(extracted))    
++     for (i in seq_len(nrow(extracted))) {
++         curx <- xchar[i]
++         cury <- ychar[i]
++         m <- (fchar %in% curx & schar %in% cury) | (fchar %in% cury & schar %in% curx) 
++         stopifnot(sum(m)==1L)
++         output[i] <- which(m)
++     }
++ 
++     my.names <- fqnames[output]
++     stopifnot(identical(my.names, sqnames[output]))
++     return(my.names)
++ }
+> 
+> # We also have 3 unmapped reads, 5 dangling ends, 2 self-circles, 2 singletons.
+> # For chimeras, all have mapped 5' and 3' ends, 5 of which are invalid.
 > 	
 > preparePairs(hic.file, param, tmpdir, dedup=FALSE)
 $pairs
    total   marked filtered   mapped 
-      30        7        3       27 
+      32        7        3       29 
 
 $same.id
    dangling self.circle 
-          3           2 
+          5           2 
 
 $singles
 [1] 2
@@ -986,7 +1010,7 @@ $chimeras
      12      12      12       7 
 
 > 
-> printfun<-function(dir, named=NULL) {
+> printfun<-function(dir) {
 + 	output<-list()
 + 	ix <- 1L
 + 	indices <- suppressWarnings(diffHic:::.loadIndices(tmpdir))
@@ -997,13 +1021,13 @@ $chimeras
 + 			processed <- diffHic:::.getStats(extracted, ax==tx, cuts)
 + 			output[[ax]][[tx]] <- data.frame(anchor1.id=extracted$anchor1.id, anchor2.id=extracted$anchor2.id,
 + 				length=processed$length, orientation=processed$orientation, insert=processed$insert)
-+ 			if (!is.null(named[[ix]])) { rownames(output[[ax]][[tx]])<-named[[ix]] }
++             rownames(output[[ax]][[tx]]) <- namefun(extracted)
 + 			ix <- ix + 1L
 + 		}
 + 	}
 + 	return(output)
 + }
-> printfun(tmpdir, named=named)
+> printfun(tmpdir)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1036,7 +1060,7 @@ $chrB$chrB
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
@@ -1061,11 +1085,11 @@ other.2                  7          7     30           2     13
 > preparePairs(hic.file, param, tmpdir2)
 $pairs
    total   marked filtered   mapped 
-      30        7        3       20 
+      32        7        3       22 
 
 $same.id
    dangling self.circle 
-          2           1 
+          4           1 
 
 $singles
 [1] 2
@@ -1074,10 +1098,7 @@ $chimeras
   total  mapped   multi invalid 
      12       8       7       5 
 
-> named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
-+ 	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.3", "chimeric.invalid.7"),
-+ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-> printfun(tmpdir2, named=named)
+> printfun(tmpdir2)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1105,7 +1126,7 @@ $chrB$chrB
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
@@ -1117,11 +1138,11 @@ other.2                  7          7     30           2     13
 > preparePairs(hic.file, param, tmpdir2, ichim=FALSE)
 $pairs
    total   marked filtered   mapped 
-      30        7        3       20 
+      32        7        3       22 
 
 $same.id
    dangling self.circle 
-          2           1 
+          4           1 
 
 $singles
 [1] 2
@@ -1130,10 +1151,7 @@ $chimeras
   total  mapped   multi invalid 
      12       8       7       5 
 
-> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
-+ 	c("good.8", "good.5", "chimeric.good.1"),
-+ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-> printfun(tmpdir2, named=named)
+> printfun(tmpdir2)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1156,7 +1174,7 @@ $chrB$chrB
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
@@ -1180,11 +1198,11 @@ other.2                  7          7     30           2     13
 > preparePairs(hic.file, param, tmpdir2, minq=100)
 $pairs
    total   marked filtered   mapped 
-      30        7        9       14 
+      32        7        9       16 
 
 $same.id
    dangling self.circle 
-          0           1 
+          2           1 
 
 $singles
 [1] 2
@@ -1193,10 +1211,7 @@ $chimeras
   total  mapped   multi invalid 
      12       6       3       2 
 
-> named <- list(c("chimeric.invalid.5", "good.2", "chimeric.invalid.4", "good.4"),
-+ 	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.3", "chimeric.invalid.7"),
-+ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-> printfun(tmpdir2, named=named)
+> printfun(tmpdir2)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1220,7 +1235,7 @@ $chrB$chrB
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
@@ -1231,11 +1246,11 @@ other.2                  7          7     30           2     13
 > preparePairs(hic.file, param, tmpdir2, chim.dist=20, ichim=FALSE)
 $pairs
    total   marked filtered   mapped 
-      30        7        3       20 
+      32        7        3       22 
 
 $same.id
    dangling self.circle 
-          2           1 
+          4           1 
 
 $singles
 [1] 2
@@ -1244,10 +1259,7 @@ $chimeras
   total  mapped   multi invalid 
      12       8       7       6 
 
-> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
-+ 	c("good.8", "good.5"),
-+ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-> printfun(tmpdir2, named=named)
+> printfun(tmpdir2)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1269,33 +1281,31 @@ $chrB$chrB
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
 > # chimeric.invalid.6 now becomes a valid chimera, as each pair of 5' end and 3' mate end
-> # is now a proper pair (inward-facing and less than chim.dist). -1 for invalid.chim.
+> # is now a proper pair (inward-facing and less than chim.dist). The same applies for
+> # chimeric.invalid.7. -2 for invalid.chim.
 > 
 > preparePairs(hic.file, param, tmpdir2, chim.dist=2000, ichim=FALSE)
 $pairs
    total   marked filtered   mapped 
-      30        7        3       20 
+      32        7        3       22 
 
 $same.id
    dangling self.circle 
-          2           1 
+          4           1 
 
 $singles
 [1] 2
 
 $chimeras
   total  mapped   multi invalid 
-     12       8       7       4 
+     12       8       7       3 
 
-> named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
-+ 	c("good.8", "good.5", "chimeric.good.1"),
-+ 	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-> printfun(tmpdir2, named=named)
+> printfun(tmpdir2)
 $chrA
 $chrA$chrA
                    anchor1.id anchor2.id length orientation insert
@@ -1309,17 +1319,18 @@ chimeric.invalid.6          4          3     10           1     10
 
 $chrB
 $chrB$chrA
-                anchor1.id anchor2.id length orientation insert
-good.8                   5          2     10           2     NA
-good.5                   5          3     30           2     NA
-chimeric.good.1          6          1     35           0     NA
+                   anchor1.id anchor2.id length orientation insert
+good.8                      5          2     10           2     NA
+good.5                      5          3     30           2     NA
+chimeric.good.1             6          1     35           0     NA
+chimeric.invalid.7          6          3     15           3     NA
 
 $chrB$chrB
                 anchor1.id anchor2.id length orientation insert
 good.7                   6          5     25           2     64
 good.6                   7          5     35           3     84
 chimeric.good.3          7          6     10           1     10
-other.2                  7          7     30           2     13
+other.2                  7          7     30           3     10
 
 
 > 
@@ -1392,4 +1403,4 @@ other.2                  7          7     30           2     13
 > 
 > proc.time()
    user  system elapsed 
- 29.180   0.416  29.624 
+ 28.004   0.352  28.383 

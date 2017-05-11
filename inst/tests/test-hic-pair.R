@@ -231,10 +231,12 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
         self.circle <- (str1 & pos2+rlen <= pos1) | (str2 & pos1+rlen <= pos2);
         codes[ self.circle & potentials ] <- 3L
         potentials <- potentials & !self.circle
-        
-        overextension <- (str1 & pos1 > pos2) | (str2 & pos2 > pos1) # Don't need to check +rlen, as they're al the same.
-        codes[ overextension & potentials ] <- 2L
-        potentials <- potentials & !overextension
+
+        # Not worrying about overextension; these are now considered to be dangling ends,
+        # as sequencing/trimming/alignment errors can often result in a few overextended bases.
+#        overextension <- (str1 & pos1 > pos2) | (str2 & pos2 > pos1) # Don't need to check +rlen, as they're al the same.
+#        codes[ overextension & potentials ] <- 2L
+#        potentials <- potentials & !overextension
         
         codes[potentials] <- 1L
         return(codes)
@@ -530,20 +532,42 @@ param <- pairParam(cuts)
 tmpdir<-file.path(dir, "gunk")
 cntdir<-file.path(dir, "gunkcount")
 
-# Check out generator.R in inst/exdata for cross-referencing to names. 
-# In order of appearance in printfun, all mapped read pairs are (for
-# each data.frame in the list):
+# Setting up a function to name all read pairs based on their position, length and strand.
 
-named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6", "other.1"),
-		c("good.8", "good.5", "chimeric.good.4", "chimeric.good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.1", "chimeric.invalid.3", "chimeric.invalid.7", "chimeric.good.2"),
-		c("good.7", "good.6", "chimeric.good.3", "other.2"))
+what <- c("qname", "rname", "pos", "qwidth", "strand")
+first.read <- Rsamtools::scanBam(hic.file, param=ScanBamParam(flag=scanBamFlag(isPaired=TRUE, isFirstMateRead=TRUE, isSecondary=FALSE), what=what))[[1]]
+second.read <- Rsamtools::scanBam(hic.file, param=ScanBamParam(flag=scanBamFlag(isPaired=TRUE, isFirstMateRead=FALSE, isSecondary=FALSE), what=what))[[1]]
+fchar <- paste(first.read$rname, first.read$pos, first.read$strand, first.read$qwidth, sep=".")
+schar <- paste(second.read$rname, second.read$pos, second.read$strand, second.read$qwidth, sep=".")
+fqnames <- first.read$qname
+sqnames <- second.read$qname
 
-# We also have 3 unmapped reads, 3 dangling ends, 2 self-circles, 2 singletons.
-# For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
+namefun <- function(extracted) {
+    xchar <- paste(seqnames(cuts[as.vector(extracted$anchor1.id)]), extracted$anchor1.pos, 
+                   ifelse(extracted$anchor1.len > 0, "+", "-"), abs(extracted$anchor1.len), sep=".")
+    ychar <- paste(seqnames(cuts[as.vector(extracted$anchor2.id)]), extracted$anchor2.pos, 
+                   ifelse(extracted$anchor2.len > 0, "+", "-"), abs(extracted$anchor2.len), sep=".")
+
+    output <- integer(nrow(extracted))    
+    for (i in seq_len(nrow(extracted))) {
+        curx <- xchar[i]
+        cury <- ychar[i]
+        m <- (fchar %in% curx & schar %in% cury) | (fchar %in% cury & schar %in% curx) 
+        stopifnot(sum(m)==1L)
+        output[i] <- which(m)
+    }
+
+    my.names <- fqnames[output]
+    stopifnot(identical(my.names, sqnames[output]))
+    return(my.names)
+}
+
+# We also have 3 unmapped reads, 5 dangling ends, 2 self-circles, 2 singletons.
+# For chimeras, all have mapped 5' and 3' ends, 5 of which are invalid.
 	
 preparePairs(hic.file, param, tmpdir, dedup=FALSE)
 
-printfun<-function(dir, named=NULL) {
+printfun<-function(dir) {
 	output<-list()
 	ix <- 1L
 	indices <- suppressWarnings(diffHic:::.loadIndices(tmpdir))
@@ -554,13 +578,13 @@ printfun<-function(dir, named=NULL) {
 			processed <- diffHic:::.getStats(extracted, ax==tx, cuts)
 			output[[ax]][[tx]] <- data.frame(anchor1.id=extracted$anchor1.id, anchor2.id=extracted$anchor2.id,
 				length=processed$length, orientation=processed$orientation, insert=processed$insert)
-			if (!is.null(named[[ix]])) { rownames(output[[ax]][[tx]])<-named[[ix]] }
+            rownames(output[[ax]][[tx]]) <- namefun(extracted)
 			ix <- ix + 1L
 		}
 	}
 	return(output)
 }
-printfun(tmpdir, named=named)
+printfun(tmpdir)
 
 # Alright, so once duplicates are removed, we lose:
 #  	self.1 (mapped/self.circles -> marked)
@@ -581,10 +605,7 @@ printfun(tmpdir, named=named)
 
 tmpdir2<-file.path(dir, "gunk2")
 preparePairs(hic.file, param, tmpdir2)
-named <- list(c("chimeric.invalid.5", "good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
-	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.2", "chimeric.invalid.3", "chimeric.invalid.7"),
-	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-printfun(tmpdir2, named=named)
+printfun(tmpdir2)
 
 # Once invalid chimeras are removed, we see a loss of all rows corresponding to
 # invalid chimeras in printfun. No change in the statistics should be observed.
@@ -592,10 +613,7 @@ printfun(tmpdir2, named=named)
 # by duplicate removal (for some reason; that shouldn't happen in real data).
 
 preparePairs(hic.file, param, tmpdir2, ichim=FALSE)
-named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
-	c("good.8", "good.5", "chimeric.good.1"),
-	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-printfun(tmpdir2, named=named)
+printfun(tmpdir2)
 
 # Throwing out those with poor mapping quality. We lose:
 #   good.1 (mapped -> filtered)
@@ -615,29 +633,21 @@ printfun(tmpdir2, named=named)
 # 	B/B = good.7, good.6, chimeric.good.
 
 preparePairs(hic.file, param, tmpdir2, minq=100)
-named <- list(c("chimeric.invalid.5", "good.2", "chimeric.invalid.4", "good.4"),
-	c("good.8", "good.5", "chimeric.good.1", "chimeric.invalid.3", "chimeric.invalid.7"),
-	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-printfun(tmpdir2, named=named)
+printfun(tmpdir2)
 
 # Defining invalid chimeras based on distance instead of fragment ID. chimeric.good.1
 # becomes an invalid chimera, as the distance between the 3' segment and the mate is
 # 30 bp. This results in a +1 increase for invalid.chim.
 
 preparePairs(hic.file, param, tmpdir2, chim.dist=20, ichim=FALSE)
-named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4"),
-	c("good.8", "good.5"),
-	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-printfun(tmpdir2, named=named)
+printfun(tmpdir2)
 
 # chimeric.invalid.6 now becomes a valid chimera, as each pair of 5' end and 3' mate end
-# is now a proper pair (inward-facing and less than chim.dist). -1 for invalid.chim.
+# is now a proper pair (inward-facing and less than chim.dist). The same applies for
+# chimeric.invalid.7. -2 for invalid.chim.
 
 preparePairs(hic.file, param, tmpdir2, chim.dist=2000, ichim=FALSE)
-named <- list(c("good.1", "good.2", "good.3", "chimeric.invalid.4", "good.4", "chimeric.invalid.6"),
-	c("good.8", "good.5", "chimeric.good.1"),
-	c("good.7", "good.6", "chimeric.good.3", "other.2"))
-printfun(tmpdir2, named=named)
+printfun(tmpdir2)
 
 ###################################################################################################
 # This tests what happens with chimeras where one of the segments is unmapped. This requires some

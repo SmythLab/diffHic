@@ -61,8 +61,8 @@ Dangling ends are inward-facing read pairs mapped to the same fragment, and are 
 Both constructs are detected and discarded within the function.
 Note that this does not consider dangling ends or self-circles formed from incompletely digested fragments, which must be removed with \code{\link{prunePairs}}.
 
-% Also note that overlapping pairs of self-circles are retained, as are dangling ends where one end extends past the other.
-% This because they are neither valid self-circles or dangling ends.
+% Removal of dangling ends will include those read pairs where one end extends past the other.
+% These are attributable to trimming/sequencing/alignment errors and should still be dangling ends.
 
 If the 5' end of either read is unavailable (e.g. unmapped, mapping quality score below \code{minq}, marked as a duplicate), the read pair is recorded as unpaired and discarded.
 No MAPQ filtering is performed when \code{minq} is set to \code{NA}.

@@ -4,15 +4,14 @@ require(GenomicRanges)
 cuts <- readRDS("cuts.rds")
 ofile <- "hic.sam"
 
-addread <- function(name, fragId, isForward, offset=alen, isFirst=TRUE, isPrimary=TRUE, isDup=FALSE, isUnmapped=FALSE,
-		alen=10, hanging=NULL, mapq=200, overrun=FALSE) {
+addread <- function(name, fragId, isForward, offset=alen, isFirst=TRUE, isPrimary=TRUE, isDup=FALSE, isUnmapped=FALSE, alen=10, hanging=NULL, mapq=200) { 
 	if (!isPrimary) { offset <- width(cuts[fragId])-offset + alen } # as 3' segments point away from the binding site.
 	if (isForward) { 
 		actual.pos <- end(cuts[fragId]) - offset + 1L
-		if (!overrun) { stopifnot(actual.pos >= start(cuts[fragId])) }
+		stopifnot(actual.pos >= start(cuts[fragId])) 
 	} else {
 		actual.pos <- start(cuts[fragId]) + offset - alen
-		if (!overrun) { stopifnot(actual.pos + alen - 1L <= end(cuts[fragId])) }
+		stopifnot(actual.pos + alen - 1L <= end(cuts[fragId])) 
 	}
 
 	# Multiple hangings to allow for tripartite reads.
@@ -72,7 +71,7 @@ addread("singleton.2", 6, isForward=TRUE, offset=20, isFirst=FALSE)
 addread("other.1", 4, isForward=TRUE, offset=20, isFirst=TRUE, isDup=TRUE)
 addread("other.1", 4, isForward=TRUE, offset=45, isFirst=FALSE, isDup=TRUE)
 
-addread("other.2", 7, isForward=TRUE, offset=15, isFirst=TRUE)
+addread("other.2", 7, isForward=FALSE, offset=15, isFirst=TRUE)
 addread("other.2", 7, isForward=FALSE, offset=15, isFirst=FALSE)
 
 # Adding some dangling ends.
@@ -86,16 +85,24 @@ addread("dangling.2", 5, isForward=FALSE, offset=20, isFirst=FALSE)
 addread("dangling.3", 7, isForward=TRUE, offset=20, isFirst=TRUE, mapq=20)
 addread("dangling.3", 7, isForward=FALSE, offset=20, isFirst=FALSE)
 
-# Checking what happens if the restriction site is overrun.
+# Special cases of dangling ends involving overextended or nested reads.
 
-addread("good.7", 6, isForward=TRUE, offset=5, isFirst=TRUE, overrun=TRUE)
+addread("dangling.4", 7, isForward=TRUE, offset=15, isFirst=TRUE) 
+addread("dangling.4", 7, isForward=FALSE, offset=15, isFirst=FALSE)
+
+addread("dangling.5", 7, isForward=TRUE, offset=20, isFirst=TRUE, alen=20) 
+addread("dangling.5", 7, isForward=FALSE, offset=15, isFirst=FALSE)
+
+# Checking what happens if the restriction site is overrun by the read length.
+
+addread("good.7", 6, isForward=TRUE, offset=5, isFirst=TRUE)
 addread("good.7", 5, isForward=FALSE, offset=20, isFirst=FALSE)
 
-addread("good.8", 5, isForward=TRUE, offset=5, isFirst=TRUE, overrun=TRUE)
-addread("good.8", 2, isForward=FALSE, offset=5, isFirst=FALSE, overrun=TRUE)
+addread("good.8", 5, isForward=TRUE, offset=5, isFirst=TRUE)
+addread("good.8", 2, isForward=FALSE, offset=5, isFirst=FALSE)
 
 addread("self.2", 4, isForward=FALSE, offset=30, isFirst=TRUE)
-addread("self.2", 4, isForward=TRUE, offset=5, isFirst=FALSE, overrun=TRUE)
+addread("self.2", 4, isForward=TRUE, offset=5, isFirst=FALSE)
 
 # Generating chimeras. Alignment length needs to be 5, to get past the overhang.
 
@@ -112,14 +119,12 @@ addread("chimeric.good.3", 6, isForward=FALSE, alen=5, isFirst=TRUE, isPrimary=F
 addread("chimeric.good.3", 6, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=TRUE, hanging=5)
 addread("chimeric.good.3", 7, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=FALSE, hanging=5)
 
-# Invalid because the 3' segment extends past the mate 5' segment.
+# Invalid because both reads map to multiple locations.
 
 addread("chimeric.invalid.1", 6, isForward=FALSE, alen=5, isFirst=TRUE, isPrimary=TRUE, hanging=10, isDup=TRUE)
-addread("chimeric.invalid.1", 3, isForward=FALSE, alen=10, isFirst=TRUE, isPrimary=FALSE, hanging=5)
+addread("chimeric.invalid.1", 2, isForward=FALSE, alen=10, isFirst=TRUE, isPrimary=FALSE, hanging=5)
 addread("chimeric.invalid.1", 3, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=TRUE, hanging=5, isDup=TRUE)
 addread("chimeric.invalid.1", 6, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=FALSE, hanging=5)
-
-# Invalid because both reads map to multiple locations.
 
 addread("chimeric.invalid.2", 6, isForward=FALSE, alen=5, isFirst=TRUE, isPrimary=TRUE, hanging=5)
 addread("chimeric.invalid.2", 3, isForward=FALSE, alen=5, isFirst=TRUE, isPrimary=FALSE, hanging=5)
@@ -152,10 +157,10 @@ addread("chimeric.invalid.6", 3, isForward=FALSE, alen=5, isFirst=TRUE, isPrimar
 addread("chimeric.invalid.6", 3, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=TRUE, hanging=5, mapq=20)
 addread("chimeric.invalid.6", 1, isForward=TRUE, alen=5, isFirst=FALSE, isPrimary=FALSE, hanging=5, mapq=20)
 
-# Invalid because it extends past its mate, again.
+# More multiple mapping locations.
 
 addread("chimeric.invalid.7", 6, isForward=FALSE, alen=5, isFirst=TRUE, isPrimary=TRUE, hanging=20)
-addread("chimeric.invalid.7", 3, isForward=TRUE, alen=20, isFirst=TRUE, isPrimary=FALSE, hanging=5)
+addread("chimeric.invalid.7", 1, isForward=TRUE, alen=20, isFirst=TRUE, isPrimary=FALSE, hanging=5)
 addread("chimeric.invalid.7", 3, isForward=FALSE, offset=10, isFirst=FALSE)
 
 # Offsite, but not necessarily invalid.

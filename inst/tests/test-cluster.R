@@ -48,7 +48,7 @@ crisscross <- function(id1, id2) {
 clustercomp <- function(data, tol, maxw, split=FALSE, data2=NULL) {
 	if (!is.null(data2)) { 
 		original <- data
-        data <- c(original, data2)
+        data <- rbind(original, data2)
 	}
 
 	# Simulating cluster formation first, by expanding each region and checking for overlaps.
