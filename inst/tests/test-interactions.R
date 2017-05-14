@@ -16,68 +16,67 @@ refnames<-c("count1", "count2", "anchor1", "anchor2")
 # We set up the comparison function to check our results. 
 
 finder <- function(dir1, dir2, dist, cuts, filter=10L, restrict=NULL, cap=NA) {
-	overall<-list()
-	odex<-1L
-	totals<-c(0L, 0L)
-	collected<-c(0, cumsum(chromos))
+	overall <- list()
+	odex <- 1L
+	totals <- integer(2)
+	collected <-c(0, cumsum(chromos))
 	cap <- as.integer(cap)
+    dirs <- c(dir1, dir2)
 
-	# We need to determine who's who.
-	x1 <- h5ls(dir1)
-	x1 <- x1[x1$otype=="H5I_DATASET",]
-	x1 <- data.frame(anchor1=basename(x1$group), anchor2=x1$name)
-	x2 <- h5ls(dir2)
-	x2 <- x2[x2$otype=="H5I_DATASET",]
-	x2 <- data.frame(anchor1=basename(x2$group), anchor2=x2$name)
-	allbins<-binid(cuts, dist)
+    xstats <- list()
+    for (m in 1:2) {
+        cur.dir <- dirs[m] 
+        cur.x <- h5ls(cur.dir)
+        cur.x <- cur.x[cur.x$otype=="H5I_DATASET",]
+        xstats[[m]] <- data.frame(anchor1=basename(cur.x$group), anchor2=cur.x$name)
+    }
 
-	for (k in 1:length(chromos)) {
-		cur.k<-names(chromos)[k]
+	for (k in seq_along(chromos)) {
+		cur.k <- names(chromos)[k]
 		if (!is.null(restrict) && !cur.k %in% restrict) { next }
-		current.krange<-cuts[cur.k==seqnames(cuts)]
-		kbin<-binid(current.krange, dist)
+        current.krange <- cuts[cur.k==seqnames(cuts)]
+        kbin <- binid(current.krange, dist)
+
 		krle <- rle(kbin)
 		kend <- cumsum(krle$length)
 		kstart <- kend - krle$length + 1L
 
-		for (l in 1:k) {
-			cur.l<-names(chromos)[l]
+		for (l in seq_len(k)) {
+			cur.l <- names(chromos)[l]
 			if (!is.null(restrict) && !cur.l %in% restrict) { next }
-			current.lrange<-cuts[seqnames(cuts)==cur.l]
-			lbin<-binid(current.lrange, dist)
+			current.lrange <- cuts[seqnames(cuts)==cur.l]
+			lbin <- binid(current.lrange, dist)
+
+            max.anchor1 <- chromos[[k]]
+			anti.a <- collected[k]
+			max.anchor2 <- chromos[[l]]
+			anti.t <- collected[l]
 
 			# Loading counts.
-			x <- list()
-			for (m in 1:2) { 
-				x.current <- get(paste0("x", m))
-				if (any(x1$anchor1==cur.k & x1$anchor2==cur.l)) { 
-					x[[m]] <- h5read(get(paste0("dir", m)), file.path(cur.k, cur.l))
+			mats <- list()
+			for (m in 1:2) {
+                cur.dir <- dirs[m]
+                cur.x <- xstats[[m]]
+				if (any(cur.x$anchor1==cur.k & cur.x$anchor2==cur.l)) { 
+					cur.pairs <- h5read(cur.dir, file.path(cur.k, cur.l))
 				} else {
-					x[[m]] <- data.frame(anchor1.id=integer(0),anchor2.id=integer(0), count=integer(0))
+				    cur.pairs <- data.frame(anchor1.id=integer(0),anchor2.id=integer(0), count=integer(0))
 				}
-			}
 
-			max.anchor1<-chromos[[k]]
-			anti.a<-collected[k]
-			max.anchor2<-chromos[[l]]
-			anti.t<-collected[l]
-			
-			for (g in 1:length(x)) {
-				mat <- matrix(0L, nrow=max.anchor1, ncol=max.anchor2)
-				for (i in 1:nrow(x[[g]])) {
-					a<-x[[g]][i,1]-anti.a
-					t<-x[[g]][i,2]-anti.t
-					mat[a,t] <- mat[a,t] + 1L
-				}
+    			a <- cur.pairs[,1] - anti.a
+                t <- cur.pairs[,2] - anti.t
+                mat.dex <- (t - 1L) * max.anchor1 + a
+                mat <- tabulate(mat.dex, nbins=max.anchor1*max.anchor2)
+                dim(mat) <- c(max.anchor1, max.anchor2)
 
 				if (!is.na(cap)) { 
 					mat[mat > cap] <- cap 
 					totes <- sum(mat)
 				} else {
-					totes <- nrow(x[[g]])
+					totes <- nrow(cur.pairs)
 				}
-				assign(paste0("mat", g), mat)
-				totals[g] <- totals[g] + totes
+                mats[[m]] <- mat
+				totals[m] <- totals[m] + totes
 			}
 
 			# Computing the region for each set of bins (assuming cuts are sorted).
@@ -90,28 +89,23 @@ finder <- function(dir1, dir2, dist, cuts, filter=10L, restrict=NULL, cap=NA) {
 			tend <- end(current.lrange)[lend]
 			
 			# Computing the counts for each set of bins.
-			counts1<-split(mat1, kbin)
-			counts2<-split(mat2, kbin)
-			current.counts<-list()
-			current.anchor1<-current.anchor2<-list()
-			current.area <- list()
-			idex<-1L
+			counts1 <- split(mats[[1]], kbin)
+			counts2 <- split(mats[[2]], kbin)
+			current.counts <- list()
+			current.anchor1 <- current.anchor2 <- list()
+			idex <- 1L
 
-			for (g in 1:length(counts1)) {
-				subcounts1<-split(matrix(counts1[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
-				subcounts2<-split(matrix(counts2[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
-				for (i in 1:length(subcounts1)) {
-					count.pair<-c(sum(subcounts1[[i]]), sum(subcounts2[[i]]))
+			for (g in seq_along(counts1)) {
+				subcounts1 <- split(matrix(counts1[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
+				subcounts2 <- split(matrix(counts2[[g]], nrow=max.anchor2, byrow=TRUE), lbin)
+				for (i in seq_along(subcounts1)) {
+					count.pair <- c(sum(subcounts1[[i]]), sum(subcounts2[[i]]))
 					if (sum(count.pair)<filter) { next }
-					current.counts[[idex]]<-count.pair
-					current.anchor1[[idex]]<-c(astart[g], aend[g])
-					current.anchor2[[idex]]<-c(tstart[i], tend[i])
-					if (k==l && g==i) { 
-						current.area[[idex]] <- krle$length[g] * (krle$length[g] + 1)/2
-					} else {
-						current.area[[idex]] <- krle$length[g] * lrle$length[i]
-					}
-					idex<-idex+1L
+
+					current.counts[[idex]] <- count.pair
+					current.anchor1[[idex]] <- c(astart[g], aend[g])
+					current.anchor2[[idex]] <- c(tstart[i], tend[i])
+					idex <- idex + 1L
 				}
 			}
 		
@@ -132,8 +126,7 @@ finder <- function(dir1, dir2, dist, cuts, filter=10L, restrict=NULL, cap=NA) {
 		overall<-overall[do.call(order, overall),]
 		rownames(overall)<-NULL
 	} else {
-		overall<-data.frame(integer(0), integer(0), character(0), 
-				character(0), numeric(0), stringsAsFactors=FALSE)
+		overall<-data.frame(integer(0), integer(0), character(0), character(0), numeric(0), stringsAsFactors=FALSE)
 	}
 	colnames(overall)<-refnames
 	return(list(table=overall, total=totals))

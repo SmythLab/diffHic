@@ -7,7 +7,7 @@ getPairData <- function(file, param)
 # created 20 September 2014
 # last modified 22 March 2017
 {
-    parsed <- .parseParam(param)
+    parsed <- .parseParam(param, bin=FALSE)
 	allstuff <- .loadIndices(file, parsed$chrs)
 	alll <- allo <- alli <- vector("list", sum(lengths(allstuff)))
 	ix <- 1L

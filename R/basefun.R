@@ -7,25 +7,26 @@
     end.index <- cumsum(ref.len)
     start.index <- end.index - ref.len + 1L
     names(end.index) <- names(start.index) <- chrs
-    return(list(chr=chrs, first=start.index, last=end.index))
+    return(list(chrs=chrs, first=start.index, last=end.index))
 }
 
 ####################################################################################################
 
-.getBinID <- function(fragments, width) 
+.isDNaseC <- function(param, fragments) {
+    if (missing(fragments)) fragments <- param$fragments
+    return(length(fragments)==0L)
+}
+
+.assignBins <- function(fragments, width) 
 # Determines which bin each restriction fragment is in. Also records the rounded
 # start and stop site for each bin. Returns a set of bin ids for each restriction
 # fragment on each chromosome, as well as the coordinates of each bin.
 {
     width<-as.integer(width)
-    if (length(fragments) == 0L) {
-        return(.createBins(fragments, width))
-    }
-
     out.ids <- integer(length(fragments))
     last <- 0L 
     frag.data <- .splitByChr(fragments)
-    nchrs <- length(frag.data$chr)
+    nchrs <- length(frag.data$chrs)
     out.ranges <- nfrags <- vector("list", nchrs)
     
     for (x in seq_len(nchrs)) {
@@ -45,7 +46,7 @@
         endx <- cumsum(processed$length)
         startx <- rep(1L, ns)
         if (ns>=2L) { startx[-1] <- endx[-ns]+1L }
-        out.ranges[[x]] <- GRanges(frag.data$chr[x], IRanges(start(curf[startx]), end(curf[endx])))
+        out.ranges[[x]] <- GRanges(frag.data$chrs[x], IRanges(start(curf[startx]), end(curf[endx])))
         last <- last+ns
     }
 
@@ -83,28 +84,29 @@
 
 ####################################################################################################
 
-.parseParam <- function(param, width=NA_integer_) 
+.parseParam <- function(param, bin=FALSE, width=NA_integer_)
 # Parses the parameters and returns all values, depending on
 # whether we're dealing with a DNase-C experiment or not.
+# Also assigns fragments into bins, if requested.
 {
     fragments <- param$fragments
+    restrict <- param$restrict
+    discard <- .splitDiscards(param$discard)
 
-    if (length(fragments)==0L) {
+    if (.isDNaseC(fragments=fragments)) { 
         all.lengths <- seqlengths(fragments)
         chrs <- names(all.lengths)
-
-        if (!is.na(width)) {
-            # Calculating the first and last bin for each chromosome.
-            nbins <- as.integer(ceiling(all.lengths/width))
-            last <- cumsum(nbins)
-            first <- last - nbins + 1L
+    
+        if (bin) {
+            bins <- .createBins(fragments, width)
+            bin.by.chr <- .splitByChr(bins$region)
+            frag.by.chr <- bin.by.chr # Bins _are_ the fragments in a DNase-C experiment.
         } else {
-            first <- integer(length(chrs))
-            last <- rep(.Machine$integer.max, length(chrs))
+            first <- last <- integer(length(chrs)) # set to zero if we're not binning.
+            names(first) <- names(last) <- chrs
+            frag.by.chr <- list(first=first, last=last)
         }
-            
-        names(first) <- names(last) <- chrs
-        frag.by.chr <- list(chr=chrs, first=first, last=last)
+
         cap <- NA_integer_ # Doesn't make much sense when each 'fragment' is now a bin.
         bwidth <- width
 
@@ -113,10 +115,21 @@
         frag.by.chr <- .splitByChr(fragments) 
         cap <- param$cap
         bwidth <- NA_integer_
+
+        if (bin) { 
+            bins <- .assignBins(fragments, width)
+            bin.by.chr <- .splitByChr(bins$region)
+        }
     }
 
-    output <- list(chrs=chrs, frag.by.chr=frag.by.chr, cap=cap, bwidth=bwidth, 
-                   discard=.splitDiscards(param$discard))
+    output <- list(chrs=chrs, frag.by.chr=frag.by.chr, # Fragment parameters
+                   cap=cap, bwidth=bwidth, discard=discard, restrict=restrict) # Extraction parameters
+    if (bin) { # Bin parameters
+        output$bin.region <- bins$region
+        output$bin.id <- bins$id
+        output$bin.by.chr <- bin.by.chr
+    }
+
     return(output)
 }
 
@@ -210,30 +223,44 @@
 # Binning the read pairs into bins of size 'width',
 # based on the 5' coordinates of each read.
 {
-    a1.5pos <- pairs$anchor1.pos
-    a1.5len <- pairs$anchor1.len
-    a1.r <- a1.5len < 0L
-    a1.5pos[a1.r] <- a1.5pos[a1.r] - a1.5len[a1.r] - 1L
-
-    a2.5pos <- pairs$anchor2.pos
-    a2.5len <- pairs$anchor2.len
-    a2.r <- a2.5len < 0L
-    a2.5pos[a2.r] <- a2.5pos[a2.r] - a2.5len[a2.r] - 1L
-
-    pairs$anchor1.id <- pmin(as.integer(ceiling(a1.5pos/width)) - 1L + first1, last1)
-    pairs$anchor2.id <- pmin(as.integer(ceiling(a2.5pos/width)) - 1L + first2, last2)
-    
-    # Enforcing 1 > 2.
-    swap <- pairs$anchor2.id > pairs$anchor1.id
-    flipping <- pairs[swap,]
-    has.one <- grepl("1", colnames(flipping))
-    has.two <- grepl("2", colnames(flipping))
-    colnames(flipping)[has.one] <- sub("1", "2", colnames(flipping)[has.one])
-    colnames(flipping)[has.two] <- sub("2", "1", colnames(flipping)[has.two])
-    pairs <- rbind(pairs[!swap,], flipping)
-
+    pairs$anchor1.id <- .readToBin(pairs$anchor1.pos, pairs$anchor1.len, 
+                                   bin.width=width, first.bin=first1, last.bin=last1)
+    pairs$anchor2.id <- .readToBin(pairs$anchor2.pos, pairs$anchor2.len, 
+                                   bin.width=width, first.bin=first2, last.bin=last2)
+    pairs <- .enforcePairOrder(pairs)
     o <- order(pairs$anchor1.id, pairs$anchor2.id)
     pairs[o,]
+}
+
+.readToBin <- function(read.pos, read.len, bin.width, first.bin, last.bin)
+# Converts read positions to bin IDs. If any reads have start positions in 
+# bins beyond the last.bin, these are preserved to ensure they get caught
+# by the error-checking machinery later on.
+{
+    id <- as.integer(ceiling(read.pos/bin.width)) - 1L + first.bin
+    is.ok.rev <- read.len < 0L & id <= last.bin # i.e., reverse reads with valid starting positions.
+
+    rev5 <- read.pos[is.ok.rev] - read.len[is.ok.rev] - 1L
+    rid <- as.integer(ceiling(rev5/bin.width)) - 1L + first.bin
+    id[is.ok.rev] <- pmin(last.bin, rid) # pmin only rescues reverse reads that were already okay.   
+    return(id)
+}
+
+.enforcePairOrder <- function(pairs) 
+# Enforcing 1 >= 2.
+{
+    swap <- pairs$anchor2.id > pairs$anchor1.id
+    if (any(swap)) { 
+        flipping <- pairs[swap,]
+        has.one <- grepl("1", colnames(flipping))
+        has.two <- grepl("2", colnames(flipping))
+        colnames(flipping)[has.one] <- sub("1", "2", colnames(flipping)[has.one])
+        colnames(flipping)[has.two] <- sub("2", "1", colnames(flipping)[has.two])
+        for (field in colnames(flipping)) { 
+            pairs[[field]][swap] <- flipping[[field]]
+        }
+    }
+    return(pairs)
 }
 
 ####################################################################################################

@@ -5,19 +5,19 @@ totalCounts <- function(files, param)
 #
 # written by Aaron Lun
 # created 17 September 2014
-# last modified 17 March 2017
+# last modified 14 May 2017
 {
 	nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") }
 	full.sizes <- integer(nlibs)
 
 	# Setting up other local references.
-    parsed <- .parseParam(param)
+    parsed <- .parseParam(param, bin=FALSE)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     discard <- parsed$discard
-    restrict <- param$restrict
+    restrict <- parsed$restrict
 
 	# Running through each pair of chromosomes.
 	overall <- .loadIndices(files, chrs, restrict)

@@ -45,23 +45,23 @@ try {
 	double current_average;
    	size_t diff;
     int lib;
-    const int * bpcounts;
+    std::deque<int>::const_iterator ccIt, wcIt;
 
 	while (!engine.empty()) {
 		engine.fill();
 		curanchor=engine.get_anchor() - fbin;
         const std::deque<int>& waschanged=engine.get_changed();
-        const int* curcounts=engine.get_counts();
+        const std::deque<int>& curcounts=engine.get_counts();
 
-		for (vecdex=0; vecdex<waschanged.size(); ++vecdex) {
-			rowdex=waschanged[vecdex];
-	
-			// Filling up the directionality indices.		
+        for (wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
+       	    rowdex=(*wcIt);
 			diff=curanchor-rowdex;
+
+			// Filling up the directionality indices.		
 			if (diff && diff <= sp) { 
-                bpcounts=curcounts+rowdex*nlibs;
-                for (lib=0; lib<nlibs; ++lib) {
-                    const int& thiscount=bpcounts[lib];
+                ccIt=curcounts.begin() + rowdex*nlibs;
+                for (lib=0; lib<nlibs; ++lib, ++ccIt) {
+                    const int& thiscount=(*ccIt);
                     downptrs[lib][curanchor]+=thiscount;
                     upptrs[lib][rowdex]+=thiscount;
                 }

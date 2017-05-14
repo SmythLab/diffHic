@@ -5,7 +5,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 #
 # written by Aaron Lun
 # created 30 May 2013
-# last modified 22 March 2017
+# last modified 14 May 2017
 {
 	# Enforcing input types.
 	minq <- as.integer(minq)
@@ -31,7 +31,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 
     # Switching to processing DNase-C data, if fragments are empty. 
    	fragments <- param$fragments
-    if (length(fragments)==0L) {
+    if (.isDNaseC(fragments=fragments)) { 
         if (is.na(chim.dist)) { chim.dist <- 1000L } 
         out <- .prepFreePairs(bam=bam, fragments=fragments, file=file, prefix=prefix, 
                               dedup=dedup, minq=minq, ichim=ichim, chim.dist=chim.dist, storage=storage)
@@ -42,7 +42,7 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 	# Anchor order is defined by the order of chromosomes in 'fragments'; earlier chromosomes
 	# are designated as the second anchor when compared to later chromosomes.
 	frag.data <- .splitByChr(fragments)
-	chrs <- frag.data$chr
+	chrs <- frag.data$chrs
     nchrs <- length(chrs)
 	scuts <- ecuts <- boost.idx <- vector("list", nchrs)
 

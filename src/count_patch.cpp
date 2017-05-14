@@ -16,25 +16,32 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) t
 
 	// Sundries.
 	std::deque<int> counts, anchors, targets;
-	size_t vecdex;
 	int rowdex, countsum, curlib, curanchor;
+    std::deque<int>::const_iterator ccIt, wcIt;
 
 	// Running through all libraries.
 	while (!engine.empty()) {
 		engine.fill();
 		curanchor=engine.get_anchor();
         const std::deque<int>& waschanged=engine.get_changed();
-        const int* curcounts=engine.get_counts();
+        const std::deque<int>& curcounts=engine.get_counts();
 
 		// Adding it to the main list, if it's large enough.
-		for (vecdex=0; vecdex<waschanged.size(); ++vecdex) {
-			rowdex=waschanged[vecdex]*nlibs;
+        for (wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
+			rowdex=(*wcIt)*nlibs;
+            ccIt=curcounts.begin()+rowdex;
 			countsum=0;
-			for (curlib=0; curlib<nlibs; ++curlib) { countsum+=curcounts[rowdex+curlib]; }
+			for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
+                countsum+=*ccIt;
+            }
+
 			if (countsum >= f) { 
 				anchors.push_back(curanchor);
-				targets.push_back(waschanged[vecdex]+fbin);
-				for (curlib=0; curlib<nlibs; ++curlib) { counts.push_back(curcounts[rowdex+curlib]); }
+				targets.push_back((*wcIt) + fbin);
+                ccIt-=nlibs;
+				for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
+                    counts.push_back(*ccIt);
+                }
 			}
 		}
 	}
@@ -55,7 +62,7 @@ SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) t
 		
 		// Iterating across and filling both the matrix and the components.
 		int cdex=-1;
-		for (vecdex=0; vecdex<anchors.size(); ++vecdex) {
+		for (size_t vecdex=0; vecdex<anchors.size(); ++vecdex) {
 			aoptr[vecdex]=anchors[vecdex];
 			toptr[vecdex]=targets[vecdex];
 			for (curlib=0; curlib<nlibs; ++curlib) { coptrs[curlib][vecdex]=counts[++cdex]; }

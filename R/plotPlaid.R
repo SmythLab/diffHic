@@ -9,83 +9,24 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # sometime in 2012.
-# last modified 17 March 2017 
+# last modified 13 May 2017 
 {
 	first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
-	first.start <- start(first.region)
-	first.end <- end(first.region)
-	second.start <- start(second.region)
-	second.end <- end(second.region)
 	if (length(first.chr)!=1L) { stop("exactly one first range is required for plotting") }
 	if (length(second.chr)!=1L) { stop("exactly one second range is required for plotting") }
 
-	# Setting up the parameters
-	width <- as.integer(width) 
-    parsed <- .parseParam(param, width)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    discard <- parsed$discard
-    cap <- parsed$cap
-    bwidth <- parsed$bwidth
-
-	if (!(first.chr %in% chrs) || !(second.chr %in% chrs)) { 
-		stop("anchor chromosome names not in cut site list") 
-	}
-	
-    # Setting up the boxes/pixels.
     fragments <- param$fragments
-    cur.chrs <- frag.by.chr$first[[first.chr]]:frag.by.chr$last[[first.chr]]
-    if (first.chr!=second.chr) {
-        second.set <- frag.by.chr$first[[second.chr]]:frag.by.chr$last[[second.chr]]
-        if (cur.chrs[1] < second.set[1]) { # Distinction isn't strictly necessary, but it simplifies interpretation. 
-            cur.chrs <- c(cur.chrs, second.set) 
-        } else {
-            cur.chrs <- c(second.set, cur.chrs) 
-        }
-    }
-    if (length(fragments)==0L){ # For DNase-C, we set up boxes first and then redefine the fragments.
-        new.pts <- .getBinID(fragments, width)
-        fragments <- new.pts$region
-        new.pts$region <- new.pts$region[cur.chrs]
-        new.pts$id <- seq_along(cur.chrs)
-    } else {
-        new.pts <- .getBinID(fragments[cur.chrs], width)
-    }
-    out.id <- integer(length(fragments))
-    out.id[cur.chrs] <- new.pts$id
-    
-	# Setting up the boundaries.
-	first.min <- max(1L, first.start)
-	first.max <- min(seqlengths(fragments)[[first.chr]], first.end)
-	second.min <- max(1L, second.start)
-	second.max <- min(seqlengths(fragments)[[second.chr]], second.end)
-	if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
+    first.min <- max(1L, start(first.region))
+    first.max <- min(seqlengths(fragments)[[first.chr]], end(first.region))
+    second.min <- max(1L, start(second.region))
+    second.max <- min(seqlengths(fragments)[[second.chr]], end(second.region))
+    if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
 
-	# Identifying the boxes that lie within our ranges of interest. We give it some leeway
-	# to ensure that edges of the plot are retained.
-	use.bin.first <- overlapsAny(new.pts$region, first.region, maxgap=width(first.region)/2+100)
-	keep.frag.first <- logical(length(fragments))
-	keep.frag.first[cur.chrs] <- use.bin.first[new.pts$id]
-	if (first.chr!=second.chr || first.start!=second.start || first.end!=second.end) {
-		use.bin.second <- overlapsAny(new.pts$region, second.region, maxgap=width(second.region)/2+100)
-		keep.frag.second <- logical(length(fragments))
-		keep.frag.second[cur.chrs] <- use.bin.second[new.pts$id]
-	} else {
-		keep.frag.second <- keep.frag.first
-	}
-
-	# Pulling out the read pair indices from each file, and checking whether chromosome names are flipped around.
-	all.dex <- .loadIndices(file, chrs)
-	flipped <- FALSE
-	if (!is.null(all.dex[[first.chr]][[second.chr]])) {
-		current <- .baseHiCParser(TRUE, file, first.chr, second.chr, 
-			chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)[[1]]
-	} else if (!is.null(all.dex[[second.chr]][[first.chr]])) { 
-		current <- .baseHiCParser(TRUE, file, second.chr, first.chr, 
-			chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)[[1]]
-		flipped <- TRUE
-	} else { current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0)) }
+    # Stetching a little to allow for some space beyond the plot boundaries.
+    f.expanded <- suppressWarnings(trim(resize(first.region, fix="center", width=width(first.region)*2 + 200)))
+    s.expanded <- suppressWarnings(trim(resize(second.region, fix="center", width=width(second.region)*2 + 200)))
+    patch <- extractPatch(file, param, first.region=first.region, second.region=second.region, width=width)
 
 	# Generating a plot.
 	if (is.null(xlab)) { xlab <- first.chr }
@@ -95,45 +36,21 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	# Setting up the color function.		
 	my.col<-col2rgb(col)[,1]
 	colfun <- function(count) { .get.new.col(my.col, pmin(1, count/max.count)) }
-
-	# Getting the read pairs around the area of interest, and collating them into counts.
-   	if (flipped) {
-		filter.a <- keep.frag.second
-		filter.t <- keep.frag.first
-   	} else {
- 	   	filter.a <- keep.frag.first
-		filter.t <- keep.frag.second
-   	}	   
-   	retain <- filter.a[current$anchor1.id] & filter.t[current$anchor2.id]
-	if (!any(retain)) { return(invisible(colfun)) }
-
-	if (first.chr==second.chr) { 
-		# Pick up reflection around diagonal (it's hard to conclusively define 
-		# the anchor range acround the diagonal, so we just include everything).
-		retain <- retain | (filter.a[current$anchor2.id] & filter.t[current$anchor1.id]) 
-		bin.indices <- out.id[filter.t | filter.a]	
-	} else {
-		bin.indices <- out.id[filter.t]
-	}
-	out <- .Call(cxx_count_patch, list(current[retain,]), out.id, 1L, bin.indices[1L], tail(bin.indices, 1L))
-	if (is.character(out)) { stop(out) }
 	
-	# Assigning coordinates to x and y-axes, while checking whether chromosome names have been flipped.
-	a.ranges <- new.pts$region[out[[1]]]
-	t.ranges <- new.pts$region[out[[2]]]
-	if (flipped) { 
-		first.ranges <- t.ranges
-		second.ranges <- a.ranges
+    # Assigning coordinates to x and y-axes, while checking whether chromosome names have been flipped.
+	if (!metadata(patch)$flipped) { 
+		x.ranges <- anchors(patch, type="first")
+		y.ranges <- anchors(patch, type="second")
 	} else {
-		first.ranges <- a.ranges
-		second.ranges <- t.ranges
+		x.ranges <- anchors(patch, type="second")  
+        y.ranges <- anchors(patch, type="first")
 	}
 
 	# Summoning a function to get colours.
-	all.cols <- colfun(out[[3]])
+	all.cols <- colfun(assay(patch))
 	labels <- NULL
-	if (count) { labels <- out[[3]] }
-	.plotDiag(first.ranges, second.ranges, all.cols, diag=diag, labels=labels, label.args=count.args)
+	if (count) { labels <- assay(patch) } 
+	.plotDiag(x.ranges, y.ranges, all.cols, diag=diag, labels=labels, label.args=count.args)
 	return(invisible(colfun))
 }
 
@@ -175,25 +92,21 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # created 21 November 2014
-# last modified 8 December 2015
+# last modified 13 May 2017
 {
     # Checking for proper type.
     .check_StrictGI(data)
 	
     first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
-	first.start <- start(first.region)
-	first.end <- end(first.region)
-	second.start <- start(second.region)
-	second.end <- end(second.region)
 	if (length(first.chr)!=1L) { stop("exactly one first range is required for plotting") }
 	if (length(second.chr)!=1L) { stop("exactly one second range is required for plotting") }
 
 	# Setting up the boundaries.
-	first.min <- max(1L, first.start)
-	first.max <- min(seqlengths(regions(data))[[first.chr]], first.end)
-	second.min <- max(1L, second.start)
-	second.max <- min(seqlengths(regions(data))[[second.chr]], second.end)
+	first.min <- max(1L, start(first.region))
+	first.max <- min(seqlengths(regions(data))[[first.chr]], end(first.region))
+	second.min <- max(1L, start(second.region))
+	second.max <- min(seqlengths(regions(data))[[second.chr]], end(second.region))
 	if (first.min > first.max || second.min > second.max) { stop("invalid anchor ranges supplied") }
 
 	# Checking that our points are consistent.
@@ -206,7 +119,7 @@ plotDI <- function(data, fc, first.region, second.region=first.region,
     anchor2.id <- anchors(data, type="second", id=TRUE)
 	flipped <- FALSE
 
-	if (first.chr!=second.chr || first.start!=second.start || first.end!=second.end) {
+	if (suppressWarnings(first.region!=second.region)) {
 		second.keep <- overlapsAny(regions(data), second.region, maxgap=width(second.region)/2+100)
 		keep.normal <- second.keep[anchor2.id] & first.keep[anchor1.id]
 		keep.flipped <- first.keep[anchor2.id] & second.keep[anchor1.id]

@@ -17,17 +17,18 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	filter <- as.integer(filter) 
 
     # Setting up the bins.
-	new.pts <- .getBinID(param$fragments, width)
-	bin.by.chr <- .splitByChr(new.pts$region)
 
     # Setting up the other statistics.
-    parsed <- .parseParam(param, width)
+    parsed <- .parseParam(param, width=width, bin=TRUE)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     bwidth <- parsed$bwidth
     discard <- parsed$discard
-    restrict <- param$restrict
+	bin.id <- parsed$bin.id
+    bin.region <- parsed$bin.region
+	bin.by.chr <- parsed$bin.by.chr
+    restrict <- parsed$restrict
 
 	# Output vectors.
 	full.sizes <- integer(nlibs)
@@ -47,7 +48,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 			
 			# Aggregating them in C++ to obtain count combinations for each bin pair.
-			out <- .Call(cxx_count_patch, pairs, new.pts$id, filter, 
+			out <- .Call(cxx_count_patch, pairs, bin.id, filter, 
 				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]])
 			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
@@ -67,7 +68,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	out.counts <- do.call(rbind, out.counts)
 
 	return(InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
-		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=new.pts$region, mode="reverse"), 
+		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=bin.region, mode="reverse"), 
         metadata=List(param=param, width=width)))
 }
 

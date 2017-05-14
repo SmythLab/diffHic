@@ -8,57 +8,17 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 # last modified 17 March 2017
 {
 	xchr <- as.character(seqnames(region))
-	xstart <- start(region)
-	xend <- end(region)
 	if (length(xchr)!=1L) { stop("exactly one region is required for plotting") }
 
-	# Setting up the parameters
-    width <- as.integer(width) 
-    parsed <- .parseParam(param, width)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    discard <- parsed$discard
-    cap <- parsed$cap
-    bwidth <- parsed$bwidth
-
-	if (!xchr %in% chrs) { stop("chromosome name not in cut site list") } 
-
-    # Setting up the boxes.		
-	fragments <- param$fragments
-	cur.chrs <- frag.by.chr$first[[xchr]]:frag.by.chr$last[[xchr]]
-    if (length(fragments)==0L){ # For DNase-C, we set up boxes first and then redefine the fragments.
-        new.pts <- .getBinID(fragments, width)
-        fragments <- new.pts$region
-        new.pts$region <- new.pts$region[cur.chrs]
-        new.pts$id <- seq_along(cur.chrs)
-    } else {
-        new.pts <- .getBinID(fragments[cur.chrs], width)
-    }
-	out.id <- integer(length(fragments))
-	out.id[cur.chrs] <- new.pts$id
-
-	# Setting up the boundaries.
-	x.min <- max(1L, xstart)
-	x.max <- min(seqlengths(fragments)[[xchr]], xend)
+    fragments <- param$fragments
+	x.min <- max(1L, start(region))
+	x.max <- min(seqlengths(fragments)[[xchr]], end(region))
 	if (x.min >= x.max) { stop("invalid ranges supplied") }
     if (is.null(max.height)) { max.height <- x.max - x.min }
-						
-	# Identifying the boxes in our ranges of interest (with some leeway, to ensure that 
-	# there's stuff in the corners of the rotated plot). Specifically, you need to include 
-	# 'center +/- max.height' on either side to fill up the top left/right corners; this is
-	# equivalent to the region interval +- 'max.height/2'. We ask for a bit more, to be safe.
-	use.bin <- overlapsAny(new.pts$region, region, maxgap=max.height*0.7)
-	keep.frag <- logical(length(fragments))
-	keep.frag[cur.chrs] <- use.bin[new.pts$id]	
-	
-	# Pulling out the read pair indices from each file.
-	all.dex <- .loadIndices(file, seqlevelsInUse(fragments))
-	if (!is.null(all.dex[[xchr]][[xchr]])) {
-		current <- .baseHiCParser(TRUE, file, xchr, xchr, chr.limits=frag.by.chr,
-			discard=discard, cap=cap, width=bwidth)[[1]]
-	} else { 
-		current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0))
-	}
+
+    # Expanding the region to account for top-right/left regions of the plot.
+    expanded <- suppressWarnings(trim(resize(region, fix="center", width=width(region) + max.height*1.5)))
+    patch <- extractPatch(file, param, first.region=expanded, width=width)
 
 	# Making the plot.
 	if (is.null(xlab)) { xlab <- xchr }
@@ -69,21 +29,13 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 	my.col<-col2rgb(col)[,1]
 	colfun <- function(count) { .get.new.col(my.col, pmin(1, count/max.count)) }
 
-	# Collating read pairs into counts.
-   	retain <- keep.frag[current$anchor1.id] & keep.frag[current$anchor2.id]
-	if (!any(retain)) { return(invisible(colfun)) }
-	bin.indices <- out.id[keep.frag]
-	out<-.Call(cxx_count_patch, list(current[retain,]), out.id, 1L, 
-			bin.indices[1L], tail(bin.indices, 1L)) # First and last bin indices on interval of interest.
-	if (is.character(out)) { stop(out) }
-
 	# Rotating the vertices.
-	anchor1.regions <- new.pts$region[out[[1]]]
-    anchor2.regions <- new.pts$region[out[[2]]]
+	anchor1.regions <- anchors(patch, type="first")
+    anchor2.regions <- anchors(patch, type="second")
 	corner <- .spawnVertices(anchor1.regions, anchor2.regions)
 
 	# Plotting these new vertices.
-	polygon(corner$x, corner$y, border=NA, col=colfun(out[[3]]))
+	polygon(corner$x, corner$y, border=NA, col=colfun(assay(patch)))
 	return(invisible(colfun))
 }
 
@@ -121,19 +73,16 @@ rotDI <- function(data, fc, region, col.up="red", col.down="blue",
 #
 # written by Aaron Lun
 # created 18 September 2014
-# last modified 8 December 2015
+# last modified 13 May 2017
 {
     # Checking for proper type.
     .check_StrictGI(data)
 
-	xchr <- as.character(seqnames(region))
-	xstart <- start(region)
-	xend <- end(region)
-	if (length(xchr)!=1L) { stop("exactly one region is required for plotting") }
-
 	# Setting up the boundaries.
-	x.min <- max(1L, xstart)
-	x.max <- min(seqlengths(regions(data))[[xchr]], xend)
+	xchr <- as.character(seqnames(region))
+	if (length(xchr)!=1L) { stop("exactly one region is required for plotting") }
+	x.min <- max(1L, start(region))
+	x.max <- min(seqlengths(regions(data))[[xchr]], end(region))
 	if (x.min >= x.max) { stop("invalid ranges supplied") }
     if (is.null(max.height)) { max.height <- x.max - x.min }
 

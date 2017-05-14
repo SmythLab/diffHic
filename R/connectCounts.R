@@ -6,10 +6,9 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 #
 # written by Aaron Lun
 # a long time ago.
-# last modified 17 March 2017
+# last modified 14 May 2017
 {
-	fragments <- param$fragments
-    if (length(fragments)==0L) {
+    if (.isDNaseC(param)) {
         return(.connectCountsRaw(files, param, regions, filter=filter, type=type, second.regions=second.regions))
     }    
     
@@ -17,31 +16,29 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	if (nlibs==0L) { stop("number of libraries must be positive") } 
 	filter <- as.integer(filter)
     
-    parsed <- .parseParam(param)
+    parsed <- .parseParam(param, bin=FALSE)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     discard <- parsed$discard
-    restrict <- param$restrict
+    restrict <- parsed$restrict
 
     # Processing regions.
+	fragments <- param$fragments
     reg.out <- .processRegions(regions, chrs, fragments, type, second.regions)
     regions <- reg.out$regions
     frag.ids <- reg.out$frag.ids
     reg.ids <- reg.out$reg.ids
 
    	# Ordering regions, consistent with the previous definitions of anchor/targets.
+    # Stable sort preserves order, if expanded intervals are identical (NA's get sorted towards the end and can be ignored).
 	ordered.chrs <- as.character(runValue(seqnames(fragments)))
 	matched <- match(as.character(seqnames(regions)), ordered.chrs)
-	if (any(is.na(matched))) {
-        stop("chromosomes missing from 'fragments'")
-    }
+	o <- order(matched, start(regions), end(regions)) 
 
     nfrags <- length(fragments)
-	nregs <- length(regions)
-	o <- order(matched, start(regions), end(regions)) # Stable sort preserves order, if expanded intervals are identical.
 	regions <- regions[o]
-	ranked <- integer(nregs)
+	ranked <- integer(length(regions))
 	ranked[o] <- seq_along(o)
 	reg.ids <- ranked[reg.ids]
 
@@ -97,19 +94,10 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # pre-screening to remove entries with chromosomes beyond those in 'fragments',
 # and identify the restriction fragments overlapping each region..
 {
-    remaining <- which(seqnames(regions) %in% chrs)
-    if (length(remaining)!=length(regions)) {
-        warning("chromosome present in 'regions' and not in fragments") 
-        regions <- regions[remaining]
-    }
-    if (any(strand(regions)!="*")) { 
-        warning("stranded region ranges have no interpretation, coercing unstrandedness") 
-        strand(regions) <- "*"
-    }
-    if (any(strand(fragments)!="*")) { 
-        warning("stranded fragment ranges have no interpretation, coercing unstrandedness") 
-        strand(fragments) <- "*"
-    }
+    # Eliminating irrelevant strand information and metadata.
+    strand(regions) <- "*"
+    mcols(regions) <- NULL
+    strand(fragments) <- "*"
 
 	# Checking out which regions overlap with each fragment.
 	olaps <- suppressWarnings(findOverlaps(fragments, regions, type=type))
@@ -119,16 +107,8 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 
     if (!is.null(second.regions)) { 
         if (is(second.regions, "GRanges")) {
-            # Also removing missing entries from 'second.regions'
-            remaining2 <- which(seqnames(second.regions) %in% chrs)
-            if (length(remaining2)!=length(second.regions)) {
-                warning("chromosome present in 'second.regions' and not in fragments") 
-                second.regions <- second.regions[remaining2]
-            }
-            if (any(strand(second.regions)!="*")) { 
-                warning("stranded region ranges have no interpretation, coercing unstrandedness") 
-                strand(second.regions) <- "*"
-            }
+            strand(second.regions) <- "*"
+            mcols(second.regions) <- NULL
 
             lap2 <- suppressWarnings(findOverlaps(fragments, second.regions, type=type))
             to.add.query <- queryHits(lap2)
@@ -138,21 +118,17 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         } else {
             second.regions <- as.integer(second.regions)
             if (second.regions < 0) { stop("bin size must be a positive integer") }
-            binned <- .getBinID(fragments, second.regions)
+            binned <- .assignBins(fragments, second.regions)
             to.add.query <- seq_along(fragments)
-
-            if (length(fragments)==0L) { to.add.subject <- integer(0) } # To accommodate DNase-C experiments.
-            else { to.add.subject <- binned$id }
-
+            to.add.subject <- binned$id 
             second.regions <- binned$region
-            remaining2 <- seq_along(second.regions)
        }
 
 		n.first <- length(regions)
 		n.second <- length(second.regions)
 		regions <- suppressWarnings(c(regions, second.regions))
 		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
-        regions$original <- c(remaining, remaining2)
+        regions$original <- c(seq_len(n.first), seq_len(n.second))
 
 		frag.ids <- c(frag.ids, to.add.query)
 		reg.ids <- c(reg.ids, to.add.subject + n.first)
@@ -160,7 +136,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 		frag.ids <- frag.ids[o]
 		reg.ids <- reg.ids[o]
  	} else {
-        regions$original <- remaining
+        regions$original <- seq_along(regions)
 	}
 
     return(list(regions=regions, frag.ids=frag.ids, reg.ids=reg.ids))
@@ -178,8 +154,9 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 }
 
 .redefineRegions <- function(olaps, fragments, regions) 
-# Stretches out regions to encompass the fragments it overlaps
-# (regions that don't overlap any fragments are ignored).
+# Stretches out each region to encompass the fragments it overlaps
+# (regions that don't overlap any fragments are not modified,
+# which allows safe use for DNase-C data.
 {
 	so <- subjectHits(olaps)
 	qo <- queryHits(olaps)
@@ -220,28 +197,45 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 #
 # written by Aaron Lun
 # created 17 March 2017
-# last modified 19 March 2017
+# last modified 14 May 2017
 {
     nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") } 
 	filter <- as.integer(filter)
     
-    parsed <- .parseParam(param)
+    parsed <- .parseParam(param, bin=FALSE)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     discard <- parsed$discard
-    restrict <- param$restrict
+    restrict <- parsed$restrict
 
     # Processing regions.
-    reg.out <- .processRegions(regions, chrs, param$fragments, type, second.regions)
-    regions <- reg.out$regions
+    strand(regions) <- "*"
+    mcols(regions) <- NULL
     if (!is.null(second.regions)) { 
-        iss <- reg.out$regions$is.second
-        region1 <- regions[!iss]
-        region2 <- regions[iss]
-        d1 <- which(!iss)
-        d2 <- which(iss)
+        if (is.numeric(second.regions)) { 
+            region2 <- .createBins(param$fragments, second.regions)$region
+        } else {
+            region2 <- second.regions
+            mcols(region2) <- NULL
+            strand(region2) <- "*"
+            region2$nfrags <- 0L
+        }
+        region1 <- regions
+        region1$nfrags <- 0L
+        n.first <- length(region1)
+        n.second <- length(region2)
+
+        # Redefining the full set of regions.
+		regions <- suppressWarnings(c(region1, region2))
+		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
+        d1 <- seq_len(n.first)
+        d2 <- seq_len(n.second) 
+        regions$original <- c(d1, d2)
+        d2 <- d2 + n.first
+    } else {
+        regions$original <- seq_along(regions)
     }
 
     # Setting up output vectors.

@@ -32,7 +32,7 @@ To save memory, pairs of intervals can be filtered to retain only those with a c
 In each pair, the anchor interval is defined as that with the higher start position.
 Note that the end position may not be higher if nested intervals are present in \code{regions}.
 
-Mapping of read pairs into intervals is performed at the level of restriction fragments.
+For typical Hi-C experiments, mapping of read pairs into intervals is performed at the level of restriction fragments.
 The value of \code{type} feeds into \code{\link{findOverlaps}} and controls the manner in which restriction fragments are assigned to each region. 
 By default, a restriction fragment is assigned to one or more regions if said fragment overlaps with any part of those regions.
 This expands the effective boundaries of each entry of \code{regions} to the nearest restriction site.
@@ -47,8 +47,9 @@ For DNase Hi-C experiments, the interval spanned by the alignment of each read i
 This uses \code{\link{linkOverlaps}} and responds to any specification of \code{type}. 
 The boundaries of \code{regions} are not modified as no restriction fragments are involved, and all \code{nfrags} are set to zero.
 
-Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
-See \code{\link{pairParam}} for more details.
+Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param} - see \code{\link{pairParam}} for more details.
+In all cases, strandedness of the intervals is ignored in input and set to \code{"*"} in the output object.
+Any element metadata in the input \code{regions} is also removed in the output.
 }
 
 \section{Matching to a second set of regions}{

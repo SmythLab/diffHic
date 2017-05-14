@@ -43,27 +43,28 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 	size_t n_to_drop;
 
 	// Other assorted sundries.
-	size_t vecdex;
 	int rowdex, countsum, curlib, curanchor;
 	int leftbound, rightbound, leftdex, rightdex, desired_anchor;
    	size_t saved_copy_dex;
+    std::deque<int>::const_iterator ccIt, wcIt;
 
 	while (1) { 
 		if (!engine.empty()) {
 			engine.fill();
 			curanchor=engine.get_anchor() - fabin;
             const std::deque<int>& waschanged=engine.get_changed();
-            const int* curcounts=engine.get_counts();
+            const std::deque<int>& curcounts=engine.get_counts();
 
-            for (vecdex=0; vecdex<waschanged.size(); ++vecdex) {
-				rowdex=waschanged[vecdex]*nlibs;
+            for (wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
+				rowdex=(*wcIt)*nlibs;
+                ccIt=curcounts.begin()+rowdex;
 
                 // Adding values for neighbourhood calculations.
 				ref_anchors.push_back(curanchor);
-				ref_targets.push_back(waschanged[vecdex]);
+				ref_targets.push_back(*wcIt);
                 countsum=0;
-				for (curlib=0; curlib<nlibs; ++curlib) { 
-                    const int& curcount=curcounts[rowdex+curlib];
+				for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
+                    const int& curcount=*ccIt;
                     ref_count[curlib].push_back(curcount);
                     countsum+=curcount;
                 }
@@ -72,7 +73,10 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 				if (countsum >= f) { 
 					anchors.push_back(curanchor);
 					targets.push_back(ref_targets.back());
-					for (curlib=0; curlib<nlibs; ++curlib) { counts.push_back(curcounts[rowdex+curlib]); }
+                    ccIt-=nlibs;
+					for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
+                        counts.push_back(*ccIt);
+                    }
 				}
 			}
 
@@ -247,7 +251,7 @@ SEXP count_background(SEXP all, SEXP bin, SEXP back_width, SEXP exclude_width, S
 		// Iterating across and filling both the matrix and the components.
 		int cdex=-1;
 		double backaverage, maxaverage;
-		for (vecdex=0; vecdex<anchors.size(); ++vecdex) {
+		for (size_t vecdex=0; vecdex<anchors.size(); ++vecdex) {
 			aoptr[vecdex]=anchors[vecdex]+fabin;
 			toptr[vecdex]=targets[vecdex]+ftbin;
 

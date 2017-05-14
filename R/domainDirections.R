@@ -14,22 +14,21 @@ domainDirections <- function(files, param, width=50000, span=10)
 	width<-as.integer(width) 
 	span <- as.integer(span)
 
-    # Setting up the bins.
-    new.pts <- .getBinID(param$fragments, width)
-    bin.by.chr <- .splitByChr(new.pts$region)
-
-    # Setting up the other statistics.
-    parsed <- .parseParam(param, width)
+    # Setting up the parameters
+    parsed <- .parseParam(param, bin=TRUE, width=width)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     bwidth <- parsed$bwidth
     discard <- parsed$discard
-    restrict <- param$restrict
+    bin.region <- parsed$bin.region
+    bin.id <- parsed$bin.id
+    bin.by.chr <- parsed$bin.by.chr
+    restrict <- parsed$restrict
 	
 	# Running through each pair of chromosomes.
     nlibs <- length(files)
-	upcount <- downcount <- matrix(0L, length(new.pts$region), nlibs)
+	upcount <- downcount <- matrix(0L, length(bin.region), nlibs)
 
 	overall <- .loadIndices(files, chrs, restrict)
 	for (chr in names(overall)) {
@@ -41,7 +40,7 @@ domainDirections <- function(files, param, width=50000, span=10)
 		first.index <- bin.by.chr$first[[chr]]
 		last.index <- bin.by.chr$last[[chr]]
 	
-		out <- .Call(cxx_directionality, pairs, new.pts$id, span, first.index, last.index)
+		out <- .Call(cxx_directionality, pairs, bin.id, span, first.index, last.index)
 		if (is.character(out)) { stop(out) }
 		if (!length(out[[1]])) { next }
 
@@ -53,6 +52,6 @@ domainDirections <- function(files, param, width=50000, span=10)
     # Return an RSE with up and down counts.
     # No total counts, because we don't load every chromosome pair - might as well call totalCounts() externally if required.
     return(SummarizedExperiment(SimpleList(up=upcount, down=downcount), 
-        new.pts$region, metadata=list(param=param, span=span, width=width)))                                      
+        bin.region, metadata=list(param=param, span=span, width=width)))                                      
 }
 

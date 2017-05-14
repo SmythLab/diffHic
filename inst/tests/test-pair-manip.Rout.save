@@ -1,6 +1,6 @@
 
-R version 3.3.0 beta (2016-04-08 r70447) -- "Supposedly Educational"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -29,7 +29,7 @@ Type 'q()' to quit R.
 + 	# Simulating the dudes (anchor2<=anchor1 at all times).
 + 	ai<-as.integer(runif(n, 1, nfrags))
 + 	ti<-as.integer(runif(n, 1, nfrags))
-+     collected <- data.frame(anchor1.id=ai, anchor2.id=ti, junk=ai+ti, more.junk=ai-ti)
++     collected <- data.frame(anchor1.id=ai, anchor2.id=ti, junk1=ai+ti, junk2=ai-ti)
 + 
 + 	# Simulating the fragment IDs.
 + 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
@@ -58,11 +58,15 @@ Type 'q()' to quit R.
 + 
 + 	# Checking that the stored result is the same.
 + 	regot <- do.call(rbind, regot)
-+ 	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk, regot$more.junk),]
++ 	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk1, regot$junk2),]
 + 	
-+     collected$anchor1.id <- pmax(ai, ti)
-+     collected$anchor2.id <- pmin(ai, ti)
-+ 	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk, collected$more.junk),]
++     swap <- ai < ti
++     collected$anchor1.id <- ifelse(swap, ti, ai)
++     collected$anchor2.id <- ifelse(swap, ai, ti)
++     tmp <- collected$junk1
++     collected$junk1[swap] <- collected$junk2[swap]
++     collected$junk2[swap] <- tmp[swap]
++ 	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk1, collected$junk2),]
 + 	rownames(original) <- rownames(regot) <- NULL 
 + 	stopifnot(identical(original, regot))
 + 	head(regot)
@@ -70,77 +74,77 @@ Type 'q()' to quit R.
 > 
 > set.seed(23192382)
 > savecomp(100, 10, 5)
-  anchor1.id anchor2.id junk more.junk
-1          2          1    3        -1
-2          2          2    4         0
-3          3          1    4        -2
-4          3          2    5        -1
-5          3          2    5         1
-6          3          2    5         1
+  anchor1.id anchor2.id junk1 junk2
+1          2          1    -1     3
+2          2          2     4     0
+3          3          1    -2     4
+4          3          2    -1     5
+5          3          2     5     1
+6          3          2     5     1
 > savecomp(100, 10, 15)
-  anchor1.id anchor2.id junk more.junk
-1          1          1    2         0
-2          1          1    2         0
-3          2          1    3        -1
-4          2          1    3        -1
-5          2          1    3         1
-6          2          2    4         0
+  anchor1.id anchor2.id junk1 junk2
+1          1          1     2     0
+2          1          1     2     0
+3          2          1    -1     3
+4          2          1    -1     3
+5          2          1     3     1
+6          2          2     4     0
 > savecomp(100, 10, 25)
-  anchor1.id anchor2.id junk more.junk
-1          2          1    3        -1
-2          2          1    3        -1
-3          3          1    4        -2
-4          3          1    4        -2
-5          3          1    4        -2
-6          3          1    4        -2
+  anchor1.id anchor2.id junk1 junk2
+1          2          1    -1     3
+2          2          1    -1     3
+3          3          1    -2     4
+4          3          1    -2     4
+5          3          1    -2     4
+6          3          1    -2     4
 > savecomp(10, 100, 5)
-  anchor1.id anchor2.id junk more.junk
-1         19          5   24        14
-2         20          8   28       -12
-3         47          1   48        46
-4         55         40   95        15
-5         65         64  129         1
-6         67         62  129         5
+  anchor1.id anchor2.id junk1 junk2
+1         19          5    24    14
+2         20          8   -12    28
+3         47          1    48    46
+4         55         40    95    15
+5         65         64   129     1
+6         67         62   129     5
 > savecomp(10, 100, 15)
-  anchor1.id anchor2.id junk more.junk
-1         29         12   41        17
-2         36         35   71         1
-3         38         29   67        -9
-4         72         15   87       -57
-5         74         17   91        57
-6         76         19   95       -57
+  anchor1.id anchor2.id junk1 junk2
+1         29         12    41    17
+2         36         35    71     1
+3         38         29    -9    67
+4         72         15   -57    87
+5         74         17    91    57
+6         76         19   -57    95
 > savecomp(10, 100, 25)
-  anchor1.id anchor2.id junk more.junk
-1         38          9   47        29
-2         41         21   62        20
-3         43         13   56       -30
-4         61         33   94       -28
-5         70         30  100        40
-6         75         65  140        10
+  anchor1.id anchor2.id junk1 junk2
+1         38          9    47    29
+2         41         21    62    20
+3         43         13   -30    56
+4         61         33   -28    94
+5         70         30   100    40
+6         75         65   140    10
 > savecomp(50, 50, 5)
-  anchor1.id anchor2.id junk more.junk
-1         10          8   18         2
-2         12          3   15        -9
-3         15          4   19       -11
-4         18         10   28         8
-5         19         19   38         0
-6         20          8   28       -12
+  anchor1.id anchor2.id junk1 junk2
+1         10          8    18     2
+2         12          3    -9    15
+3         15          4   -11    19
+4         18         10    28     8
+5         19         19    38     0
+6         20          8   -12    28
 > savecomp(50, 50, 15)
-  anchor1.id anchor2.id junk more.junk
-1         11          3   14        -8
-2         12         10   22        -2
-3         17          5   22       -12
-4         21         12   33         9
-5         23         10   33        13
-6         24          5   29       -19
+  anchor1.id anchor2.id junk1 junk2
+1         11          3    -8    14
+2         12         10    -2    22
+3         17          5   -12    22
+4         21         12    33     9
+5         23         10    33    13
+6         24          5   -19    29
 > savecomp(50, 50, 25)
-  anchor1.id anchor2.id junk more.junk
-1         10          4   14        -6
-2         10         10   20         0
-3         14          2   16        12
-4         15          5   20        10
-5         15         10   25         5
-6         16          7   23        -9
+  anchor1.id anchor2.id junk1 junk2
+1         10          4    -6    14
+2         10         10    20     0
+3         14          2    16    12
+4         15          5    20    10
+5         15         10    25     5
+6         16          7    -9    23
 > 
 > ####################################################################################################
 > # Finally, chekcing the merging algorithms.
@@ -250,4 +254,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 16.952   0.906  17.952 
+ 34.816   0.332  35.147 

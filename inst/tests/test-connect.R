@@ -172,17 +172,7 @@ samecomp <- function(nreads, cuts, ranges, filter=0L, type="any", restrict=NULL)
 
 	param <- pairParam(cuts, restrict=restrict)
 	out <- connectCounts(c(dir1, dir2), regions=ranges, filter=filter, type=type, param=param) 
-
-    if (any(! seqnames(ranges) %in% seqlevels(cuts))) { # Cleaning up leftover ranges.
-        leftovers <- which(seqnames(ranges) %in% seqlevels(cuts))
-        ranges <- ranges[leftovers]        
-    } else {
-        leftovers <- NULL
-    }
 	ref <- refline(c(dir1, dir2), cuts=cuts, ranges=ranges, filter=filter, type=type, restrict=restrict)
-    if (!is.null(leftovers)) {
-        ref$region$original <- leftovers[ref$region$original]
-    }
 
 	if (!identical(ref$pairs$anchor1.id, anchors(out, type="first", id=TRUE))) { stop("mismatch in anchor1 identities") }
 	if (!identical(ref$pairs$anchor2.id, anchors(out, type="second", id=TRUE))) { stop("mismatch in anchor2 identities") }
@@ -255,7 +245,7 @@ samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), rest
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=5), restrict="chrA")
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrA")
 
-# Adding some extra elements to the ranges (should throw warnings but not fail).
+# Adding some extra elements to the ranges (should not fail).
 my.ranges <- simranges(current.cuts, nranges=10)
 my.ranges <- suppressWarnings(c(my.ranges, GRanges("chrX", IRanges(1:10, 1:10))))
 samecomp(100, cuts=current.cuts, ranges=my.ranges)
@@ -275,6 +265,7 @@ secondcomp <- function(nreads, cuts, ranges1, ranges2, filter=0L, type="any", re
 
 	combined <- regions(out)
 	ref <- connectCounts(c(dir1, dir2), regions=combined, filter=filter, type="within", param=param) # Need within, avoid overlap from fill-in. 
+    regions(ref)$is.second <- combined$is.second[regions(ref)$original]
 	keep <- anchors(ref, type="first")$is.second!=anchors(ref, type="second")$is.second
 	ref <- ref[keep,]
 

@@ -33,7 +33,7 @@ void setup_pair_data (SEXP pairs, const int nlibs, std::deque<const int*>& aptrs
     return;
 }
 
-binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(NULL), curcounts(NULL) {
+binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(nbins, false) {
 	if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
 	bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
     if (nbins <= 0) { throw std::runtime_error("number of bins must be positive"); }
@@ -47,30 +47,18 @@ binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1
         if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
     }
 
-    try {
-        ischanged=new bool[nbins];
-        std::fill(ischanged, ischanged+nbins, false);
-        curcounts=new int[nbins*nlibs];
-    } catch (std::exception& e) {
-        delete [] ischanged;
-        delete [] curcounts;
-        throw;
-    }
+    curcounts.resize(nbins*nlibs);
 	return;
 }
 
-binner::~binner () {
-    delete [] ischanged;
-    delete [] curcounts;
-    return;
-}
+binner::~binner () {}
 
 void binner::fill() { 
     /* Resetting 'ischanged' (which indicates whether we need to set all counts to zero) and 
      * 'waschanged' (which provides a fast way to get to true values of 'ischanged').
      */
-    for (changedex=0; changedex<waschanged.size(); ++changedex) {
-        ischanged[waschanged[changedex]]=false;
+    for (std::deque<int>::const_iterator wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
+        ischanged[*wcIt]=false;
     }
     waschanged.clear();
 
@@ -93,7 +81,7 @@ void binner::fill() {
 			waschanged.push_back(curdex);
 			ischanged[curdex]=true;
 			curdex*=nlibs;
-            std::fill(curcounts+curdex, curcounts+curdex+nlibs, 0);
+            std::fill(curcounts.begin()+curdex, curcounts.begin()+curdex+nlibs, 0);
 		} else {
 			curdex*=nlibs;
 		}
@@ -130,6 +118,6 @@ int binner::get_nbins() const { return nbins; }
 
 int binner::get_anchor() const { return curab; }
 
-const int* binner::get_counts() const { return curcounts; }
+const std::deque<int>& binner::get_counts() const { return curcounts; }
 
 const std::deque<int>& binner::get_changed()  const { return waschanged; }

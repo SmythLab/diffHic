@@ -44,8 +44,8 @@ getArea <- function(data, bp=TRUE)
 			fragments <- metadata(data)$param$fragments
 			fdata <- .splitByChr(fragments)
 
-			for (x in seq_along(fdata$chr)) {
-				current.chr <- fdata$chr[x]
+			for (x in seq_along(fdata$chrs)) {
+				current.chr <- fdata$chrs[x]
 				curdex <- by.chr[[current.chr]]
 				if (is.null(curdex)) { next }
 		

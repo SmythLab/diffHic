@@ -1,0 +1,215 @@
+
+R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+Copyright (C) 2017 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ###################################################################################################
+> # This tests the interaction counting capabilities of the patch counter.
+> 
+> Sys.setlocale(category="LC_COLLATE",locale="C")
+[1] "C"
+> chromos<-c(chrA=51, chrB=31)
+> source("simcounts.R")
+> 
+> dir.create("temp-patch")
+> dir1<-"temp-patch/1.h5"
+> 
+> comp <- function(npairs1, dist, cuts, cap=NA) {
++     simgen(dir1, npairs1, chromos)
++     param <- pairParam(fragments=cuts, cap=cap)
++     y <- squareCounts(dir1, param=param, width=dist, filter=1L)
++ 
++     # Checking overlaps with one region.
++     dummy.1 <- suppressWarnings(resize(regions(y)[sample(length(regions(y)), 1)], fix="center", dist*2))
++     ysub <- extractPatch(dir1, param, dummy.1, width=dist)
++     m <- overlapsAny(y, dummy.1, use.region="first") & overlapsAny(y, dummy.1, use.region="second")
++     ref <- y[m,]
++ 
++     ref <- sort(ref)
++     ysub <- sort(ysub)
++     stopifnot(identical(assay(ref), assay(ysub)))
++     stopifnot(identical(anchors(ref, id=TRUE), anchors(ysub, id=TRUE)))
++     stopifnot(identical(regions(ref), regions(ysub)))
++ 
++     # Checking overlaps with multiple regions.
++     dummy.2 <- suppressWarnings(resize(regions(y)[sample(length(regions(y)), 1)], fix="center", dist*2))
++     ysub <- extractPatch(dir1, param, dummy.1, dummy.2, width=dist)
++     m <- linkOverlaps(y, dummy.1, dummy.2)
++     ref <- y[m$query,]
++ 
++     ref <- sort(ref)
++     ysub <- sort(ysub)
++     stopifnot(identical(assay(ref), assay(ysub)))
++     stopifnot(identical(anchors(ref, id=TRUE), anchors(ysub, id=TRUE)))
++     stopifnot(identical(regions(ref), regions(ysub)))
++     
++     output <- interactions(ref)
++     output$count <- assay(ref)
++     return(output)
++ }
+> 
+> suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
+> 
+> ###################################################################################################
+> 
+> set.seed(200)
+> comp(20, 10000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 3 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrA [50151, 60014] ---      chrA [10410, 20288] |        1
+  [2]      chrA [60015, 67352] ---      chrA [20289, 30334] |        1
+  [3]      chrA [60015, 67352] ---      chrA [30335, 40278] |        1
+  -------
+  regions: 11 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(20, 5000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 1 interaction and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [20335, 24724] ---      chrA [20035, 25239] |        1
+  -------
+  regions: 21 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(20, 20000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 5 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [    1, 20292] ---      chrA [20193, 40459] |        4
+  [2]      chrB [    1, 20292] ---      chrA [40460, 59545] |        4
+  [3]      chrB [20293, 39287] ---      chrA [20193, 40459] |        3
+  [4]      chrB [20293, 39287] ---      chrA [40460, 59545] |        3
+  [5]      chrB [20293, 39287] ---      chrA [59546, 64597] |        1
+  -------
+  regions: 6 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> 
+> comp(50, 10000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 4 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [    1,  9834] ---      chrA [49460, 59690] |        2
+  [2]      chrB [    1,  9834] ---      chrA [59691, 65037] |        1
+  [3]      chrB [ 9835, 20683] ---      chrA [59691, 65037] |        2
+  [4]      chrB [20684, 30176] ---      chrA [49460, 59690] |        3
+  -------
+  regions: 12 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(50, 5000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 2 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [14517, 20688] ---      chrA [59569, 63814] |        1
+  [2]      chrB [24499, 30885] ---      chrA [54869, 59568] |        1
+  -------
+  regions: 21 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(50, 20000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 4 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrA [39679, 59363] ---      chrA [    1, 19381] |        9
+  [2]      chrA [39679, 59363] ---      chrA [19382, 39678] |       13
+  [3]      chrA [59364, 63415] ---      chrA [    1, 19381] |        2
+  [4]      chrA [59364, 63415] ---      chrA [19382, 39678] |        1
+  -------
+  regions: 6 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> 
+> comp(100, 10000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 1 interaction and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrA [59402, 62110] ---      chrA [50320, 59401] |        3
+  -------
+  regions: 11 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(100, 5000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 3 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [29285, 34681] ---      chrA [54902, 59925] |        1
+  [2]      chrB [34682, 40570] ---      chrA [49671, 54901] |        1
+  [3]      chrB [34682, 40570] ---      chrA [54902, 59925] |        1
+  -------
+  regions: 22 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(100, 20000, cuts=simcuts(chromos), cap=NA)
+ReverseStrictGInteractions object with 3 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [    1, 20538] ---      chrB [    1, 20538] |       32
+  [2]      chrB [20539, 38864] ---      chrB [    1, 20538] |       51
+  [3]      chrB [20539, 38864] ---      chrB [20539, 38864] |       17
+  -------
+  regions: 6 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> 
+> comp(100, 10000, cuts=simcuts(chromos), cap=1)
+ReverseStrictGInteractions object with 9 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [ 9157, 20291] ---      chrA [19786, 29638] |        1
+  [2]      chrB [ 9157, 20291] ---      chrA [29639, 39670] |        5
+  [3]      chrB [ 9157, 20291] ---      chrA [39671, 50118] |        4
+  [4]      chrB [20292, 29790] ---      chrA [19786, 29638] |        4
+  [5]      chrB [20292, 29790] ---      chrA [29639, 39670] |        2
+  [6]      chrB [20292, 29790] ---      chrA [39671, 50118] |        5
+  [7]      chrB [29791, 37609] ---      chrA [19786, 29638] |        2
+  [8]      chrB [29791, 37609] ---      chrA [29639, 39670] |        5
+  [9]      chrB [29791, 37609] ---      chrA [39671, 50118] |        5
+  -------
+  regions: 11 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(100, 5000, cuts=simcuts(chromos), cap=2)
+ReverseStrictGInteractions object with 8 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrA [34715, 39834] ---      chrA [ 5508,  9575] |        1
+  [2]      chrA [34715, 39834] ---      chrA [ 9576, 14724] |        1
+  [3]      chrA [34715, 39834] ---      chrA [14725, 19388] |        2
+  [4]      chrA [39835, 45131] ---      chrA [ 5508,  9575] |        1
+  [5]      chrA [39835, 45131] ---      chrA [ 9576, 14724] |        1
+  [6]      chrA [39835, 45131] ---      chrA [14725, 19388] |        1
+  [7]      chrA [45132, 49734] ---      chrA [ 5508,  9575] |        2
+  [8]      chrA [45132, 49734] ---      chrA [14725, 19388] |        1
+  -------
+  regions: 21 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> comp(100, 20000, cuts=simcuts(chromos), cap=5)
+ReverseStrictGInteractions object with 3 interactions and 1 metadata column:
+      seqnames1        ranges1     seqnames2        ranges2 |    count
+          <Rle>      <IRanges>         <Rle>      <IRanges> | <matrix>
+  [1]      chrB [    1, 19875] ---      chrB [    1, 19875] |       29
+  [2]      chrB [19876, 35945] ---      chrB [    1, 19875] |       49
+  [3]      chrB [19876, 35945] ---      chrB [19876, 35945] |       22
+  -------
+  regions: 6 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
+> 
+> ###################################################################################################
+> # Wrapping up.
+> 
+> unlink("temp-patch", recursive=TRUE)
+> 
+> ###################################################################################################
+> # End.
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 12.216   0.144  12.377 

@@ -5,7 +5,7 @@ boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 #
 # written by Aaron Lun
 # created 3 June 2014
-# last modified 8 December 2015
+# last modified 14 May 2017
 {
 	all.hits <- list(...)
     lapply(all.hits, FUN=.check_StrictGI)
@@ -20,7 +20,11 @@ boxPairs <- function(..., reference, minbox=FALSE, index.only=FALSE)
 			stop("fragment boundaries should be the same between InteractionSet objects")
 		}
 	}
-	parents <- .getBinID(fragments, reference)$region
+    if (.isDNaseC(fragments=fragments)) { 
+        parents <- .createBins(fragments, reference)$region
+    } else {
+        parents <- .assignBins(fragments, reference)$region
+    }
 
 	# Collating all results in terms of parents.
 	all.a <- all.t <- all.mode <- all.idx <- num.pairs <- vector("list", nk)

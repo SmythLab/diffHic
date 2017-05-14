@@ -17,17 +17,18 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 	filter<-as.integer(filter) 
 
     # Setting up the bins.
-    new.pts <- .getBinID(param$fragments, width)
-    bin.by.chr <- .splitByChr(new.pts$region)
     
     # Setting up the other statistics.
-    parsed <- .parseParam(param, width)
+    parsed <- .parseParam(param, bin=TRUE, width=width)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     bwidth <- parsed$bwidth
     discard <- parsed$discard
-    restrict <- param$restrict
+    bin.id <- parsed$bin.id
+    bin.by.chr <- parsed$bin.by.chr
+    bin.region <- parsed$bin.region
+    restrict <- parsed$restrict
 
 	# Output vectors.
 	out.counts <- list(matrix(0L, 0, nlibs))
@@ -58,8 +59,9 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
             full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
 			# Aggregating counts in C++ to obtain count combinations for each bin pair.
-			out <- .Call(cxx_count_background, pairs, new.pts$id, flank, exclude, filter, 
-				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]])
+			out <- .Call(cxx_count_background, pairs, bin.id, flank, exclude, filter, 
+				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], 
+                bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]])
 			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
@@ -89,7 +91,7 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
     }
 
 	out.IS <- InteractionSet(all.assays, colData=DataFrame(totals=full.sizes), 
-		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=new.pts$region, mode="reverse"), 
+		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=bin.region, mode="reverse"), 
         metadata=List(param=param, width=width))
    
     n.names <- .neighbor_numbers() 

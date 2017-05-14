@@ -10,7 +10,7 @@ savecomp<-function(n, nfrags, nchrs) {
 	# Simulating the dudes (anchor2<=anchor1 at all times).
 	ai<-as.integer(runif(n, 1, nfrags))
 	ti<-as.integer(runif(n, 1, nfrags))
-    collected <- data.frame(anchor1.id=ai, anchor2.id=ti, junk=ai+ti, more.junk=ai-ti)
+    collected <- data.frame(anchor1.id=ai, anchor2.id=ti, junk1=ai+ti, junk2=ai-ti)
 
 	# Simulating the fragment IDs.
 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
@@ -39,11 +39,15 @@ savecomp<-function(n, nfrags, nchrs) {
 
 	# Checking that the stored result is the same.
 	regot <- do.call(rbind, regot)
-	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk, regot$more.junk),]
+	regot <- regot[order(regot$anchor1.id, regot$anchor2.id, regot$junk1, regot$junk2),]
 	
-    collected$anchor1.id <- pmax(ai, ti)
-    collected$anchor2.id <- pmin(ai, ti)
-	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk, collected$more.junk),]
+    swap <- ai < ti
+    collected$anchor1.id <- ifelse(swap, ti, ai)
+    collected$anchor2.id <- ifelse(swap, ai, ti)
+    tmp <- collected$junk1
+    collected$junk1[swap] <- collected$junk2[swap]
+    collected$junk2[swap] <- tmp[swap]
+	original <- collected[order(collected$anchor1.id, collected$anchor2.id, collected$junk1, collected$junk2),]
 	rownames(original) <- rownames(regot) <- NULL 
 	stopifnot(identical(original, regot))
 	head(regot)

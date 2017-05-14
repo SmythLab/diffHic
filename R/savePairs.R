@@ -6,30 +6,25 @@ savePairs <- function(x, file, param)
 #
 # written by Aaron Lun 
 # created some time ago
-# last modified 17 March 2017
+# last modified 14 May 2017
 {
     if (any(colnames(x) %in% c("anchor.id", "target.id"))) { 
         stop("colnames 'anchor.*' and 'target.*' should be changed to 'anchor1.*' and 'anchor2.*'")
     }
-	swap <- x$anchor1.id < x$anchor2.id
-	if (any(swap)) { 
-		temp <- x$anchor2.id[swap]
-		x$anchor2.id[swap] <- x$anchor1.id[swap]
-		x$anchor1.id[swap] <- temp
-	}
+    x <- .enforcePairOrder(x)
 	if (file.exists(file)) { unlink(file, recursive=TRUE) }
 
 	# Need to reorder so fragments are sorted by chromosome COMBINATION.
-    parsed <- .parseParam(param)
+    parsed <- .parseParam(param, bin=FALSE)
 	frag.out <- parsed$frag.by.chr
 	all.chrs <- parsed$chrs
-    if (length(param$fragments)) { 
+    if (!.isDNaseC(param)) { 
         full.chrs <- rep(seq_along(all.chrs), frag.out$last-frag.out$first+1L)
         achr <- full.chrs[x$anchor1.id]
         tchr <- full.chrs[x$anchor2.id]
         new.o <- order(achr, tchr, x$anchor1.id, x$anchor2.id)
     } else{ 
-        # For DNase-C data, the anchor IDs are chromosome indices to 'seqlengths'.
+        # For DNase-C data, the anchor IDs are assumed to be chromosome indices to 'seqlengths'.
         achr <- x$anchor1.id
         tchr <- x$anchor2.id
         new.o <- order(achr, tchr)
@@ -37,7 +32,7 @@ savePairs <- function(x, file, param)
     }
     x <- x[new.o,]
 
-	# Identifying stretches with the same chromatin pairs.
+	# Identifying stretches with the same chromosome pairs.
 	new.achr <- achr[new.o]
 	new.tchr <- tchr[new.o]
 	if (length(new.achr) > 0L) {

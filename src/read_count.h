@@ -28,7 +28,7 @@ public:
 	int get_nbins() const;
 	int get_anchor() const;
 
-    const int* get_counts() const;
+    const std::deque<int>& get_counts() const;
     const std::deque<int>& get_changed() const;
 private:
 	const int fbin, lbin, nbins;
@@ -43,10 +43,9 @@ private:
 	bool failed;
 
     // Stuff that is visible to the calling class.
-    int* curcounts;
-    bool* ischanged;
+    std::deque<int> curcounts;
+    std::deque<bool> ischanged;
     std::deque<int> waschanged;
-    size_t changedex;
 };
 
 #endif

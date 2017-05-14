@@ -5,27 +5,26 @@ marginCounts <- function(files, param, width=50000)
 #
 # written by Aaron Lun
 # some time ago.
-# last modified 17 March 2017
+# last modified 14 May 2017
 {
 	nlibs <- length(files)
 	width <- as.integer(width)
 	if (width < 0) { stop("width must be a non-negative integer") }
 
-    # Setting up the bins.
-    new.pts <- .getBinID(param$fragments, width)
-    bin.by.chr <- .splitByChr(new.pts$region)
-    
-    # Setting up the other statistics.
-    parsed <- .parseParam(param, width)
+    # Setting up the stats.
+    parsed <- .parseParam(param, bin=TRUE, width=width)
     chrs <- parsed$chrs
     frag.by.chr <- parsed$frag.by.chr
     cap <- parsed$cap
     bwidth <- parsed$bwidth
     discard <- parsed$discard
-    restrict <- param$restrict
+    bin.id <- parsed$bin.id
+    bin.by.chr <- parsed$bin.by.chr
+    bin.region <- parsed$bin.region
+    restrict <- parsed$restrict
 
     # Setting up output elements.
-	total.counts <- matrix(0L, length(new.pts$region), nlibs)
+	total.counts <- matrix(0L, length(bin.region), nlibs)
 	full.sizes <- integer(nlibs)
 
 	# Running through each pair of chromosomes.
@@ -48,9 +47,9 @@ marginCounts <- function(files, param, width=50000)
 
 			# Aggregating them for each library.
 			for (lib in seq_len(nlibs)) {
-				a.counts <- tabulate(new.pts$id[pairs[[lib]]$anchor1.id]-first.anchor1+1L, nbins=nabins)
+				a.counts <- tabulate(bin.id[pairs[[lib]]$anchor1.id]-first.anchor1+1L, nbins=nabins)
 				total.counts[keep.a,lib] <- total.counts[keep.a,lib] + a.counts
-				t.counts <- tabulate(new.pts$id[pairs[[lib]]$anchor2.id]-first.anchor2+1L, nbins=ntbins)
+				t.counts <- tabulate(bin.id[pairs[[lib]]$anchor2.id]-first.anchor2+1L, nbins=ntbins)
 				total.counts[keep.t,lib] <- total.counts[keep.t,lib] + t.counts
 				full.sizes[lib] <- full.sizes[lib] + nrow(pairs[[lib]])
 			}
@@ -59,6 +58,6 @@ marginCounts <- function(files, param, width=50000)
 	
 	# Aggregating all elements.
 	return(SummarizedExperiment(list(counts=total.counts), colData=DataFrame(totals=full.sizes), 
-			rowRanges=new.pts$region, metadata=List(param=param)))
+			rowRanges=bin.region, metadata=List(param=param)))
 }
 
