@@ -2,8 +2,27 @@
 
 suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 
-# Don't worry about cases involving empty files; 
-# that just shouldn't be a practical concern.
+# Testing what happens with an empty input file.
+
+f.out <- "empty.h5"
+param <- pairParam(GRanges("chrA", IRanges(1:5, 1:5)))
+savePairs(data.frame(anchor1.id=integer(0), anchor2.id=integer(0)), file=f.out, param=param)
+
+loadChromos(f.out) # While we're here, let's see what happens.
+
+squareCounts(f.out, param)
+
+marginCounts(f.out, param)
+
+totalCounts(f.out, param)
+
+connectCounts(f.out, param, GRanges("chrA", IRanges(1, 4)))
+
+extractPatch(f.out, param, GRanges("chrA", IRanges(1, 4)), width=10)
+
+unlink(f.out)
+
+# Testing with an empty InteractionSet.
 
 ghost <- InteractionSet(matrix(0, nrow=0, ncol=1), 
     GInteractions(integer(0), integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)), mode="reverse"),
@@ -11,13 +30,6 @@ ghost <- InteractionSet(matrix(0, nrow=0, ncol=1),
 
 getArea(ghost)
 getArea(ghost, bp=TRUE)
-
-f.out <- "empty.h5"
-param <- pairParam(GRanges("chrA", IRanges(1:5, 1:5)))
-savePairs(data.frame(anchor1.id=integer(0), anchor2.id=integer(0)), file=f.out, param=param)
-
-loadChromos(f.out) # While we're here, let's see what happens.
-unlink(f.out)
 
 filterDirect(ghost)
 filterDirect(ghost, reference=ghost)
@@ -47,4 +59,3 @@ normOffsets(ghost, type="loess")
 diClusters(ghost, data.frame(PValue=integer(0), logFC=numeric(0)), target=0.05, cluster.args=list(tol=1))
 
 annotatePairs(ghost, indices=integer(0), regions=GRanges())
-

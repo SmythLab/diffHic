@@ -274,7 +274,9 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
     } else {
         frag.lens <- getlen(pchrs, ppos, pfrag, pstr) + getlen(schrs, spos, sfrag, sstr)
     }
-    panchor <- pchrs > schrs | (pchrs==schrs & pfrag > sfrag) | (pchrs==schrs & pfrag==sfrag & ppos > spos)
+    ppos5 <- ifelse(pstr, ppos, ppos+rlen -1L) 
+    spos5 <- ifelse(sstr, spos, spos+rlen -1L) 
+    panchor <- pchrs > schrs | (pchrs==schrs & pfrag > sfrag) | (pchrs==schrs & pfrag==sfrag & ppos5 > spos5)
     inserts <- ifelse(pchrs==schrs, pmax(ppos, spos)-pmin(spos, ppos)+rlen, NA)
 	orientations <- ifelse(pstr, 0L, ifelse(panchor, 1L, 2L))+ifelse(sstr, 0L, ifelse(panchor, 2L, 1L))
 

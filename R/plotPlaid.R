@@ -36,6 +36,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 	# Setting up the color function.		
 	my.col<-col2rgb(col)[,1]
 	colfun <- function(count) { .get.new.col(my.col, pmin(1, count/max.count)) }
+    if (nrow(patch)==0L) { return(invisible(colfun)) }
 	
     # Assigning coordinates to x and y-axes, while checking whether chromosome names have been flipped.
 	if (!metadata(patch)$flipped) { 

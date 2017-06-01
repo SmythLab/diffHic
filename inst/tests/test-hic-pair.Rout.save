@@ -357,7 +357,9 @@ In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
 +     } else {
 +         frag.lens <- getlen(pchrs, ppos, pfrag, pstr) + getlen(schrs, spos, sfrag, sstr)
 +     }
-+     panchor <- pchrs > schrs | (pchrs==schrs & pfrag > sfrag) | (pchrs==schrs & pfrag==sfrag & ppos > spos)
++     ppos5 <- ifelse(pstr, ppos, ppos+rlen -1L) 
++     spos5 <- ifelse(sstr, spos, spos+rlen -1L) 
++     panchor <- pchrs > schrs | (pchrs==schrs & pfrag > sfrag) | (pchrs==schrs & pfrag==sfrag & ppos5 > spos5)
 +     inserts <- ifelse(pchrs==schrs, pmax(ppos, spos)-pmin(spos, ppos)+rlen, NA)
 + 	orientations <- ifelse(pstr, 0L, ifelse(panchor, 1L, 2L))+ifelse(sstr, 0L, ifelse(panchor, 2L, 1L))
 + 
@@ -1403,4 +1405,4 @@ other.2                  7          7     30           3     10
 > 
 > proc.time()
    user  system elapsed 
- 28.004   0.352  28.383 
+ 29.848   0.668  30.741 

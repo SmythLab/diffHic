@@ -34,26 +34,15 @@ In most cases, these can be generated using the \code{\link{cutGenome}} function
 If, for any reason, a modified genome is used for alignment, then the coordinates of the restriction fragments on the modified genome are required.
 
 Each read pair subsequently becomes associated with a pair of restriction fragments.
-The anchor1 fragment is that with the higher genomic coordinate, i.e., the larger index in \code{param$fragments}.
-The anchor2 fragment is that with the smaller coordinate/index. 
+The \code{anchor1} fragment is that with the higher genomic coordinate, i.e., the larger index in \code{param$fragments}.
+The \code{anchor2} fragment is that with the smaller coordinate/index.
 This definition avoids the need to consider both permutations of indices in a pair during downstream processing.
 }
 
 \section{Details of read pair processing}{
-For pairs with chimeric reads, the alignment of the 5' end of the read is used to identify the interacting fragments.  
-Invalid chimeras arise when the position of the 3' segment of a chimeric read is not consistent with that of the mate read. 
-These are generally indicative of mapping errors but can also form due to non-specific ligation events. 
-While they can be explicitly removed, setting \code{ichim=TRUE} is recommended to avoid excessive filtering of reads when alignment of short chimeric segments is inaccurate.
-
-Invalid chimeras can be defined in two ways:
-\itemize{
-\item If \code{chim.dist=NA}, a chimeric pair is considered to be invalid if the 3' segment and the mate do not map onto the same restriction fragment in an inward-facing orientation.
-This reflects the resolution limits of the Hi-C protocol.
-\item If \code{chim.dist} is not \code{NA}, chimeras are defined based on distance.
-A pair is considered invalid if the distance between the segment and mate is greater than \code{chim.dist}, or if the alignments are not inward-facing.
-}
-The second approach is more relevant in situations involving inefficient cleavage, where the mapping locations are broadly consistent but do not fall in the same restriction fragment.
-The maximum size of the ligation products can be used as a reasonable value for \code{chim.dist}, e.g., 1000 bp. 
+A read pair is discarded if either read is unavailable, e.g., unmapped, mapping quality score below \code{minq}, marked as a duplicate. 
+No MAPQ filtering is performed when \code{minq} is set to \code{NA}.
+Any duplicate read must be marked in the bit field of the BAM file using a tool like Picard's \code{MarkDuplicates} if it is to be removed with \code{dedup=TRUE}. 
 
 Self-circles are outward-facing read pairs mapped to the same restriction fragment.
 These are formed from inefficient cross-linking and are generally uninformative.
@@ -64,11 +53,23 @@ Note that this does not consider dangling ends or self-circles formed from incom
 % Removal of dangling ends will include those read pairs where one end extends past the other.
 % These are attributable to trimming/sequencing/alignment errors and should still be dangling ends.
 
-If the 5' end of either read is unavailable (e.g. unmapped, mapping quality score below \code{minq}, marked as a duplicate), the read pair is recorded as unpaired and discarded.
-No MAPQ filtering is performed when \code{minq} is set to \code{NA}.
-Any duplicate read must be marked in the bit field of the BAM file using a tool like Picard's \code{MarkDuplicates} if it is to be removed with \code{dedup=TRUE}. 
-For chimeric reads, the recommended approach is to designate the 5' end as the only primary or non-supplementary alignment. 
+For pairs with chimeric reads, the segment containing the 5' end of each chimeric read is used to assign the fragment index.
+Chimeric read pairs are discarded if the 5' segments of the chimeric reads are not available, regardless of what happens with the 3' segment.
+Note that, when running \code{MarkDuplicates} with chimeric reads, the recommended approach is to designate the 5' segment as the only primary or non-supplementary alignment. 
 This ensures that the duplicate computations are performed on the most relevant alignments for each read pair.
+
+Invalid chimeras arise when the index/position of the 3' segment of a chimeric read is not consistent with that of the mate read.
+These are generally indicative of mapping errors but can also form due to non-specific ligation events.
+Computationally, invalid chimeras can be defined in two ways:
+\itemize{
+\item If \code{chim.dist=NA}, a chimeric pair is considered to be invalid if the 3' segment and the mate do not map onto the same restriction fragment in an inward-facing orientation.
+This reflects the resolution limits of the Hi-C protocol.
+\item If \code{chim.dist} is not \code{NA}, chimeras are defined based on distance.
+A pair is considered invalid if the distance between the segment and mate is greater than \code{chim.dist}, or if the alignments are not inward-facing.
+}
+The second approach is more relevant in situations involving inefficient cleavage, where the mapping locations are broadly consistent but do not fall in the same restriction fragment.
+The maximum size of the ligation products can be used as a reasonable value for \code{chim.dist}, e.g., 1000 bp. 
+While invalid chimeras can be explicitly removed, keeping \code{ichim=TRUE} is recommended to avoid excessive filtering due to inaccurate alignment of short chimeric 3' segments.
 }
 
 \section{Processing DNase Hi-C experiments}{ 
@@ -81,9 +82,11 @@ The BAM file can be processed with \code{preparePairs} in a manner that is almos
 However, there are some key differences:
 \itemize{
 \item No reporting or removal of self-circles or dangling ends is performed, as these have no meaning when restriction fragments are not involved.
-\item Invalidity of chimeras is determined by checking whether the 3' end is more than \code{chim.dist} away from the mate read.
+\item Chimeras are considered invalid if the 3' segment of one read and the 5' segment of the mate are not inward-facing or more than \code{chim.dist} away from each other.
 If \code{chim.dist=NA}, it will be set to a default of 1000 bp.
 \item All fragment IDs in the output HDF5 file will be set to zero.
+The first read of each pair is defined as the read on the chromosome that is ordered later in \code{seqlengths(fragments)}.
+For pairs on the same chromosome, the first read is defined as that with a higher genomic coordinate for its 5' end.
 }
 }
 
@@ -104,22 +107,21 @@ Reads will not be discarded if they lie outside the specified chromosomes, or if
 
 \value{
 Multiple dataframe objects are stored within the specified \code{file} using the HDF5 format.
-Each object corresponds to a pair of chromosomes, designated as the anchor1 (later) or anchor2 (earlier) chromosome based on the order of their names.
+Each object corresponds to a pair of chromosomes, designated as the \code{anchor1} (later) or \code{anchor2} (earlier) chromosome based on the order of their names.
 Each row of the dataframe contains information for a read pair, with one read mapped to each chromosome. 
 The dataframe contains several integer fields:
 \describe{
-  \item{\code{anchor1.id}, \code{anchor2.id}:}{index of the anchor1 or anchor2 restriction fragment}
-  \item{\code{anchor1.pos}, \code{anchor2.pos}:}{mapping coordinate of the read (or for chimeras, the 5' segment thereof) on the anchor1 or anchor2 fragment}
-  \item{\code{anchor1.len}, \code{anchor2.len}:}{length of the alignment on the anchor1 or anchor2 fragment, set to a negative value if the alignment is on the reverse strand}
+  \item{\code{anchor1.id}, \code{anchor2.id}:}{index of the \code{anchor1} or \code{anchor2} restriction fragment (see below for details)}
+  \item{\code{anchor1.pos}, \code{anchor2.pos}:}{mapping coordinate of the read (or the 5' segment thereof, for chimeras) on the \code{anchor1} or \code{anchor2} fragment}
+  \item{\code{anchor1.len}, \code{anchor2.len}:}{length of the alignment on the \code{anchor1} or \code{anchor2} fragment; negative for alignments on the reverse strand}
 }
-See \code{\link{getPairData}} for more details on \code{length}, \code{orientation} and \code{gap}.  
 
 A list is also returned from the function, containing various diagnostics:
 \describe{
-	\item{\code{pairs}:}{an integer vector containing \code{total}, the total number of read pairs; \code{marked}, read pairs with at least one marked 5' end; \code{filtered}, read pairs where the MAPQ score for either 5' end is below \code{minq}; \code{mapped}, read pairs considered as successfully mapped (i.e., not filtered, and also not marked if \code{dedup=TRUE})}
+	\item{\code{pairs}:}{an integer vector containing \code{total}, the total number of read pairs; \code{marked}, read pairs with at least one marked read or 5' segment; \code{filtered}, read pairs where the MAPQ score for either read or 5' segment is below \code{minq}; \code{mapped}, read pairs considered as successfully mapped (i.e., not filtered, and also not marked if \code{dedup=TRUE})}
 	\item{\code{same.id}:}{an integer vector containing \code{dangling}, the number of read pairs that are dangling ends; and \code{self.circles}, the number of read pairs forming self-circles}
 	\item{\code{singles}:}{an integer scalar specifying the number of reads without a mate}
-	\item{\code{chimeras}:}{an integer vector containing \code{total}, the total number of read pairs with one chimeric read; \code{mapped}, chimeric read pairs with both 5' ends mapped; \code{multi}, mapped chimeric pairs with at least one successfully mapped 3' segment; and \code{invalid}, read pairs where the 3' location of one read disagrees with the 5' location of the mate}
+	\item{\code{chimeras}:}{an integer vector containing \code{total}, the total number of read pairs with one chimeric read; \code{mapped}, chimeric read pairs with all 5' segments and non-chimeric reads mapped; \code{multi}, mapped chimeric pairs with at least one successfully mapped 3' segment; and \code{invalid}, read pairs where the 3' location of one read disagrees with the 5' location of the mate}
 }
 
 For DNase Hi-C data, the \code{anchor1.id} and \code{anchor2.id} fields are set to zero, and the \code{same.id} field in the output list is removed.

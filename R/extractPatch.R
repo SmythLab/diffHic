@@ -54,7 +54,11 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
         t.end <- bin.by.chr$last[[first.chr]]
         flipped <- TRUE
 
-    } else { 
+    } else {
+        # Just putting up some random values, if empty.
+        filter.a <- filter.t <- logical(0) 
+        t.start <- bin.by.chr$first[[second.chr]]
+        t.end <- bin.by.chr$last[[second.chr]]
         current<-data.frame(anchor1.id=integer(0), anchor2.id=integer(0)) 
     }
 
