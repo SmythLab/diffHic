@@ -190,8 +190,8 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
     # Throwing them into the SAM file generator. Note that chromosome names are ordered inside. 
     # If this differs from the order in 'max.cuts', it will test the ability of preparePairs to match them up correctly.
 	reversi <- c(seq_len(npairs) + npairs, seq_len(npairs))
-    out <- simsam(fname, names(chromosomes)[chrs], pos, str, chromosomes[order(names(chromosomes))], names=names, len=rlen, 
-                  is.first=c(rep(TRUE, npairs), rep(FALSE, npairs)), is.paired=TRUE,
+    out <- simsam(fname, names(chromosomes)[chrs], pos, str, chromosomes, names=names, len=rlen, 
+                  is.first=rep(c(TRUE, FALSE), each=npairs), is.paired=TRUE,
                   mate.chr=names(chromosomes)[chrs][reversi], mate.pos=pos[reversi], mate.str=str[reversi])
 
 	if (singles) { 
@@ -356,7 +356,7 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 			cur.insert <- inserts[stuff]
 			o <- order(anchor1, anchor2, ap1, ap2, al1, al2, totes, cur.ori, cur.insert)
 
-			# Checking anchor1/anchor2/length/orientation/insert statistics (sorting to ensure comparability).
+            # Extracting data from HDF5 and computing statistics.
 			achr<-names(max.cuts)[i]
 			tchr<-names(max.cuts)[j]
 			if (!(achr%in%names(indices)) || !(tchr %in% names(indices[[achr]]))) { 
@@ -365,11 +365,11 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 			}
 			current <- h5read(tmpdir, file.path(achr, tchr))
 			for (x in seq_len(ncol(current))) { attributes(current[,x]) <- NULL }
-			collated <- diffHic:::.getStats(current, achr==tchr, used.frags)
-			
+            collated <- diffHic:::.getStats(current, achr==tchr, used.frags)
+            
+			# Checking anchor1/anchor2/length/orientation/insert statistics (sorting on everything to ensure comparability).
 			o2 <- order(current$anchor1.id, current$anchor2.id, current$anchor1.pos, current$anchor2.pos, 
                         current$anchor1.len, current$anchor2.len, collated$length, collated$orientation, collated$insert)
-
             stopifnot(identical(current$anchor1.id[o2], anchor1[o]))
             stopifnot(identical(current$anchor2.id[o2], anchor2[o]))
             stopifnot(identical(current$anchor1.pos[o2], ap1[o]))
@@ -380,7 +380,25 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
             stopifnot(identical(collated$length[o2], totes[o]))
 			stopifnot(identical(collated$orientation[o2], cur.ori[o]))
 			stopifnot(identical(collated$insert[o2], cur.insert[o]))
-				
+	
+            # Checking that choice and ordering of anchor1 and anchor2 is sane.
+            current5.1 <- current$anchor1.pos - pmin(0L, current$anchor1.len + 1L)
+            current5.2 <- current$anchor2.pos - pmin(0L, current$anchor2.len + 1L)
+            if (!pseudo) { 
+                stopifnot(all(current$anchor1.id >= current$anchor2.id))
+                stopifnot(all((current5.1 >= current5.2)[current$anchor1.id==current$anchor2.id]))
+                o <- order(current$anchor1.id, current$anchor2.id)
+                stopifnot(!is.unsorted(o))
+            } else {
+                stopifnot(all(current$anchor1.id==0L & current$anchor2.id==0L))
+                if (i==j) {
+                    if (!all(current5.1 >= current5.2)) {
+                        print(current)
+                    }
+                    stopifnot(all(current5.1 >= current5.2)) 
+                }    
+            }
+			
 			# Checking that we're looking at the right combination.
             if (!pseudo) { 
                 uniq.a <- unique(fchrs[current$anchor1.id])
@@ -489,7 +507,6 @@ comp(fname, npairs=200, size=c(100, 500), max.cuts=max.cuts);
 comp(fname, npairs=1000, size=c(200, 300), max.cuts=max.cuts);
 
 # Checking results with pseudo-ness
-
 max.cuts<-c(chrA=20L, chrB=10L, chrC=5L)
 comp(fname, npairs=20, max.cuts=max.cuts, pseudo=TRUE, overhang=0, sizes=c(100, 100))
 comp(fname, npairs=50, max.cuts=max.cuts, pseudo=TRUE, overhang=0, sizes=c(100, 100))
@@ -565,8 +582,8 @@ namefun <- function(extracted) {
 }
 
 # We also have 3 unmapped reads, 5 dangling ends, 2 self-circles, 2 singletons.
-# For chimeras, all have mapped 5' and 3' ends, 5 of which are invalid.
-	
+# For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
+
 preparePairs(hic.file, param, tmpdir, dedup=FALSE)
 
 printfun<-function(dir) {
@@ -589,21 +606,20 @@ printfun<-function(dir) {
 printfun(tmpdir)
 
 # Alright, so once duplicates are removed, we lose:
-#  	self.1 (mapped/self.circles -> marked)
-#   other.1 (mapped/other -> marked)	
-#   dangling.1 (mapped/dangling -> marked)
-#   chimeric.good.2 (mapped/chimeric$mapped/multi -> marked)
-#	chimeric.invalid.1 (mapped/chimeric$mapped/multi/invalid -> marked)
+#  	self.1 (--mapped/self.circles)
+#   other.1 (--mapped/other)	
+#   dangling.1 (--mapped/dangling)
+#   chimeric.good.2 (--mapped/chimeric$mapped/multi)
+#	chimeric.invalid.1 (--mapped/chimeric$mapped/multi/invalid)
 #   chimeric.invalid.4 (--chimeric$multi/invalid)
-#	chimeric.good.4 (mapped/chimeric$mapped/multi -> marked)
-#	chimeric.good.5 (mapped/chimeric$mapped/multi -> marked)
+#	chimeric.good.4 (--mapped/chimeric$mapped/multi)
+#	chimeric.good.5 (--mapped/chimeric$mapped/multi)
 #
-# So, a gain of +7 to marked, a loss of -7 to mapped, a loss of -1 to each of
-# dangling and self.circles, a loss of -4 to chimeric$mapped, -5 to
-# chimeric$multi and -2 to chimeric$invalid. 
+# So, a loss of -7 to mapped, a loss of -1 to each of dangling and self.circles, 
+# a loss of -4 to chimeric$mapped, -5 to  chimeric$multi and -2 to chimeric$invalid. 
 #
 # Note that this will be considered the reference to which all downstream
-# tests are compared, as dedup=FALSE is the default setting.
+# tests are compared, as dedup=TRUE is the default setting.
 
 tmpdir2<-file.path(dir, "gunk2")
 preparePairs(hic.file, param, tmpdir2)
@@ -631,8 +647,8 @@ printfun(tmpdir2)
 # for dangling, a loss of -2 for chimeric$mapped, -4 for chimeric$multi
 # and -3 for chimeric$invalid. For printfun, we see:
 # 	A/A = chimeric.invalid.5, good.2, chimeric.invalid.4, good.4
-#	B/A = good.8, good.5, chimeric.invalid.7
-# 	B/B = good.7, good.6, chimeric.good.
+#	B/A = good.8, good.5, chimeric.good.1, chimeric.invalid.3, chimeric.invalid.7
+# 	B/B = good.7, good.6, chimeric.good.3, other.2
 
 preparePairs(hic.file, param, tmpdir2, minq=100)
 printfun(tmpdir2)

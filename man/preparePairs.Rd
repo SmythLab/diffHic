@@ -111,9 +111,10 @@ Each object corresponds to a pair of chromosomes, designated as the \code{anchor
 Each row of the dataframe contains information for a read pair, with one read mapped to each chromosome. 
 The dataframe contains several integer fields:
 \describe{
-  \item{\code{anchor1.id}, \code{anchor2.id}:}{index of the \code{anchor1} or \code{anchor2} restriction fragment (see below for details)}
-  \item{\code{anchor1.pos}, \code{anchor2.pos}:}{mapping coordinate of the read (or the 5' segment thereof, for chimeras) on the \code{anchor1} or \code{anchor2} fragment}
-  \item{\code{anchor1.len}, \code{anchor2.len}:}{length of the alignment on the \code{anchor1} or \code{anchor2} fragment; negative for alignments on the reverse strand}
+  \item{\code{anchor1.id}, \code{anchor2.id}:}{Index of the \code{anchor1} or \code{anchor2} restriction fragment to which each read was assigned.}
+  \item{\code{anchor1.pos}, \code{anchor2.pos}:}{1-based genomic coordinate of the aligned read (or the 5' segment thereof, for chimeras) on the \code{anchor1} or \code{anchor2} fragment.}
+  \item{\code{anchor1.len}, \code{anchor2.len}:}{Length of the alignment on the \code{anchor1} or \code{anchor2} fragment.
+This is multiplied by -1 for alignments on the reverse strand.}
 }
 
 A list is also returned from the function, containing various diagnostics:

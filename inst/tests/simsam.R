@@ -7,7 +7,7 @@ simsam<-function(f.out, pos.chr, pos.pos, strands, chromosomes, names=NULL, is.f
 		cigar=NULL, len=10) {
 	samFile<-paste(f.out, ".sam", sep="")
 	out<-file(samFile, open="w");
-	for (chr in names(chromosomes)) {
+	for (chr in sort(names(chromosomes))) {
 		write(c("@SQ", paste("SN:", chr, sep=""), paste("LN:", chromosomes[[chr]], sep="")), 
 				ncolumns=3, file=out, sep="\t");
 	}
