@@ -46,15 +46,17 @@ try(compartmentalize(ghost, dist.correct=FALSE)) # This will also fail, due to n
 
 correctedContact(ghost)
 
-ghost.ranges <- SummarizedExperiment(matrix(0, 0, 1), GRanges())
+ghost.ranges <- SummarizedExperiment(matrix(0, 0, 1), GRanges(), colData=DataFrame(totals=1e6))
 try(normalizeCNV(ghost, ghost.ranges)) # locfit isn't as robust as loessFit
+ghost.ranges$totals <- NULL
+try(normalizeCNV(ghost, ghost.ranges)) # spits the dummy when totals are not the same.
 
 matchMargins(ghost, ghost.ranges)
 
 asDGEList(ghost)
 
-normOffsets(ghost)
-normOffsets(ghost, type="loess")
+normOffsets(ghost, se.out=FALSE)
+normOffsets(ghost, type="loess", se.out=FALSE)
 
 diClusters(ghost, data.frame(PValue=integer(0), logFC=numeric(0)), target=0.05, cluster.args=list(tol=1))
 

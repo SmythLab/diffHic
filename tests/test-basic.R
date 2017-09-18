@@ -54,11 +54,11 @@ dummy <- InteractionSet(matrix(as.integer(rpois(npairs*nlibs, runif(npairs, 10, 
     colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
     GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
 
-normOffsets(dummy)
-normOffsets(dummy, logratio=0)
-normOffsets(dummy, lib.sizes=c(10, 20, 15, 25))
-head(normOffsets(dummy, type="loess"))
-head(normOffsets(dummy, type="loess", span=0.5))
+normOffsets(dummy, se.out=FALSE)
+normOffsets(dummy, logratioTrim=0, se.out=FALSE)
+normOffsets(dummy, sumTrim=0.2, se.out=FALSE)
+head(normOffsets(dummy, type="loess", se.out=FALSE))
+head(normOffsets(dummy, type="loess", span=0.5, se.out=FALSE))
 
 # Playing around with some bin counts.
 stuff <- correctedContact(data)

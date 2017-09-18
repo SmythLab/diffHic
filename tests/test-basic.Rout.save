@@ -1,7 +1,7 @@
 
-R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+R version 3.4.0 (2017-04-21) -- "You Stupid Darkness"
 Copyright (C) 2017 The R Foundation for Statistical Computing
-Platform: x86_64-pc-linux-gnu (64-bit)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -234,13 +234,13 @@ Sample1     a       17            2
 +     colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
 +     GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
 > 
-> normOffsets(dummy)
+> normOffsets(dummy, se.out=FALSE)
 [1] 1.0797833 0.8315381 0.9929250 1.1216692
-> normOffsets(dummy, logratio=0)
+> normOffsets(dummy, logratioTrim=0, se.out=FALSE)
 [1] 1.0811625 0.8302084 0.9910453 1.1241607
-> normOffsets(dummy, lib.sizes=c(10, 20, 15, 25))
-[1] 1.6546731 0.8295975 1.1041603 0.6597634
-> head(normOffsets(dummy, type="loess"))
+> normOffsets(dummy, sumTrim=0.2, se.out=FALSE)
+[1] 1.0809185 0.8315821 0.9932535 1.1200614
+> head(normOffsets(dummy, type="loess", se.out=FALSE))
              [,1]          [,2]         [,3]         [,4]
 [1,] -0.001441205  0.0009288925  0.004926866 -0.004414553
 [2,]  0.005400642  0.0041595535 -0.006896159 -0.002664036
@@ -248,7 +248,7 @@ Sample1     a       17            2
 [4,]  0.005334705  0.0035367018 -0.005104467 -0.003766940
 [5,] -0.003505626  0.0163064598 -0.001889796 -0.010911038
 [6,]  0.004070281  0.0090487722 -0.008279823 -0.004839230
-> head(normOffsets(dummy, type="loess", span=0.5))
+> head(normOffsets(dummy, type="loess", span=0.5, se.out=FALSE))
               [,1]          [,2]         [,3]          [,4]
 [1,] -0.0024209802  0.0006743114  0.003720243 -0.0019735742
 [2,]  0.0063348094  0.0041435451 -0.006281532 -0.0041968230
@@ -290,4 +290,4 @@ regions: 6
 > 
 > proc.time()
    user  system elapsed 
- 10.312   0.116  10.426 
+  9.875   0.292  10.447 

@@ -8,12 +8,17 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500,
 #
 # written by Aaron Lun
 # created 11 September 2014
-# last modified 3 March 2017
+# last modified 18 September 2017
 {
     # Checking for proper type.
     .check_StrictGI(data)
     data.binprs <- assay(data, assay.data)
     data.margin <- assay(margins, assay.marg)
+    if (is.null(data$totals) || is.null(margins$totals)) { 
+        stop("'totals' should be non-NULL for 'data' and 'margins'")
+    } else if (!identical(margins$totals, data$totals)) { 
+		warning("library sizes should be identical for 'margins' and 'data'")
+	}
 
     # Smaller prior for bin pair count to calculate offsets;
     # larger prior for margin counts to stabilize covariates.
@@ -21,9 +26,6 @@ normalizeCNV <- function(data, margins, prior.count=3, span=0.3, maxk=500,
 	cont.cor.scaled <- cont.cor * data$totals/mean(data$totals)
 	ab <- aveLogCPM(data.binprs, lib.size=data$totals, prior.count=cont.cor)
 	mave <- aveLogCPM(data.margin, lib.size=margins$totals, prior.count=prior.count)
-	if (!identical(margins$totals, data$totals)) { 
-		warning("library sizes should be identical for margin and data objects")
-	}
 
 	# Generating covariates.
 	mab <- cpm(data.margin, lib.size=margins$totals, log=TRUE, prior.count=prior.count) - mave
