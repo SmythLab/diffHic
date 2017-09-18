@@ -1,64 +1,62 @@
 #include "read_count.h"
 
-void setup_pair_data (SEXP pairs, const int nlibs, std::deque<const int*>& aptrs, 
-    std::deque<const int*>& tptrs, std::deque<int>& nums, std::deque<int>& indices)
-{
-	aptrs.resize(nlibs);
-	tptrs.resize(nlibs);
+int setup_pair_data (Rcpp::List pairs, std::vector<Rcpp::IntegerVector>& anchor1, 
+        std::vector<Rcpp::IntegerVector>& anchor2, std::vector<int>& nums, std::vector<int>& indices) {
+
+    int nlibs=pairs.size();
+    anchor1.resize(nlibs);
+	anchor2.resize(nlibs);
 	indices.resize(nlibs);
 	nums.resize(nlibs);
 	
 	for (int i=0; i<nlibs; ++i) {
-		SEXP current=VECTOR_ELT(pairs, i);
-		if (!isNewList(current) || LENGTH(current)!=2) { 
-			throw std::runtime_error("interactions must be supplied as a data.frame with anchor.id and target.id"); }
+        Rcpp::List current=pairs[i];
+		if (current.size()!=2) { 
+			throw std::runtime_error("interactions must be supplied as a data.frame with anchor.id and target.id"); 
+        }
 
-		for (int j=0; j<2; ++j) {
-			SEXP current_col=VECTOR_ELT(current, j);
-			if (!isInteger(current_col)) { throw std::runtime_error("interaction data must be in integer format"); }
-			const int* ptr=INTEGER(current_col);
+		// We assume anchor1, anchor2 have been ordered on R's side.
+        for (int j=0; j<2; ++j) {
+            Rcpp::IntegerVector curvec(current[j]);
 			switch (j) {
 				case 0: 
-					aptrs[i]=ptr; 
-					nums[i]=LENGTH(current_col);
+					anchor1[i]=curvec;
+					nums[i]=curvec.size();
 					break;
 				case 1: 
-					tptrs[i]=ptr; 
-					if (LENGTH(current_col)!=nums[i]) { throw std::runtime_error("vectors should be the same length"); }		
+					anchor2[i]=curvec; 
+					if (curvec.size()!=nums[i]) { 
+                        throw std::runtime_error("vectors should be the same length"); 
+                    }
 					break;
 				default: break;
 			}
 		}
 	}
-    return;
+    return nlibs;
 }
 
-binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), ischanged(nbins, false) {
-	if (!isInteger(bin)) { throw std::runtime_error("anchor bin indices must be integer vectors"); }
-	bptr=INTEGER(bin)-1; // Assuming 1-based indices for anchors and targets.
+binner::binner(SEXP all, SEXP bin, int f, int l) : fbin(f), lbin(l), nbins(l-f+1), binid(bin), curab(-1), ischanged(nbins, false) {
     if (nbins <= 0) { throw std::runtime_error("number of bins must be positive"); }
+    nlibs=setup_pair_data(all, anchor1, anchor2, nums, indices);
 
-	// Setting up other structures, including pointers. We assume it's sorted on R's side.
-	if (!isNewList(all)) { throw std::runtime_error("data on interacting read pairs must be contained within a list"); }
-	nlibs=LENGTH(all);
-    setup_pair_data(all, nlibs, aptrs, tptrs, nums, indices);
+    // Populating the priority queue.(1-based indexing).
 	for (int i=0; i<nlibs; ++i) {
-        // Populating the priority queue.
-        if (nums[i]) { next.push(coord(bptr[aptrs[i][0]], bptr[tptrs[i][0]], i)); }
+        if (nums[i]) { 
+            next.push(coord(binid[anchor1[i][0]-1], binid[anchor2[i][0]-1], i)); 
+        }
     }
 
     curcounts.resize(nbins*nlibs);
 	return;
 }
 
-binner::~binner () {}
-
 void binner::fill() { 
     /* Resetting 'ischanged' (which indicates whether we need to set all counts to zero) and 
      * 'waschanged' (which provides a fast way to get to true values of 'ischanged').
      */
-    for (std::deque<int>::const_iterator wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
-        ischanged[*wcIt]=false;
+    for (const auto& wc : waschanged) {
+        ischanged[wc]=false;
     }
     waschanged.clear();
 
@@ -69,12 +67,12 @@ void binner::fill() {
 	 * in this stretch are stored in passing through curcounts. 
 	 */
 	curab=next.top().anchor;
-	failed=false;
+	bool failed=false;
 
 	do {
-		curtb=next.top().target;
+	    const int curtb=next.top().target;
 		if (curtb > lbin || curtb < fbin) { throw std::runtime_error("target bin index is out the specified range");}
-		curdex=curtb-fbin;
+		int curdex=curtb-fbin;
 
 		// Checking whether we need to set up a new row, or whether it's already in use.
 		if (!ischanged[curdex]) {
@@ -88,12 +86,12 @@ void binner::fill() {
 
 		// Inner loop, to avoid multiple searches when the next batch of rows are in the same bin pair.
 		do {
-			curlib=next.top().library;
+			const int curlib=next.top().library;
 			int& libdex=indices[curlib];
 			++(curcounts[curdex+curlib]);
 			next.pop();
 		 	if ((++libdex) < nums[curlib]) {
-				next.push(coord(bptr[aptrs[curlib][libdex]], bptr[tptrs[curlib][libdex]], curlib));
+                next.push(coord(binid[anchor1[curlib][libdex]-1], binid[anchor2[curlib][libdex]-1], curlib)); // 1-based indexing.
 			} else if (next.empty()) { 
 				failed=true;
 				break; 
@@ -118,6 +116,6 @@ int binner::get_nbins() const { return nbins; }
 
 int binner::get_anchor() const { return curab; }
 
-const std::deque<int>& binner::get_counts() const { return curcounts; }
+const std::vector<int>& binner::get_counts() const { return curcounts; }
 
 const std::deque<int>& binner::get_changed()  const { return waschanged; }

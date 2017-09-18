@@ -1,121 +1,84 @@
 #include "diffhic.h"
 #include "neighbors.h"
+#include "utils.h"
 
-SEXP quadrant_bg (SEXP anchor, SEXP target, SEXP count, 
+SEXP quadrant_bg (SEXP anchor1, SEXP anchor2, SEXP count, 
 		SEXP width, SEXP exclude, 
-		SEXP alen, SEXP tlen, SEXP issame) try {
+		SEXP anchor1_len, SEXP anchor2_len, SEXP issame) {
+    BEGIN_RCPP
 
-	if (!isInteger(anchor) || !isInteger(target)) { throw std::runtime_error("anchor/target vectors must be integer"); }
-	const int npair=LENGTH(anchor);
-	if (LENGTH(target)!=npair) { throw std::runtime_error("anchor/target vectors must have the same length"); }
-	if (!isInteger(count)) { throw std::runtime_error("vector of abundances should be integer"); }
-	if (LENGTH(count)!=npair) { throw std::runtime_error("vector of counts should be the same length as that of the indices"); }
-  	
-	// Setting up pointers.
-	const int * aptr=INTEGER(anchor), 
-	  * tptr=INTEGER(target),
-      * cptr=INTEGER(count);
+    Rcpp::IntegerVector a1(anchor1), a2(anchor2), _count(count);
+	const int npair=a1.size();
+    if (npair!=a2.size() || npair!=_count.size()) { 
+        throw std::runtime_error("input vectors must have the same length");
+    }
 
-	// Determining the flank width.
-	if (!isInteger(width) || LENGTH(width)!=1) { throw std::runtime_error("flank width must be an integer scalar"); }
-	const int flank_width=asInteger(width);
-	if (!isInteger(exclude) || LENGTH(exclude)!=1) { throw std::runtime_error("exclusion width must be an integer scalar"); }
-	const int exwidth=asInteger(exclude);
+    const int flank_width=check_integer_scalar(width, "flank width");
+	const int exwidth=check_integer_scalar(exclude, "exclusion width");
+    const int a1len=check_integer_scalar(anchor1_len, "first anchor length");
+	const int a2len=check_integer_scalar(anchor2_len, "second anchor length");
+    const bool intrachr=check_logical_scalar(issame, "same chromosome specifier");
 
-	if (!isInteger(alen) || LENGTH(alen)!=1) { throw std::runtime_error("anchor length must be an integer scalar"); }
-	const int alength=asInteger(alen);
-	if (!isInteger(tlen) || LENGTH(tlen)!=1) { throw std::runtime_error("anchor length must be an integer scalar"); }
-	const int tlength=asInteger(tlen);
-	if (!isLogical(issame) || LENGTH(issame)!=1) { throw std::runtime_error("same chromosome specifier must be a logical scalar"); }
-	const bool intrachr=asLogical(issame);
+    Rcpp::List out_counts(4), out_areas(4);
+    for (int i=0; i<4; ++i) {
+        out_counts[i]=Rcpp::IntegerVector(npair);
+        out_areas[i]=Rcpp::IntegerVector(npair);
+    }
+	
+	// Iterating over all quadrants.
+	bottomright br(flank_width, a2len, intrachr, exwidth);		
+	updown ud(flank_width, a2len, intrachr, exwidth);
+	leftright lr(flank_width, a2len, intrachr, exwidth);
+	allaround aa(flank_width, a2len, intrachr, exwidth);
 
-	SEXP output=PROTECT(allocVector(VECSXP, 2));
-	try {
-        // Setting up output for the counts.
-        SET_VECTOR_ELT(output, 0, allocVector(VECSXP, 4));
-        SEXP count_out=VECTOR_ELT(output, 0); 
-        int** optrs=(int**)R_alloc(4, sizeof(int*));
-        for (int i=0; i<4; ++i) {
-            SET_VECTOR_ELT(count_out, i, allocVector(INTSXP, npair));
-            optrs[i]=INTEGER(VECTOR_ELT(count_out, i));
-            std::fill(optrs[i], optrs[i]+npair, 0);
-        }
-
-        // Setting up output for the neighbourhood size.
-        SET_VECTOR_ELT(output, 1, allocVector(VECSXP, 4));
-        SEXP n_out=VECTOR_ELT(output, 1); 
-        int** nptrs=(int**)R_alloc(4, sizeof(int*));
-        for (int i=0; i<4; ++i) {
-            SET_VECTOR_ELT(n_out, i, allocVector(INTSXP, npair));
-            nptrs[i]=INTEGER(VECTOR_ELT(n_out, i));
-            std::fill(nptrs[i], nptrs[i]+npair, 0);
-        }
-
-        int* optr=NULL, *nptr=NULL;
-		int curpair, running_sum,
-			left_index, right_index,
-			left_edge, right_edge, cur_anchor; 
-
-		// Iterating over all quadrants.
-		bottomright br(flank_width, tlength, intrachr, exwidth);		
-		updown ud(flank_width, tlength, intrachr, exwidth);
-		leftright lr(flank_width, tlength, intrachr, exwidth);
-		allaround aa(flank_width, tlength, intrachr, exwidth);
-		basic* current=NULL;
-
-		for (int quadtype=(intrachr ? 0 : 1); quadtype<4; ++quadtype) {
-			switch(quadtype) { 
-				case 0: current=&br; break;
-				case 1: current=&ud; break;
-				case 2: current=&lr; break;
-				case 3: current=&aa; break;
-			}
-            optr=optrs[quadtype];
-            nptr=nptrs[quadtype];
-
-			// Iterating across all flank widths.
-			do {
-				running_sum=0;
-				left_index=0;
-				right_index=0;
-				
-				for (curpair=0; curpair<npair; ++curpair) {
-					current->set(aptr[curpair], tptr[curpair]);
-					cur_anchor=current->row;
-					if (cur_anchor >= alength) { break; }
-					left_edge=current->left;
-					right_edge=current->right;
-
-					// Identifying all bin pairs in the relevant range.
-					while (left_index < npair && (aptr[left_index] < cur_anchor || 
-							(aptr[left_index]==cur_anchor && tptr[left_index] < left_edge))) {
-						running_sum -= cptr[left_index];
-						++left_index;
-					}
-
-					while (right_index < npair && (aptr[right_index]<cur_anchor || 
-							(aptr[right_index]==cur_anchor && tptr[right_index] < right_edge))) { 
-						running_sum += cptr[right_index];
-						++right_index;		
-					}
-
-                    // Adding them onto the current location (except if the anchor is negative;
-                    // skipping needs to be done here, as running_sum still needs to be calculated).
-                    if (cur_anchor <  0) { continue; }
-				    optr[curpair] += running_sum;
-                    nptr[curpair] += right_edge - left_edge;
-				}
-			} while (current->bump_level());
+	for (int quadtype=(intrachr ? 0 : 1); quadtype<4; ++quadtype) {
+	    basic* current=NULL;
+		switch(quadtype) { 
+			case 0: current=&br; break;
+			case 1: current=&ud; break;
+			case 2: current=&lr; break;
+			case 3: current=&aa; break;
 		}
-	} catch (std::exception &e) {
-		UNPROTECT(1);
-		throw;
+
+        Rcpp::IntegerVector ocounts=out_counts[quadtype]; // data passed by reference, so can still use for assignment.
+        Rcpp::IntegerVector oarea=out_areas[quadtype];
+
+		// Iterating across all flank widths.
+		do {
+			int running_sum=0;
+			int left_index=0;
+			int right_index=0;
+			
+			for (int curpair=0; curpair<npair; ++curpair) {
+				current->set(a1[curpair], a2[curpair]);
+				const int cur_anchor=current->row;
+				if (cur_anchor >= a1len) { break; }
+				const int left_edge=current->left;
+				const int right_edge=current->right;
+
+				// Identifying all bin pairs in the relevant range.
+				while (left_index < npair && (a1[left_index] < cur_anchor || 
+						(a1[left_index]==cur_anchor && a2[left_index] < left_edge))) {
+					running_sum -= _count[left_index];
+					++left_index;
+				}
+
+				while (right_index < npair && (a1[right_index]<cur_anchor || 
+						(a1[right_index]==cur_anchor && a2[right_index] < right_edge))) { 
+					running_sum += _count[right_index];
+					++right_index;		
+				}
+
+                // Adding them onto the current location (except if the anchor is negative;
+                // skipping needs to be done here, as running_sum still needs to be calculated).
+                if (cur_anchor <  0) { continue; }
+			    ocounts[curpair] += running_sum;
+                oarea[curpair] += right_edge - left_edge;
+			}
+		} while (current->bump_level());
 	}
 	   
-	UNPROTECT(1);
-	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+	return Rcpp::List::create(out_counts, out_areas);
+    END_RCPP
 }
-
 

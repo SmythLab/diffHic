@@ -19,4 +19,5 @@ Description: Detects differential interactions across biological
         also available.
 License: GPL-3
 NeedsCompilation: yes
-LinkingTo: Rhtslib, zlibbioc
+LinkingTo: Rhtslib, zlibbioc, Rcpp
+SystemRequirements: C++11

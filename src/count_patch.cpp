@@ -1,79 +1,55 @@
 #include "read_count.h"
+#include "utils.h"
 
-SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) try {
-	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
-	const int f=asInteger(filter);
-
-	// Getting the indices of the first and last bin on the target chromosome.
-	if (!isInteger(firstbin) || LENGTH(firstbin)!=1) { throw std::runtime_error("index of first bin on target chromosome must be an integer scalar"); }
-	const int fbin=asInteger(firstbin);
-	if (!isInteger(lastbin) || LENGTH(lastbin)!=1) { throw std::runtime_error("index of last bin on target chromosome must be an integer scalar"); }
-	const int lbin=asInteger(lastbin);
+SEXP count_patch(SEXP all, SEXP bin, SEXP filter, SEXP firstbin, SEXP lastbin) {
+    BEGIN_RCPP
+    const int f=check_integer_scalar(filter, "filter value");
+    const int fbin=check_integer_scalar(firstbin, "index of first bin on second anchor chromosome");
+	const int lbin=check_integer_scalar(lastbin, "index of last bin on second anchor chromosome");
 
 	// Setting up the binning engine.
 	binner engine(all, bin, fbin, lbin);
 	const int nlibs=engine.get_nlibs();
-
-	// Sundries.
 	std::deque<int> counts, anchors, targets;
-	int rowdex, countsum, curlib, curanchor;
-    std::deque<int>::const_iterator ccIt, wcIt;
 
 	// Running through all libraries.
 	while (!engine.empty()) {
 		engine.fill();
-		curanchor=engine.get_anchor();
+		const int curanchor=engine.get_anchor();
         const std::deque<int>& waschanged=engine.get_changed();
-        const std::deque<int>& curcounts=engine.get_counts();
+        const std::vector<int>& curcounts=engine.get_counts();
 
 		// Adding it to the main list, if it's large enough.
-        for (wcIt=waschanged.begin(); wcIt!=waschanged.end(); ++wcIt) {
-			rowdex=(*wcIt)*nlibs;
-            ccIt=curcounts.begin()+rowdex;
-			countsum=0;
-			for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
-                countsum+=*ccIt;
-            }
+        for (const auto& wc : waschanged) { 
+			const int rowdex=wc*nlibs;
+            const int enddex=rowdex+nlibs;
+			const int countsum=std::accumulate(curcounts.begin()+rowdex, curcounts.begin()+enddex, 0);
 
 			if (countsum >= f) { 
 				anchors.push_back(curanchor);
-				targets.push_back((*wcIt) + fbin);
-                ccIt-=nlibs;
-				for (curlib=0; curlib<nlibs; ++curlib, ++ccIt) { 
-                    counts.push_back(*ccIt);
+				targets.push_back(wc + fbin);
+				for (int index=rowdex; index<enddex; ++index) {
+                    counts.push_back(curcounts[index]);
                 }
 			}
 		}
 	}
 
-	SEXP output=PROTECT(allocVector(VECSXP, 3));
-	try {
-		const int ncombos=anchors.size();
-		SET_VECTOR_ELT(output, 0, allocVector(INTSXP, ncombos));
-		int* aoptr=INTEGER(VECTOR_ELT(output, 0));
-		SET_VECTOR_ELT(output, 1, allocVector(INTSXP, ncombos));
-		int* toptr=INTEGER(VECTOR_ELT(output, 1));
-		SET_VECTOR_ELT(output, 2, allocMatrix(INTSXP, ncombos, nlibs));
-		std::deque<int*> coptrs(nlibs);
-		for (curlib=0; curlib<nlibs; ++curlib) {
-			if (curlib==0) { coptrs[curlib]=INTEGER(VECTOR_ELT(output, 2)); }
-			else { coptrs[curlib]=coptrs[curlib-1]+ncombos; }
-		}	
+    Rcpp::IntegerVector out_a1(anchors.begin(), anchors.end());
+    Rcpp::IntegerVector out_a2(targets.begin(), targets.end());
+    const int ncombos=anchors.size();
+    Rcpp::IntegerMatrix out_counts(ncombos, nlibs);
 		
-		// Iterating across and filling both the matrix and the components.
-		int cdex=-1;
-		for (size_t vecdex=0; vecdex<anchors.size(); ++vecdex) {
-			aoptr[vecdex]=anchors[vecdex];
-			toptr[vecdex]=targets[vecdex];
-			for (curlib=0; curlib<nlibs; ++curlib) { coptrs[curlib][vecdex]=counts[++cdex]; }
-		}
-	} catch (std::exception& e) { 
-		UNPROTECT(1);
-		throw;
-	}
+    // Iterating across and filling both the matrix and the components.
+    auto cIt=counts.begin();
+    for (size_t vecdex=0; vecdex<ncombos; ++vecdex) {
+        auto currow=out_counts.row(vecdex);
+        for (auto& val : currow) { 
+            val=*cIt;
+            ++cIt;
+        }
+    }
 
-	UNPROTECT(1);
-	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+	return Rcpp::List::create(out_a1, out_a2, out_counts);
+    END_RCPP
 }

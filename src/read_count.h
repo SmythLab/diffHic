@@ -15,12 +15,11 @@ struct coord {
 
 typedef std::priority_queue<coord, std::deque<coord>, std::greater<coord> > pair_queue;
 
-void setup_pair_data (SEXP, const int, std::deque<const int*>&, std::deque<const int*>&, std::deque<int>&, std::deque<int>&);
+int setup_pair_data (Rcpp::List, std::vector<Rcpp::IntegerVector>&, std::vector<Rcpp::IntegerVector>&, std::vector<int>&, std::vector<int>&);
 
 class binner {
 public:
 	binner(SEXP, SEXP, int, int);
-    ~binner();
 
 	void fill();
 	bool empty() const;
@@ -28,23 +27,22 @@ public:
 	int get_nbins() const;
 	int get_anchor() const;
 
-    const std::deque<int>& get_counts() const;
+    const std::vector<int>& get_counts() const;
     const std::deque<int>& get_changed() const;
 private:
 	const int fbin, lbin, nbins;
-	const int* bptr;
 	int nlibs;
+    Rcpp::IntegerVector binid;
 
-    std::deque<const int*> aptrs, tptrs;
-	std::deque<int> nums, indices;
+    std::vector<Rcpp::IntegerVector> anchor1, anchor2;
+	std::vector<int> nums, indices;
+
     pair_queue next;
-	
-	int curab, curtb, curlib, curdex, lib;
-	bool failed;
+	int curab;
 
     // Stuff that is visible to the calling class.
-    std::deque<int> curcounts;
-    std::deque<bool> ischanged;
+    std::vector<int> curcounts;
+    std::vector<int> ischanged;
     std::deque<int> waschanged;
 };
 

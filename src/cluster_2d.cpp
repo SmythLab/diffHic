@@ -1,4 +1,5 @@
 #include "diffhic.h"
+#include "utils.h"
 //#define DEBUG 1
 
 #ifdef DEBUG
@@ -18,45 +19,34 @@
 
 const int nothing=-1;
 
-SEXP cluster_2d (SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t, SEXP tol, SEXP verbose) try {
-	if (!isInteger(start_a) || !isInteger(start_t) || !isInteger(end_a) || !isInteger(end_t)) {
-		throw std::runtime_error("anchor or target start and ends must be integer"); }
-	const int npts=LENGTH(start_a);
-	if (npts!=LENGTH(start_t) || npts!=LENGTH(end_a) || npts!=LENGTH(end_t)) { 
-		throw std::runtime_error("lengths of coordinate vectors are not equal"); }
-	if (!isInteger(tol) || LENGTH(tol)!=1) { 
-		throw std::runtime_error("tolerance should be an integer scalar"); }
-	if (!isLogical(verbose) || LENGTH(verbose)!=1) { 
-		throw std::runtime_error("verbosity should be a logical scalar"); }
+SEXP cluster_2d (SEXP start_anchor1, SEXP start_anchor2, SEXP end_anchor1, SEXP end_anchor2, SEXP tol, SEXP verbose) {
+    BEGIN_RCPP
+    Rcpp::IntegerVector as1(start_anchor1), as2(start_anchor2), ae1(end_anchor1), ae2(end_anchor2);
+    const int npts=as1.size();
+    if (npts!=as2.size() || npts!=ae1.size() || npts!=ae2.size()) { 
+        throw std::runtime_error("lengths of coordinate vectors are not equal"); 
+    }
 
-	const int width=asInteger(tol);
-	const int* asptr=INTEGER(start_a),
-		* aeptr=INTEGER(end_a),
-		* tsptr=INTEGER(start_t),
-		* teptr=INTEGER(end_t);
-	const int verb=asLogical(verbose);
-	
+    const int width=check_integer_scalar(tol, "tolerance");
+    const bool verb=check_logical_scalar(verbose, "verbosity");
+
 	// Setting up the output construct, which specifies the cluster ID of each point.
-	SEXP output=PROTECT(allocVector(INTSXP, npts));
-try {
-	int* optr=INTEGER(output);
+    Rcpp::IntegerVector output(npts, nothing);
 	
-	/* We assume all points are sorted by start_a, start_t already. The idea is to
+	/* We assume all points are sorted by start_a1, start_a2 already. The idea is to
  	 * raster over the interaction space, assimilating all those which lie within 'tol'
  	 * of previous points. Overlaps with multiple points result in the formation of
  	 * synonyms which will be resolved at the end of the function.
  	 */
 	std::map<int, std::pair<int, int> > landscape;
-	std::map<int, std::pair<int, int> >::iterator itl, ito;
 	std::set<std::pair<int, int> > synonyms;
 	int ptdex=0, numids=0;
-	bool beforestart;
 
-	while (ptdex < npts) {
-		const int& cura=asptr[ptdex];
-		const int& curt=tsptr[ptdex];
-		const int& endt=teptr[ptdex];
-		const int& enda=aeptr[ptdex];
+    while (ptdex < npts) {
+        const int& cura=as1[ptdex];
+        const int& enda=ae1[ptdex];
+        const int& curt=as2[ptdex];
+        const int& endt=ae2[ptdex];
 #ifdef DEBUG
 		std::cout << "Adding: " << cura << " to " << enda <<", " << curt << " to " << endt << std::endl;
 #endif		
@@ -64,10 +54,10 @@ try {
 		const int baset=curt-width;
 		const int basea=cura-width;
 		const int finisht=endt+width;
-		int& myid=(optr[ptdex]=nothing);
+		int& myid=output[ptdex];
 
 		// Identifying the landscape element before or at the current target
-		itl=landscape.lower_bound(baset);
+		auto itl=landscape.lower_bound(baset);
 		if (itl==landscape.end()) {
 			; 
 		} else {
@@ -129,7 +119,7 @@ try {
 		 * then there's no way that later start anchors could overlap it either. So, the highest would be the best.
 		 * Finally, we add a new start post if the preceding element is not overriding us.
 		 */
-		beforestart=(itl==landscape.begin());
+		bool beforestart=(itl==landscape.begin());
 		if (!beforestart) { 
 			--itl;
 			while (itl->first > curt) {
@@ -175,7 +165,7 @@ try {
 		}
 
 		if (verb) { // Printing landscape.
-			for (std::map<int, std::pair<int, int> >::const_iterator itx=landscape.begin(); itx!=landscape.end(); ++itx) {
+			for (auto itx=landscape.begin(); itx!=landscape.end(); ++itx) {
                 Rprintf("%i[%i](%i) ", itx->first, (itx->second).first, (itx->second).second);
 			}
 			Rprintf("\n");
@@ -183,50 +173,55 @@ try {
 
 #ifdef DEBUG
 		std::cout << "#### New landscape!" << std::endl;
-		for (std::map<int, std::pair<int, int> >::const_iterator itx=landscape.begin(); itx!=landscape.end(); ++itx) {
+		for (auto itx=landscape.begin(); itx!=landscape.end(); ++itx) {
 			std::cout << itx->first << ": " << (itx->second).first << " (" << (itx->second).second << ")" << std::endl;
 		}
 #endif		
 		++ptdex;
 	}
 
-	// Resolving synonyms using a recursive-ish algorithm. It's a bit slow but at least it'll work. I need to fill up the reverse, though.
+	// Resolving synonyms using a recursive-ish algorithm, which is a bit slow but at least it'll work. 
+    // I need to fill up the reverse links, though, to guarantee that it will work properly.
 	{ 
 		std::set<std::pair<int, int> > alternate;
-		for (std::set<std::pair<int, int> >::iterator its=synonyms.begin(); its!=synonyms.end(); ++its) { 
-			alternate.insert(std::make_pair(its->second, its->first)); }
+		for (const auto& link : synonyms) { 
+			alternate.insert(std::make_pair(link.second, link.first)); 
+        }
 		synonyms.insert(alternate.begin(), alternate.end());
 	}
 #ifdef DEBUG
 	std::cout << "Synonyms are: " << std::endl;
-	for (std::set<std::pair<int, int> >::const_iterator itx=synonyms.begin(); itx!=synonyms.end(); ++itx) {
-		std::cout << itx->first << "\t" << itx->second << std::endl;;
+	for (const auto& link : synonyms) { 
+		std::cout << link.first << "\t" << link.second << std::endl;;
 	}
 	std::cout << "Iterating now!" << std::endl;
 #endif
 	
-	std::deque<int> newids(numids, nothing);
+	std::vector<int> newids(numids, nothing);
 	numids=1;
 	while (!synonyms.empty()) {
 		std::priority_queue<int, std::deque<int>, std::greater<int> > next;
-		std::set<std::pair<int, int> >::iterator itx=synonyms.begin();
+		auto itx=synonyms.begin();
 		int curid=itx->first;
 		newids[curid]=numids;
 
 		bool found=false;
 		do {
 			do {
-				next.push(itx->second);
-				newids[itx->second]=numids;
+                const int& alt=itx->second;
+				next.push(alt);
+				newids[alt]=numids;
 				synonyms.erase(itx++);
 			} while (itx!=synonyms.end() && curid==itx->first);
 
 			found=false;
 			while (!next.empty()) {
 				curid=next.top();
-				itx=synonyms.lower_bound(std::make_pair(curid, nothing));
-				do { next.pop(); } while (!next.empty() && next.top()==curid);
+				do { 
+                    next.pop(); 
+                } while (!next.empty() && next.top()==curid);
 
+				itx=synonyms.lower_bound(std::make_pair(curid, nothing));
 				if (itx!=synonyms.end() && itx->first==curid) {
 					found=true;
 					break;
@@ -237,22 +232,18 @@ try {
 	}
 
 	// Mopping up anything which doesn't have any synonyms.
-	for (size_t i=0; i<newids.size(); ++i) {
-		if (newids[i]==nothing) { 
-			newids[i]=numids;
+	for (auto& id : newids) { 
+		if (id==nothing) { 
+			id=numids;
 			++numids;
 		}
 	}
 	
-	for (int i=0; i<npts; ++i) { optr[i]=newids[optr[i]]; }
-} catch (std::exception &e) {
-	UNPROTECT(1);
-	throw;
-}
-	UNPROTECT(1);
-	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+	for (auto& o : output) { 
+        o=newids[o];
+    }
+    return output;
+    END_RCPP
 }
 
 /****************************************************************************
@@ -268,79 +259,58 @@ try {
  ****************************************************************************
  ****************************************************************************/
 
-SEXP split_clusters (SEXP id, SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t, SEXP maxw) try {
-	if (!isInteger(id)) { throw std::runtime_error("cluster id values should be integer"); }
-	const int npts=LENGTH(id);
-	if (!isInteger(start_a) || !isInteger(start_t) || !isInteger(end_a) || !isInteger(end_t)) {
-		throw std::runtime_error("anchor or target start and ends must be integer"); }
-	if (npts!=LENGTH(start_a) || npts!=LENGTH(start_t) || npts!=LENGTH(end_a) || npts!=LENGTH(end_t)) { 
-		throw std::runtime_error("lengths of coordinate vectors are not equal"); }
-	if (!isInteger(maxw) || LENGTH(maxw)!=1) { 
-		throw std::runtime_error("maximum width should be an integer scalar"); }
-
-	const int width=asInteger(maxw);
-	const int* asptr=INTEGER(start_a),
-		* aeptr=INTEGER(end_a),
-		* tsptr=INTEGER(start_t),
-		* teptr=INTEGER(end_t),
-		* iptr=INTEGER(id);
-
+SEXP split_clusters(SEXP clustid, SEXP start_anchor1, SEXP start_anchor2, SEXP end_anchor1, SEXP end_anchor2, SEXP maxw) {
+    BEGIN_RCPP
+    Rcpp::IntegerVector id(clustid), as1(start_anchor1), as2(start_anchor2), ae1(end_anchor1), ae2(end_anchor2);
+    const int npts=id.size();
+    if (npts!=as1.size() || npts!=as2.size() || npts!=ae1.size() || npts!=ae2.size()) { 
+        throw std::runtime_error("lengths of coordinate vectors are not equal"); 
+    }
+    const int width=check_integer_scalar(maxw, "maximum width");
+   
 	// Getting the maximum ID, and constructing holding cells specifying the cluster starts and ends. 
-	int maxid=0;	
-	for (int i=0; i<npts; ++i) { 
-		if (maxid < iptr[i]) { maxid=iptr[i]; }
-	}
-	++maxid;
-	int* newas=(int*)R_alloc(maxid, sizeof(int));
-	for (int i=0; i<maxid; ++i) { newas[i]=-1; }
-	int* newts=(int*)R_alloc(maxid, sizeof(int));
-	int* newae=(int*)R_alloc(maxid, sizeof(int));
-	int* newte=(int*)R_alloc(maxid, sizeof(int));
+    const int maxid=(npts ? (*std::max_element(id.begin(), id.end())) + 1 : 0);
+    std::vector<int> newas1(maxid, nothing), newas2(maxid), newae1(maxid), newae2(maxid);
 
 	// Getting the extremes for the starts and ends.
 	for (int i=0; i<npts; ++i) {
-		const int& curid=iptr[i];
-		if (newas[curid]==-1) { 
-			newas[curid]=asptr[i];
-			newts[curid]=tsptr[i];
-			newae[curid]=aeptr[i];
-			newte[curid]=teptr[i];
+		const int& curid=id[i];
+		if (newas1[curid]==nothing) { 
+			newas1[curid]=as1[i];
+			newas2[curid]=as2[i];
+			newae1[curid]=ae1[i];
+			newae2[curid]=ae2[i];
 		} else {
-			if (asptr[i] < newas[curid]) { newas[curid]=asptr[i]; }
-			if (tsptr[i] < newts[curid]) { newts[curid]=tsptr[i]; }
-			if (aeptr[i] > newae[curid]) { newae[curid]=aeptr[i]; }
-			if (teptr[i] > newte[curid]) { newte[curid]=teptr[i]; }
+			if (as1[i] < newas1[curid]) { newas1[curid]=as1[i]; }
+			if (as2[i] < newas2[curid]) { newas2[curid]=as2[i]; }
+			if (ae1[i] > newae1[curid]) { newae1[curid]=ae1[i]; }
+			if (ae2[i] > newae2[curid]) { newae2[curid]=ae2[i]; }
 		}
 	}
 
 	// Going through each cluster and filling in the subinterval width.
-	double* newsuba=(double*)R_alloc(maxid, sizeof(double));
-	double* newsubt=(double*)R_alloc(maxid, sizeof(double));
-	int * newnumt =(int*)R_alloc(maxid, sizeof(int));
-	int * newidstart=(int*)R_alloc(maxid, sizeof(int));
-	double diff;
-	int mult, prod, last=1;
+    std::vector<double> newsuba1(maxid, -1), newsuba2(maxid, -1);
+    std::vector<int> newnum(maxid, 1), newidstart(maxid);
+	int last=1;
 
 	for (int i=0; i<maxid; ++i) {
-		if (newas[i]==-1) { continue; }
-		diff=newae[i]-newas[i];
+		if (newas1[i]==nothing) { 
+            continue; 
+        }
+		double diff=newae1[i]-newas1[i];
+        int prod=1;
 		if (diff > width) { 
-			mult=int(diff/width+0.5);
+			const int mult=int(diff/width+0.5);
 			prod=mult;
-			newsuba[i]=diff/mult;
-		} else { 
-			newsuba[i]=-1; 
-			prod=1;
+			newsuba1[i]=diff/mult;
 		}
 
-		diff=newte[i]-newts[i];
+		diff=newae2[i]-newas2[i];
 		if (diff > width) { 
-			newnumt[i]=int(diff/width+0.5);
-			prod*=newnumt[i];
-			newsubt[i]=diff/newnumt[i];
-		} else {
- 			newnumt[i]=1;
-			newsubt[i]=-1; 
+            const int mult=int(diff/width+0.5);
+			newnum[i]=mult;
+			prod*=mult;
+			newsuba2[i]=diff/mult;
 		}
 
 		newidstart[i]=last;
@@ -351,29 +321,19 @@ SEXP split_clusters (SEXP id, SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t
  	 * We use the midpoint of the original bins to decide if something should go in one place
  	 * or the other.
  	 */
-	SEXP output=PROTECT(allocVector(INTSXP, npts));
-	try {
-		int* optr=INTEGER(output);
-		for (int i=0; i<npts; ++i) {
-			const int& curid=iptr[i];
-			if (newas[curid]==-1) { continue; }
-			int& extra=(optr[i]=newidstart[curid]);
-			if (newsuba[curid]>0) {
-				extra+=int( (0.5*double(aeptr[i]+asptr[i])-newas[curid])/newsuba[curid] ) * newnumt[curid];
-			}
-			if (newsubt[curid]>0) {
-				extra+=int( (0.5*double(teptr[i]+tsptr[i])-newts[curid])/newsubt[curid] );
-			} 
+    Rcpp::IntegerVector output(npts);
+    for (int i=0; i<npts; ++i) {
+        const int& curid=id[i];
+		int& extra=(output[i]=newidstart[curid]);
+        if (newsuba1[curid]>0) {
+			extra+=int( (0.5*double(ae1[i]+as1[i])-newas1[curid])/newsuba1[curid] ) * newnum[curid];
 		}
-	} catch (std::exception& e){
-		UNPROTECT(1);
-		throw;
-	}
-
-	UNPROTECT(1);
+		if (newsuba2[curid]>0) {
+			extra+=int( (0.5*double(ae2[i]+as2[i])-newas2[curid])/newsuba2[curid] );
+        } 
+    }
 	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+    END_RCPP
 }
 
 /*************************************************************
@@ -381,59 +341,33 @@ SEXP split_clusters (SEXP id, SEXP start_a, SEXP start_t, SEXP end_a, SEXP end_t
  * for each cluster.
  *************************************************************/
 
-SEXP get_bounding_box (SEXP ids, SEXP starts, SEXP ends) try {
-	if (!isInteger(ids)) { throw std::runtime_error("ID vector should be integer"); }
-	if (!isInteger(starts)) { throw std::runtime_error("start vector should be integer"); }
-	if (!isInteger(ends)) { throw std::runtime_error("end vector should be integer"); }
-	
-	const int npts=LENGTH(ids);
-	if (LENGTH(starts)!=npts || LENGTH(ends)!=npts) { throw std::runtime_error("vectors are not of same length"); }
-	const int * iptr=INTEGER(ids);
-	const int * sptr=INTEGER(starts);
-	const int * eptr=INTEGER(ends);
+SEXP get_bounding_box (SEXP ids, SEXP starts, SEXP ends) {
+    BEGIN_RCPP
+    Rcpp::IntegerVector _ids(ids), _starts(starts), _ends(ends);	
+	const int npts=_ids.size();
+	if (_starts.size()!=npts || _ends.size()!=npts) { 
+        throw std::runtime_error("vectors are not of same length"); 
+    }
 
-	int maxid=0;
+	const int maxid=(npts ? *std::max_element(_ids.begin(), _ids.end()) : 0);
+    Rcpp::IntegerVector out_first(maxid, nothing), out_start(maxid), out_end(maxid);
+
 	for (int i=0; i<npts; ++i) { 
-		if (iptr[i] > maxid) { maxid=iptr[i]; }
-	}
-
-	SEXP output=PROTECT(allocVector(VECSXP, 3));
-try {
-	SET_VECTOR_ELT(output, 0, allocVector(INTSXP, maxid));	
-	int* first_ptr=INTEGER(VECTOR_ELT(output, 0));
-	for (int i=0; i<maxid; ++i) { first_ptr[i] = -1; }
-	SET_VECTOR_ELT(output, 1, allocVector(INTSXP, maxid));	
-	int* start_ptr=INTEGER(VECTOR_ELT(output, 1));
-	SET_VECTOR_ELT(output, 2, allocVector(INTSXP, maxid));	
-	int* end_ptr=INTEGER(VECTOR_ELT(output, 2));
-
-	// To deal with 1-based indexing.
-	--start_ptr;
-	--end_ptr;
-	--first_ptr;
-	for (int i=0; i<npts; ++i) { 
-		const int& current=iptr[i];
-		if (first_ptr[current]==-1) {
-			first_ptr[current]=i+1;
-			start_ptr[current]=sptr[i];
-			end_ptr[current]=eptr[i];
+		const int current=_ids[i]-1; // 1-based indexing.
+		if (out_first[current]==nothing) {
+			out_first[current]=i+1;
+			out_start[current]=_starts[i];
+			out_end[current]=_ends[i];
 		} else { 
-			if (start_ptr[current] > sptr[i]) { start_ptr[current]=sptr[i]; } 
-			if (end_ptr[current] < eptr[i]) { end_ptr[current]=eptr[i]; }
+			if (out_start[current] > _starts[i]) { out_start[current]=_starts[i]; } 
+			if (out_end[current] < _ends[i]) { out_end[current]=_ends[i]; }
 		}
 	}	
 
-	++first_ptr;
-	for (int i=0; i<maxid; ++i) { 
-		if (first_ptr[i]==-1) { throw std::runtime_error("missing entries in the ID vector"); }
+    for (const auto& f : out_first) { 
+		if (f==nothing) { throw std::runtime_error("missing entries in the ID vector"); }
 	}
-} catch (std::exception& e) {
-	UNPROTECT(1);
-	throw;
-}
-	UNPROTECT(1);
-	return output;
-} catch (std::exception &e) {
-	return mkString(e.what());
+	return Rcpp::List::create(out_first, out_start, out_end);
+    END_RCPP
 }
 

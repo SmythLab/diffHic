@@ -1,103 +1,95 @@
+#include "diffhic.h"
 #include "read_count.h"
+#include "utils.h"
 
-void accumulate_pairs(const int& curab, const int& curtb, pair_queue& next, 
-        std::deque<const int*>& aptrs, std::deque<const int*>& tptrs, 
-        std::deque<int>& nums, std::deque<int>& indices, 
-        std::deque<int>& counts) {
-    // This speeds things up by collecting entries with the same fragment indices.
-    int curlib;
+void accumulate_pairs(int curab, int curtb, pair_queue& next, 
+        const std::vector<Rcpp::IntegerVector>& anchor1, const std::vector<Rcpp::IntegerVector>& anchor2,
+        const std::vector<int>& nums, std::vector<int>& indices, std::vector<int>& counts) {
+    
+    // This speeds things up by collecting entries with the same fragment indices and determining its count vector.
+    std::fill(counts.begin(), counts.end(), 0);
     do {
-        curlib=next.top().library;
+        int curlib=next.top().library;
         int& libdex=indices[curlib];
         counts[curlib]+=1;
         next.pop();
         if ((++libdex) < nums[curlib]) {
-            next.push(coord(aptrs[curlib][libdex], tptrs[curlib][libdex], curlib));
+            next.push(coord(anchor1[curlib][libdex], anchor2[curlib][libdex], curlib)); // 1-based indexing.
         } 
     } while (!next.empty() && next.top().anchor==curab && next.top().target==curtb);
     return;
 }
 
 SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1, 
-        SEXP start2, SEXP end2, SEXP region2, SEXP filter) try {		
-   
-	if (!isInteger(start1) || !isInteger(end1)) { throw std::runtime_error("fragment indices (1) must be integer vectors"); }
-	const int ni1=LENGTH(start1);
-	if (LENGTH(end1)!=ni1) { throw std::runtime_error("start/end index vectors (1) should be the same length"); }
+        SEXP start2, SEXP end2, SEXP region2, SEXP filter) {		
+    BEGIN_RCPP
 
-    if (!isInteger(region1)) { throw std::runtime_error("region indices (1) must be integer vectors"); }
-    const int nrp1=LENGTH(region1)+1; // As 'end' refers to one-past-the-end. 
+    Rcpp::IntegerVector _start1(start1), _end1(end1);
+    const int ni1=_start1.size();
+    if (_end1.size()!=ni1) { 
+        throw std::runtime_error("start/end index vectors (1) should be the same length"); 
+    }
+    auto s1It=_start1.begin()-1, e1It=_end1.begin()-1; // Account for 1-based indexing.
 
-    // Setting up pointers (-1 for 1-based indexing).
-	const int * s1ptr=INTEGER(start1)-1,
-			* e1ptr=INTEGER(end1)-1,
-			* r1ptr=INTEGER(region1)-1,
-            * s2ptr=s1ptr, * e2ptr=e1ptr, * r2ptr=r1ptr;
+    Rcpp::IntegerVector _region1(region1);
+    const int nrp1=_region1.size()+1; // As 'end' refers to one-past-the-end. 
+    auto r1It=_region1.begin()-1;
     
-    // Checking scalars.
-	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
-	const int filtval=asInteger(filter);
+    const int filtval=check_integer_scalar(filter, "filter value");
 
     // Repeating for the second region, if specified.
+    Rcpp::IntegerVector _start2(_start1), _end2(_end1), _region2(_region1);
     int ni2=ni1, nrp2=nrp1;
+
     const bool use_second=(region2!=R_NilValue);
     if (use_second) {
-        if (!isInteger(start2) || !isInteger(end2)) {
-            throw std::runtime_error("fragment indices (2) must be integer vectors"); }
-        ni2=LENGTH(start2); 
-        if (LENGTH(end2)!=ni2) { throw std::runtime_error("start/end index vectors (2) should be the same length"); }
+        _start2=Rcpp::IntegerVector(start2);
+        _end2=Rcpp::IntegerVector(end2);
+        ni2=_start2.size();
+        if (_end2.size()!=ni2) { 
+            throw std::runtime_error("start/end index vectors (2) should be the same length"); 
+        }
 
-        if (!isInteger(region2)) { throw std::runtime_error("region indices (2) must be integer vectors"); }
-        nrp2=LENGTH(region2)+1; 
-
-        s2ptr=INTEGER(start2)-1;
-        e2ptr=INTEGER(end2)-1;
-        r2ptr=INTEGER(region2)-1;
+        _region2=Rcpp::IntegerVector(region2);
+        nrp2=_region2.size()+1;
     }
+    
+    auto s2It=_start2.begin()-1, e2It=_end2.begin()-1, r2It=_region2.begin()-1;
 
 	// Setting up other structures, including pointers. We assume it's sorted on R's side.
-   	if (!isNewList(all)) { throw std::runtime_error("data on interacting PETs must be contained within a list"); }
-	const int nlibs=LENGTH(all);
-	std::deque<const int*> aptrs(nlibs), tptrs(nlibs);
-	std::deque<int> nums(nlibs), indices(nlibs);
-    setup_pair_data(all, nlibs, aptrs, tptrs, nums, indices);
+	std::vector<Rcpp::IntegerVector> anchor1, anchor2;
+	std::vector<int> nums, indices;
+    const int nlibs=setup_pair_data(all, anchor1, anchor2, nums, indices);
     
     pair_queue next;
-    int lib;
-    for (lib=0; lib<nlibs; ++lib) {
-        if (nums[lib]) { next.push(coord(aptrs[lib][0], tptrs[lib][0], lib)); }
+    for (int lib=0; lib<nlibs; ++lib) {
+        if (nums[lib]) { next.push(coord(anchor1[lib][0], anchor2[lib][0], lib)); } // 1-based indexing.
     }
 	
 	// Running through all libraries.
 	std::deque<int> counts;
 	typedef std::pair<int, int> combo;
 	std::map<combo, std::pair<int, int> > bins;
-	std::map<combo, std::pair<int, int> >::iterator itb;
-	std::deque<int> curcounts(nlibs);
-
-	int curab, curtb;
-	combo temp;
-	int mode, counter=0;
-	int x1, x2, y1, y2;
+	std::vector<int> curcounts(nlibs);
+    int counter=0;
 
 	int smallest=-1;
 	std::deque<int> returned_anchors, returned_targets;
 	std::deque<size_t> count_indices;
-	int countsum;
-	size_t index;
 
 	while (!next.empty()) {
-		curab=next.top().anchor;
-		curtb=next.top().target;
+		const int curab=next.top().anchor;
+		const int curtb=next.top().target;
 		++counter;
-        accumulate_pairs(curab, curtb, next, aptrs, tptrs, nums, indices, curcounts); 
+        accumulate_pairs(curab, curtb, next, anchor1, anchor2, nums, indices, curcounts); 
 
 		/* Allocating counts to every pair of ranges containing these fragments. This
          * has a lot of loops but it shouldn't be too bad if there aren't many 
          * overlapping ranges. The 'uppermode' just checks the anchor vs the second
          * set of regions and the target vs the first set of regions, if there are two sets.
  		 */
-        for (mode=0; mode<(use_second ? 2 : 1); ++mode) { 
+        for (int mode=0; mode<(use_second ? 2 : 1); ++mode) { 
+	        int y1, y2;
             if (mode==0) { 
                 y1=curab;
                 y2=curtb;
@@ -106,30 +98,33 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
                 y2=curab;
             }
             if (y1>ni1) { throw std::runtime_error("invalid index (1) for supplied fragments"); } // 1-based indexing, so '>' is right.
-            const int& s1x=s1ptr[y1];
-            const int& e1x=e1ptr[y1];
+            const int& s1x=*(s1It + y1);
+            const int& e1x=*(e1It + y1);
             if (y2>ni2) { throw std::runtime_error("invalid index (2) for supplied fragments"); }
-            const int& s2x=s2ptr[y2];
-            const int& e2x=e2ptr[y2];
+            const int& s2x=*(s2It + y2);
+            const int& e2x=*(e2It + y2);
         
             if (s1x!=e1x && s2x!=e2x) { 
                 if (s1x <= 0 || s2x <= 0 || e1x > nrp1 || e2x > nrp2) { throw std::runtime_error("invalid start/endpoints for region indices"); }
-                for (x1=s1x; x1<e1x; ++x1) {
-                    for (x2=s2x; x2<e2x; ++x2) {
+                for (int x1=s1x; x1<e1x; ++x1) {
+                    for (int x2=s2x; x2<e2x; ++x2) {
 
                         /* Avoid redundant naming, when looking within the same ranges; region with 
                          * higher genomic coordinates goes first. This should always increase, see below.
                          */
-                        if (r1ptr[x1] > r2ptr[x2]) {
-                            temp.first=r1ptr[x1];
-                            temp.second=r2ptr[x2];
+	                    combo temp;
+                        const int& r1=*(r1It + x1);
+                        const int& r2=*(r2It + x2);
+                        if (r1 > r2) { 
+                            temp.first=r1;
+                            temp.second=r2;
                         } else {
-    						temp.first=r2ptr[x2];
-    						temp.second=r1ptr[x1];
+                            temp.first=r2;
+                            temp.second=r1;
     					}
 	    				if (temp.first < smallest) { throw std::runtime_error("largest index cannot be lower than 'smallest' threshold"); }
 
-    					itb=bins.lower_bound(temp);
+    					auto itb=bins.lower_bound(temp);
     					if (itb==bins.end() || bins.key_comp()(temp, itb->first)) {
     						itb = bins.insert(itb, std::make_pair(temp, std::make_pair(counts.size(), counter)));
     						counts.resize(counts.size()+nlibs);
@@ -145,14 +140,11 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
     					}
     					(itb->second).second=counter;
     					const int& index=(itb->second).first;
-    					for (lib=0; lib<nlibs; ++lib) { counts[index+lib] += curcounts[lib]; }
+    					for (int lib=0; lib<nlibs; ++lib) { counts[index+lib] += curcounts[lib]; }
                     }
 				}
 			}
 		}
-
-		// Resetting counts.
-        std::fill(curcounts.begin(), curcounts.end(), 0);
 
 		/* Saving all entries where the first region index is below the smallest anchor-overlapped region index for the current read pair.
          * This frees up the map to make it almost 1-dimensional, which should reduce memory usage and improve speed.
@@ -162,77 +154,63 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
          * Now, the first index of each entry is the larger of the two indices; if an entry has a first index below the current
          * smallest anchor-overlapped region, it cannot possibly be updated at later iterations. This means we can remove it.
   		 */
-        const int& s1x=s1ptr[curab];
-        const int& e1x=e1ptr[curab];
-        for (x1=s1x; x1<e1x; ++x1) { if (smallest > r1ptr[x1]) { smallest=r1ptr[x1]; } }
+        const int& s1x=_start1[curab];
+        const int& e1x=_end1[curab];
+        const int altsmallest1=*std::min_element(_region1.begin()+s1x, _region1.begin()+e1x);
+        if (altsmallest1 < smallest) { 
+            smallest=altsmallest1;
+        }
         if (use_second) { 
-            const int& s2x=s2ptr[curab];
-            const int& e2x=e2ptr[curab];
-            for (x2=s2x; x2<e2x; ++x2) { if (smallest > r2ptr[x2]) { smallest=r2ptr[x2]; } }
+            const int& s2x=_start2[curab];
+            const int& e2x=_end2[curab];
+            const int altsmallest2=*std::min_element(_region2.begin()+s2x, _region2.begin()+e2x);
+            if (altsmallest2 < smallest) { 
+                smallest=altsmallest2;
+            }
         }
 
-		itb=bins.begin();
-		while (itb!=bins.end()) { 
-			if ((itb->first).first < smallest) {
-				countsum=0; 
-				index=(itb->second).first;
-				for (lib=0; lib<nlibs; ++lib, ++index) { countsum += counts[index]; }
-
-				if (countsum >= filtval) { // Checking that the count sum is sufficient.
-					returned_anchors.push_back((itb->first).first);
-					returned_targets.push_back((itb->first).second);
-					count_indices.push_back((itb->second).first);
-				}
-				bins.erase(itb++);
-			} else {
-				break;
-			}
+		auto itb=bins.begin();
+		while (itb!=bins.end() && (itb->first).first < smallest) {
+            const int& index=(itb->second).first;
+            const int countsum=std::accumulate(counts.begin()+index, counts.begin()+index+nlibs, 0);
+    
+            if (countsum >= filtval) { // Checking that the count sum is sufficient.
+                returned_anchors.push_back((itb->first).first);
+                returned_targets.push_back((itb->first).second);
+                count_indices.push_back((itb->second).first);
+            }
+            bins.erase(itb++);
 		}
 	}
 
-	// Assessing how many combinations are above threshold.
-	for (itb=bins.begin(); itb!=bins.end(); ++itb) { 
-		countsum=0;
-		index=(itb->second).first;
-		for (lib=0; lib<nlibs; ++lib, ++index) { countsum += counts[index]; }
+	// Assessing how many remaining combinations are above threshold.
+	for (auto itb=bins.begin(); itb!=bins.end(); ++itb) { 
+        const int& index=(itb->second).first;
+        const int countsum=std::accumulate(counts.begin()+index, counts.begin()+index+nlibs, 0);
 		if (countsum >= filtval) { 
 			returned_anchors.push_back((itb->first).first);
 			returned_targets.push_back((itb->first).second);
 			count_indices.push_back((itb->second).first);
 		}
 	}
-	const size_t ncombos=count_indices.size();
 
 	// Returning all count combinations underneath the threshold.
-	SEXP output=PROTECT(allocVector(VECSXP, 3));
-	try {
-		SET_VECTOR_ELT(output, 0, allocVector(INTSXP, ncombos));
-		int* aoptr=INTEGER(VECTOR_ELT(output, 0));
-		SET_VECTOR_ELT(output, 1, allocVector(INTSXP, ncombos));
-		int* toptr=INTEGER(VECTOR_ELT(output, 1));
-		SET_VECTOR_ELT(output, 2, allocMatrix(INTSXP, ncombos, nlibs));
-		std::deque<int*> coptrs(nlibs);
-		for (lib=0; lib<nlibs; ++lib) {
-			if (lib==0) { coptrs[lib]=INTEGER(VECTOR_ELT(output, 2)); }
-			else { coptrs[lib]=coptrs[lib-1]+ncombos; }
-		}	
+    const size_t ncombos=count_indices.size();
+    Rcpp::IntegerVector out_anchor1(returned_anchors.begin(), returned_anchors.end());
+    Rcpp::IntegerVector out_anchor2(returned_targets.begin(), returned_targets.end());
+    Rcpp::IntegerMatrix out_count(ncombos, nlibs);
 		
-		// Iterating across and filling both the matrix and the components.
-		for (size_t odex=0; odex < ncombos; ++odex) { 
-			aoptr[odex]=returned_anchors[odex];
-			toptr[odex]=returned_targets[odex];
-			const int& index=count_indices[odex];
-			for (lib=0; lib<nlibs; ++lib) { coptrs[lib][odex]=counts[index+lib]; }
-		}
-	} catch (std::exception& e) { 
-		UNPROTECT(1);
-		throw;
-	}
+	for (size_t odex=0; odex < ncombos; ++odex) { 
+		int index=count_indices[odex];
+        auto currow=out_count.row(odex);
+		for (auto& val : currow) {
+            val=counts[index];
+            ++index;
+        }
+    }
 
-	UNPROTECT(1);
-	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+	return Rcpp::List::create(out_anchor1, out_anchor2, out_count);
+    END_RCPP
 }
 
 /* This does the same for DNase-C data, where the assignment into ranges 
@@ -240,76 +218,56 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
  * need to scan across the assignments in 'links' and aggregate counts.
  */
 
-SEXP count_reconnect(SEXP links, SEXP filter) try {	
+SEXP count_reconnect(SEXP links, SEXP filter) {	
+    BEGIN_RCPP 
+
 	// Setting up the structure to the links.
- 	const int nlibs=LENGTH(links);
-	std::deque<const int*> aptrs(nlibs), tptrs(nlibs);
-	std::deque<int> nums(nlibs), indices(nlibs);
-    setup_pair_data(links, nlibs, aptrs, tptrs, nums, indices);
+	std::vector<Rcpp::IntegerVector> anchor1, anchor2;
+	std::vector<int> nums, indices;
+ 	const int nlibs=setup_pair_data(links, anchor1, anchor2, nums, indices);
 
     pair_queue next;
-    int lib;
-    for (lib=0; lib<nlibs; ++lib) {
-        if (nums[lib]) { next.push(coord(aptrs[lib][0], tptrs[lib][0], lib)); }
+    for (int lib=0; lib<nlibs; ++lib) {
+        if (nums[lib]) { next.push(coord(anchor1[lib][0], anchor2[lib][0], lib)); }
     }
 
-    // Checking scalars.
- 	if (!isInteger(filter) || LENGTH(filter)!=1) { throw std::runtime_error("filter value must be an integer scalar"); }
-	const int filtval=asInteger(filter);
+    const int filtval=check_integer_scalar(filter, "filter value");
 
    // Running through the pairs.
     std::deque<int> returned_anchors, returned_targets;
 	std::deque<int> counts;
-	std::deque<int> curcounts(nlibs);
-    int total, curab, curtb;
+	std::vector<int> curcounts(nlibs);
 
     while (!next.empty()) {
-		curab=next.top().anchor;
-		curtb=next.top().target;
-        accumulate_pairs(curab, curtb, next, aptrs, tptrs, nums, indices, curcounts); 
+		const int curab=next.top().anchor;
+		const int curtb=next.top().target;
+        accumulate_pairs(curab, curtb, next, anchor1, anchor2, nums, indices, curcounts); 
 
         // Inserting if the sum of counts exceeds the value.
-        total=0;
-        for (lib=0; lib<nlibs; ++lib) { total += curcounts[lib]; }
+        const int total=std::accumulate(curcounts.begin(), curcounts.end(), 0);
         if (total >= filtval) { 
             returned_anchors.push_back(curab);
             returned_targets.push_back(curtb);
-            for (lib=0; lib<nlibs; ++lib) { counts.push_back(curcounts[lib]); }
+            counts.insert(counts.end(), curcounts.begin(), curcounts.end());
         }
-        std::fill(curcounts.begin(), curcounts.end(), 0);
     }
 
     // Saving the output.
-	SEXP output=PROTECT(allocVector(VECSXP, 3));
-	try {
-        const int ncombos = returned_anchors.size();
-		SET_VECTOR_ELT(output, 0, allocVector(INTSXP, ncombos));
-		int* aoptr=INTEGER(VECTOR_ELT(output, 0));
-		SET_VECTOR_ELT(output, 1, allocVector(INTSXP, ncombos));
-		int* toptr=INTEGER(VECTOR_ELT(output, 1));
-		SET_VECTOR_ELT(output, 2, allocMatrix(INTSXP, ncombos, nlibs));
-		std::deque<int*> coptrs(nlibs);
-		for (lib=0; lib<nlibs; ++lib) {
-			if (lib==0) { coptrs[lib]=INTEGER(VECTOR_ELT(output, 2)); }
-			else { coptrs[lib]=coptrs[lib-1]+ncombos; }
-		}	
-		
-		// Iterating across and filling both the matrix and the components.
-        int index;
-		for (size_t odex=0; odex < ncombos; ++odex) { 
-			aoptr[odex]=returned_anchors[odex];
-			toptr[odex]=returned_targets[odex];
-			index=odex*nlibs;
-			for (lib=0; lib<nlibs; ++lib) { coptrs[lib][odex]=counts[index+lib]; }
-		}
-	} catch (std::exception& e) { 
-		UNPROTECT(1);
-		throw;
-	}   
+    Rcpp::IntegerVector out_a1(returned_anchors.begin(), returned_anchors.end());
+    Rcpp::IntegerVector out_a2(returned_targets.begin(), returned_targets.end());
+    const int ncombos = returned_anchors.size();
+    Rcpp::IntegerMatrix out_counts(ncombos, nlibs);
 
-    UNPROTECT(1);
-    return output;
-} catch (std::exception& e) {
-    return mkString(e.what());
+    auto cIt=counts.begin();
+    for (size_t odex=0; odex < ncombos; ++odex) { 
+        auto currow=out_counts.row(odex);
+		for (auto& val : currow) { 
+            val=*cIt;
+            ++cIt;
+        }
+	}
+
+    return Rcpp::List::create(out_a1, out_a2, out_counts);
+    END_RCPP
 }
 

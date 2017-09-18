@@ -1,51 +1,36 @@
 #include "diffhic.h"
+#include "utils.h"
 
-struct orderer {
-	orderer (const double* x) : cptr(x) {}
-	bool operator() (const int& l, const int& r) const {  return cptr[l] < cptr[r]; }
-	const double* cptr;
-};
-
-SEXP iterative_correction(SEXP avecount, SEXP anchor, SEXP target, SEXP local, 
-		SEXP nfrags, SEXP iter, SEXP exlocal, SEXP lowdiscard, SEXP winsorhigh) try {
+SEXP iterative_correction(SEXP avecount, SEXP anchor1, SEXP anchor2, SEXP local, 
+		SEXP nfrags, SEXP iter, SEXP exlocal, SEXP lowdiscard, SEXP winsorhigh) {
+    BEGIN_RCPP
 
 	// Checking vector type and length.
-	if (!isNumeric(avecount)) { throw std::runtime_error("average counts must be supplied as a double-precision vector"); }
-	if (!isInteger(anchor) || !isInteger(target)) { throw std::runtime_error("anchor/target indices must be supplied as an integer vector"); }
-	if (!isLogical(local)) { throw std::runtime_error("local specifier should be a logical vector"); }
-	const int npairs=LENGTH(avecount);
-	if (npairs!=LENGTH(anchor) || npairs!=LENGTH(target) || npairs!=LENGTH(local)) { throw std::runtime_error("lengths of vectors are not equal"); }
-	const double* acptr=REAL(avecount);
-	const int* aptr=INTEGER(anchor),
-		  * tptr=INTEGER(target),
-		  * lptr=LOGICAL(local);
+    Rcpp::NumericVector ac(avecount);
+    Rcpp::IntegerVector a1(anchor1), a2(anchor2);
+    Rcpp::LogicalVector l(local);
+    const int npairs=ac.size();
+    if (npairs!=a1.size() || npairs!=a2.size() || npairs!=l.size()) { 
+        throw std::runtime_error("lengths of input vectors are not equal"); 
+    }
 
 	// Checking scalar type.
-	if (!isInteger(nfrags) || LENGTH(nfrags)!=1) { throw std::runtime_error("number of fragments should be an integer scalar"); }
-	if (!isInteger(iter) || LENGTH(iter)!=1) { throw std::runtime_error("number of iterations should be an integer scalar"); }
-	if (!isInteger(exlocal) || LENGTH(exlocal)!=1) { throw std::runtime_error("exclusion specifier should be an integer scalar"); }
-	const int numfrags=asInteger(nfrags),
-		  iterations=asInteger(iter),
-		  excluded=asInteger(exlocal);
-	if (!isNumeric(lowdiscard) || LENGTH(lowdiscard)!=1) { throw std::runtime_error("proportion to discard should be a double-precision scalar"); }
-	const double discarded=asReal(lowdiscard);
-	if (!isNumeric(winsorhigh) || LENGTH(winsorhigh)!=1) { throw std::runtime_error("proportion to winsorize should be a double-precision scalar"); }
-	const double winsorized=asReal(winsorhigh);
+    const int numfrags=check_integer_scalar(nfrags, "number of fragments");
+    const int iterations=check_integer_scalar(iter, "number of iterations");
+    const int excluded=check_integer_scalar(exlocal, "exclusion specifier");
+	const double discarded=check_numeric_scalar(lowdiscard, "proportion to discard");
+    const double winsorized=check_numeric_scalar(winsorhigh, "proportion to winsorize");
 	
-	SEXP output=PROTECT(allocVector(VECSXP, 3));
-try {
 	// Setting up a SEXP to hold the working probabilities (ultimately the truth).
-	SET_VECTOR_ELT(output, 0, allocVector(REALSXP, npairs));
-	double* wptr=REAL(VECTOR_ELT(output, 0));
-	std::copy(acptr, acptr+npairs, wptr);
+    Rcpp::NumericVector working(ac.begin(), ac.end());
 
 	// Excluding highly local interactions.
 	int num_values=npairs;
 	bool drop_intras=(excluded==NA_INTEGER);
 	if (drop_intras || excluded >= 0) {
 		for (int j=0; j<npairs; ++j) {
-			if (lptr[j] && (drop_intras || aptr[j]-tptr[j] <= excluded)) { 
-				wptr[j]=R_NaReal; 
+			if (l[j] && (drop_intras || a1[j]-a2[j] <= excluded)) { 
+				working[j]=R_NaReal; 
 				--num_values;
 			}
 		}
@@ -58,114 +43,114 @@ try {
 	// Winsorizing for the most abundant interactions.
 	const int todrop=int(double(num_values)*winsorized);
 	if (todrop>0) {
-		int* ordered=new int[npairs];
-		try {
-			for (int i=0; i<npairs; ++i) { ordered[i]=i; }
-			orderer current(acptr);
-			std::sort(ordered, ordered+npairs, current);
+        std::vector<std::pair<double, int> > ordered(npairs);
+        for (int i=0; i<npairs; ++i) {
+            ordered[i].first=ac[i];
+            ordered[i].second=i;
+        }
+        std::sort(ordered.begin(), ordered.end());
 	
-			// Identifying the winsorizing value.		
-			int curcount=0;
- 		   	double winsor_val=R_NaReal;
-			for (int i=npairs-1; i>=0; --i) { 
-				const int& curo=ordered[i];
-				if (ISNA(wptr[curo])) { continue; }
-				++curcount;
-				if (curcount > todrop) { 
-					winsor_val=wptr[curo];
-					break; 
-				}
-			}
+        // Identifying the winsorizing value.		
+        int curcount=0;
+        double winsor_val=R_NaReal;
+        for (int i=npairs-1; i>=0; --i) { 
+            const int& curo=ordered[i].second;
+            const double& val=working[curo];
+            if (ISNA(val)) { continue; }
+            ++curcount;
+            if (curcount > todrop) { 
+                winsor_val=val;
+                break; 
+            }
+        }
 
-			// Applying said value to all high-abundance interactions.
-			if (ISNA(winsor_val)) { throw std::runtime_error("specified winsorizing proportion censors all data"); }
-			curcount=0;
-			for (int i=npairs-1; i>=0; --i) { 
-				const int& curo=ordered[i];
-				if (ISNA(wptr[curo])) { continue; }
-				wptr[curo]=winsor_val;
-				++curcount;
-				if (curcount > todrop) { break; }
-			}		
-		} catch (std::exception& e){
-			delete [] ordered;
-			throw;
-		}
-		delete[] ordered;
+		// Applying said value to all high-abundance interactions.
+	    if (ISNA(winsor_val)) { throw std::runtime_error("specified winsorizing proportion censors all data"); }
+		curcount=0;
+        for (int i=npairs-1; i>=0; --i) { 
+            const int& curo=ordered[i].second;
+            double& val=working[curo];
+            if (ISNA(val)) { continue; }
+            val=winsor_val;
+            ++curcount;
+            if (curcount > todrop) { break; }
+        }		
 	}
 
 	// Bias and coverage vectors.
-	SET_VECTOR_ELT(output, 1, allocVector(REALSXP, numfrags));
-	double* bias=REAL(VECTOR_ELT(output, 1)),
-		* biaptr=bias-1;
-	for (int i=0; i<numfrags; ++i) { bias[i]=R_NaReal; }
+    Rcpp::NumericVector out_bias(numfrags, R_NaReal);
 	for (int pr=0; pr<npairs; ++pr) { 
-		if (!ISNA(wptr[pr])) { biaptr[aptr[pr]]=biaptr[tptr[pr]]=1; }
+		if (!ISNA(working[pr])) { 
+            out_bias[a1[pr]-1]=1;
+            out_bias[a2[pr]-1]=1; 
+        }
 	}
-	double* coverage=(double*)R_alloc(numfrags, sizeof(double));
-	for (int i=0; i<numfrags; ++i) { coverage[i]=0; }
-	double* covptr=coverage-1; // To deal with 1-based indices.
+    std::vector<double> coverage(numfrags);
 
 	// Removing low-abundance fragments.
 	if (discarded > 0) {
 		for (int pr=0; pr<npairs; ++pr) {  // Computing the coverage.
-			if (ISNA(wptr[pr])) { continue; }
-			covptr[aptr[pr]]+=wptr[pr]; 
-			covptr[tptr[pr]]+=wptr[pr];
+            const double& wprob=working[pr];
+			if (ISNA(wprob)) { continue; }
+			coverage[a1[pr]-1]+=wprob;
+			coverage[a2[pr]-1]+=wprob;
         }
 
-		int* ordering=new int [numfrags];
-		try {
-			for (int i=0; i<numfrags; ++i) { ordering[i]=i; }
-			orderer current(coverage);
-			std::sort(ordering, ordering+numfrags, current);
+        std::vector<std::pair<double, int> > ordering(numfrags);
+		for (int i=0; i<numfrags; ++i) { 
+            ordering[i].first=coverage[i];
+            ordering[i].second=i; 
+        }
+		std::sort(ordering.begin(), ordering.end());
 		
-			// Ignoring empty rows.
-			int counter=0;
-			while (counter < numfrags && ISNA(bias[ordering[counter]])){ ++counter; }
+        // Ignoring empty rows.
+	    int counter=0;
+	    while (counter < numfrags && ISNA(out_bias[ordering[counter].second])){ ++counter; }
 				
-			// Filtering out low-abundance rows.
-			const int leftover=int(discarded*double(numfrags-counter))+counter;
-			while (counter < leftover) { 
-				bias[ordering[counter]]=R_NaReal;
-				++counter; 
-			}
-
-			// Setting everything else back to zero.
-			while (counter < numfrags) { 
-				coverage[ordering[counter]]=0;
-				++counter;
-			}
-		} catch (std::exception& e) { 
-			delete [] ordering;
-			throw;
+		// Filtering out low-abundance rows.
+	    const int leftover=int(discarded*double(numfrags-counter))+counter;
+		while (counter < leftover) { 
+            out_bias[ordering[counter].second]=R_NaReal;
+		    ++counter; 
 		}
-		delete [] ordering;
+
+		// Setting everything else back to zero.
+        while (counter < numfrags) { 
+            coverage[ordering[counter].second]=0;
+            ++counter;
+        }
 	
 		// Propogating the filters through the interactions to remove anything with an anchor in the removed fragments.
 		for (int pr=0; pr<npairs; ++pr) {
-			if (ISNA(wptr[pr])) { continue; }
-			if (ISNA(biaptr[aptr[pr]]) || ISNA(biaptr[tptr[pr]])) { wptr[pr]=R_NaReal; }  
+			if (ISNA(working[pr])) { continue; }
+			if (ISNA(out_bias[a1[pr]-1]) || ISNA(out_bias[a2[pr]-1])) { 
+                working[pr]=R_NaReal; 
+            }  
 		}
-		for (int i=0; i<numfrags; ++i) { bias[i]=R_NaReal; }
-		for (int pr=0; pr<npairs; ++pr) { 
-			if (!ISNA(wptr[pr])) { biaptr[aptr[pr]]=biaptr[tptr[pr]]=1; }
-		}
+
+        // Resetting the values.
+        std::fill(out_bias.begin(), out_bias.end(), R_NaReal);
+        for (int pr=0; pr<npairs; ++pr) { 
+            if (!ISNA(working[pr])) { 
+                out_bias[a1[pr]-1]=1;
+                out_bias[a2[pr]-1]=1; 
+            }
+        }
 	}
 	
-	// Something to hold a diagnostic (i.e., the maximum step).
-	SET_VECTOR_ELT(output, 2, allocVector(REALSXP, iterations));
-	double* optr=REAL(VECTOR_ELT(output, 2));
-
     /********************************************************
  	 * Now, actually performing the iterative correction. ***
  	 ********************************************************/
 
+    // Something to hold a diagnostic (i.e., the maximum step).
+    Rcpp::NumericVector diagnostic(iterations);
+
 	for (int it=0; it<iterations; ++it) {
 		for (int pr=0; pr<npairs; ++pr) {  // Computing the coverage (ignoring locals, if necessary).
-			if (ISNA(wptr[pr])) { continue; }
-			covptr[aptr[pr]]+=wptr[pr]; 
-			covptr[tptr[pr]]+=wptr[pr];
+            const double& wprob=working[pr];
+			if (ISNA(wprob)) { continue; }
+			coverage[a1[pr]-1]+=wprob;
+			coverage[a2[pr]-1]+=wprob;
         }
 		
 		/* Computing the 'aditional bias' vector, to take the mean across all fragments.
@@ -183,22 +168,33 @@ try {
  		 * itself to divide the working probabilities. Square rooting is necessary to avoid
  		 * instability during iteration.
  		 */
-		for (int i=0; i<numfrags; ++i) { if (!ISNA(bias[i])) { coverage[i]=std::sqrt(coverage[i]); } }
+		for (int i=0; i<numfrags; ++i) { 
+            if (!ISNA(out_bias[i])) { 
+                coverage[i]=std::sqrt(coverage[i]); 
+            } 
+        }
 
 		// Dividing the working matrix with the (geometric mean of the) additional biases.	
 		for (int pr=0; pr<npairs; ++pr){ 
-			if (!ISNA(wptr[pr])) { wptr[pr]/=covptr[aptr[pr]]*covptr[tptr[pr]]; }
+            double& wprob=working[pr];
+			if (!ISNA(wprob)) { 
+                wprob/=coverage[a1[pr]-1] * coverage[a2[pr]-1]; 
+            }
         }
 		
 		// Multiplying the biases by additional biases, and cleaning out coverage. We store
 		// the maximum step to see how far off convergence it is.
-		double& maxed=(optr[it]=0);
+		double& maxed=diagnostic[it];
 		for (int i=0; i<numfrags; ++i) {			
-			if (!ISNA(bias[i])) {
+            double& ob=out_bias[i];
+			if (!ISNA(ob)) {
 				double& cur_cov=coverage[i];
-				if (cur_cov > maxed) { maxed=cur_cov; }
-				else if (1/cur_cov > maxed) { maxed=1/cur_cov; }
-				bias[i]*=cur_cov;
+				if (cur_cov > maxed) { 
+                    maxed=cur_cov; 
+                } else if (1/cur_cov > maxed) { 
+                    maxed=1/cur_cov; 
+                }
+                ob*=cur_cov;
 				cur_cov=0;
 			}
 		}
@@ -209,16 +205,13 @@ try {
 	 * Discarded bins can't be salvaged, though.
 	 */
 	for (int pr=0; pr<npairs; ++pr) {  
-		if (ISNA(biaptr[aptr[pr]]) || ISNA(biaptr[tptr[pr]])) { continue; }
-		wptr[pr] = acptr[pr]/biaptr[aptr[pr]]/biaptr[tptr[pr]];
+        const double& ob1=out_bias[a1[pr]-1];
+        const double& ob2=out_bias[a2[pr]-1];
+		if (ISNA(ob1) || ISNA(ob2)) { continue; }
+		working[pr] = ac[pr]/(ob1*ob2);
 	}
-} catch (std::exception& e) {
-	UNPROTECT(1);
-	throw;
-}
-	UNPROTECT(1);
-	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+    
+	return Rcpp::List::create(working, out_bias, diagnostic);
+    END_RCPP
 }
 

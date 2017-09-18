@@ -1,4 +1,6 @@
 #include "diffhic.h"
+#include "utils.h"
+
 #include <cstdio>
 #include <cstring>
 #include "sam.h"
@@ -8,8 +10,8 @@
  ***********************************************/
 
 struct segment {
-    segment() : offset(0), width(0), fragid(NA_INTEGER), chrid(0), pos(0), reverse(false) {}
-    segment(int c, int p, bool r, int o, int w) : chrid(c), pos(p), reverse(r), offset(o), width(w), fragid(NA_INTEGER) {}
+    segment() : offset(0), width(0), chrid(0), pos(0), fragid(NA_INTEGER), reverse(false) {}
+    segment(int c, int p, bool r, int o, int w) : offset(o), width(w), chrid(c), pos(p), fragid(NA_INTEGER), reverse(r) {}
 	const int offset, width, chrid, pos;
     int fragid;
 	const bool reverse;
@@ -23,17 +25,9 @@ struct segment {
 class base_finder {
 public:
 	base_finder() {}
-    size_t nchrs() const { return pos.size(); }
+    virtual size_t nchrs() const=0;
 	virtual int find_fragment(const segment&) const=0;
     virtual ~base_finder() {};
-protected:
-	struct chr_stats {
-		chr_stats(const int* s, const int* e, const int& l) : start_ptr(s), end_ptr(e), num(l) {}
-		const int* start_ptr;
-		const int* end_ptr;
-		int num;
-	};
-	std::deque<chr_stats> pos;
 };
 
 // A class for typical Hi-C experiments.
@@ -41,46 +35,52 @@ protected:
 class fragment_finder : public base_finder {
 public:
     fragment_finder(SEXP, SEXP);
+    size_t nchrs() const;
 	int find_fragment(const segment&) const;
+private:
+	std::vector<Rcpp::IntegerVector> fstarts, fends;
 };
 
+size_t fragment_finder::nchrs() const {
+    return fstarts.size();
+}
+
 fragment_finder::fragment_finder(SEXP starts, SEXP ends) { // Takes a list of vectors of start/end fragment positions for each chromosome.
-	if (!isNewList(starts) || !isNewList(ends)) { throw std::runtime_error("start/end positions should each be a list of integer vectors"); }
-    const int nchrs=LENGTH(starts);
-	if (nchrs!=LENGTH(ends)) { throw std::runtime_error("number of start/end position vectors should be equal"); }
-	
+    Rcpp::List _starts(starts), _ends(ends);
+    const int nchrs=_starts.size();
+	if (nchrs!=_ends.size()) { throw std::runtime_error("number of start/end position vectors should be equal"); }
+    fstarts.resize(nchrs);
+    fends.resize(nchrs);
+
 	for (int i=0; i<nchrs; ++i) {
-		SEXP current1=VECTOR_ELT(starts, i);
-		if (!isInteger(current1)) { throw std::runtime_error("start vector should be integer"); }
-		SEXP current2=VECTOR_ELT(ends, i);
-		if (!isInteger(current2)) { throw std::runtime_error("end vector should be integer"); }
-		const int ncuts=LENGTH(current1);
-		if (LENGTH(current2)!=ncuts) { throw std::runtime_error("start/end vectors should have the same length"); }
-		pos.push_back(chr_stats(INTEGER(current1), INTEGER(current2), ncuts));	
+        Rcpp::IntegerVector curstarts=_starts[i], curends=_ends[i];
+		const int ncuts=curstarts.size();
+		if (curends.size()!=ncuts) { 
+            throw std::runtime_error("start/end vectors should have the same length"); 
+        }
+        fstarts[i]=curstarts;
+        fends[i]=curends;
 	}
 	return;
 }
 
 int fragment_finder::find_fragment(const segment& current) const {
     const int& c=current.chrid;
-    const bool& r=current.reverse;
-    int pos5=current.get_5pos();
+    const int pos5=current.get_5pos();
         
 	// Binary search to obtain the fragment index with 5' end coordinates.
-	int index=0;
-    const int& nfrag=pos[c].num;
-	if (r) {
-		const int* eptr=pos[c].end_ptr;
-		index=std::lower_bound(eptr, eptr+nfrag, pos5)-eptr;
-		if (index==nfrag) {
-			warning("read aligned off end of chromosome");
+	if (current.reverse) {
+		const auto& fend=fends[c];
+        int index=std::lower_bound(fend.begin(), fend.end(), pos5)-fend.begin();
+        if (index==fend.size()) { 
+            Rcpp::warning("read aligned off end of chromosome");
 			--index;
 		}
+        return index;
 	} else {
-		const int* sptr=pos[c].start_ptr;
-		index=std::upper_bound(sptr, sptr+nfrag, pos5)-sptr-1;
+        const auto& fstart=fstarts[c];
+		return (std::upper_bound(fstart.begin(), fstart.end(), pos5)-fstart.begin())-1;
 	}
-	return index;
 }
 
 /***********************************************************************
@@ -176,10 +176,7 @@ struct check_invalid_by_fragid : public check_invalid_chimera { // check based o
 };
 
 struct check_invalid_by_dist : public check_invalid_chimera { // check based on distance.
-	check_invalid_by_dist(SEXP span) {
-		if (!isInteger(span) || LENGTH(span)!=1) { throw std::runtime_error("maximum chimeric span must be a positive integer"); }
-		maxspan=asInteger(span);
-	};
+	check_invalid_by_dist(SEXP span) : maxspan(check_integer_scalar(span, "maximum chimeric span")) {}
 
 	~check_invalid_by_dist() {};
 
@@ -326,34 +323,27 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
         SEXP chr_converter, SEXP bamfile, SEXP prefix, SEXP storage, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) {
 
     // Checking input values.
-    if (!isString(bamfile) || LENGTH(bamfile)!=1) { throw std::runtime_error("BAM file path should be a character string"); }
-    if (!isString(prefix) || LENGTH(prefix)!=1) { throw std::runtime_error("output file prefix should be a character string"); }
-    if (!isLogical(chimera_strict) || LENGTH(chimera_strict)!=1) { throw std::runtime_error("chimera removal specification should be a logical scalar"); }
-	if (!isLogical(do_dedup) || LENGTH(do_dedup)!=1) { throw std::runtime_error("duplicate removal specification should be a logical scalar"); }
-	if (!isInteger(minqual) || LENGTH(minqual)!=1) { throw std::runtime_error("minimum mapping quality should be an integer scalar"); }
-	if (!isInteger(storage) || LENGTH(storage)!=1) { throw std::runtime_error("number of stored pairs should be an integer scalar"); }
-
-	// Initializing pointers.
-    Bamfile input(CHAR(STRING_ELT(bamfile, 0)));
-	const bool rm_invalid=asLogical(chimera_strict);
-	const bool rm_dup=asLogical(do_dedup);
-	const int minq=asInteger(minqual);
+    const char* bampath=check_string(bamfile, "BAM file path");
+    const char* oprefix=check_string(prefix, "output prefix");
+    const bool rm_invalid=check_logical_scalar(chimera_strict, "chimera removal specification");
+    const bool rm_dup=check_logical_scalar(do_dedup, "duplicate removal specification");
+    const int minq=check_integer_scalar(minqual ,"minimum mapping quality");
 	const bool rm_min=!ISNA(minq);
-    const size_t stored_pairs=asInteger(storage);
+    const size_t stored_pairs=check_integer_scalar(storage, "number of stored pairs");
 
+    Bamfile input(bampath);
+    
     // Initializing the chromosome conversion table (to get from BAM TIDs to chromosome indices in the 'fragments' GRanges).
 	const size_t nc=ffptr->nchrs();
-    if (!isInteger(chr_converter)) { throw std::runtime_error("chromosome conversion table should be integer"); }
-    const int nbamc=LENGTH(chr_converter);
+    Rcpp::IntegerVector converter(chr_converter);
+    const int nbamc=converter.size();
     if (nbamc > int(nc)) { throw std::runtime_error("more chromosomes in the BAM file than in the fragment list"); }
-    const int* converter=INTEGER(chr_converter);
     for (int i=0; i<nbamc; ++i) {
         if (converter[i]==NA_INTEGER || converter[i] < 0 || converter[i] >= int(nc)) { throw std::runtime_error("conversion indices out of range"); }
     }
     
    	// Constructing output containers
-    const char* oprefix=CHAR(STRING_ELT(prefix, 0));
-	std::deque<std::deque<OutputFile> > collected(nc);
+	std::vector<std::deque<OutputFile> > collected(nc);
 	for (size_t i=0; i<nc; ++i) { 
         for (size_t j=0; j<=i; ++j) { 
             collected[i].push_back(OutputFile(oprefix, i, j, stored_pairs));
@@ -513,57 +503,28 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
         }
     }
 
-	SEXP total_output=PROTECT(allocVector(VECSXP, 5));
-	try {
-        // Saving all file names.
-        SET_VECTOR_ELT(total_output, 0, allocVector(VECSXP, nc));
-        SEXP all_paths=VECTOR_ELT(total_output, 0);
-        for (size_t i=0; i<nc; ++i) {
-            SET_VECTOR_ELT(all_paths, i, allocVector(STRSXP, i+1));
-            SEXP current_paths=VECTOR_ELT(all_paths, i);
-            for (size_t j=0; j<=i; ++j) {
-                if (collected[i][j].saved) {
-                    SET_STRING_ELT(current_paths, j, mkChar(collected[i][j].path.c_str()));
-                } else {
-                    SET_STRING_ELT(current_paths, j, mkChar(""));
-                }
-            } 
-        }
+    // Saving all file names.
+    Rcpp::List filepaths(nc);
+    for (size_t i=0; i<nc; ++i) {
+        Rcpp::StringVector outpaths(i+1);
+        for (size_t j=0; j<=i; ++j) {
+            if (collected[i][j].saved) {
+                outpaths[j]=collected[i][j].path;
+            }
+        } 
+        filepaths[i]=outpaths;
+    }
 
-		// Dumping mapping diagnostics.
-		SET_VECTOR_ELT(total_output, 1, allocVector(INTSXP, 4));
-		int* dptr=INTEGER(VECTOR_ELT(total_output, 1));
-		dptr[0]=total;
-		dptr[1]=dupped;
-		dptr[2]=filtered;
-		dptr[3]=mapped;
-	
-		// Dumping the number of dangling ends, self-circles.	
-		SET_VECTOR_ELT(total_output, 2, allocVector(INTSXP, 2));
-		int * siptr=INTEGER(VECTOR_ELT(total_output, 2));
-		siptr[0]=dangling;
-		siptr[1]=selfie;
-
-		// Dumping the number designated 'single', as there's no pairs.
-		SET_VECTOR_ELT(total_output, 3, ScalarInteger(single));
-
-		// Dumping chimeric diagnostics.
-		SET_VECTOR_ELT(total_output, 4, allocVector(INTSXP, 4));
-		int* cptr=INTEGER(VECTOR_ELT(total_output, 4));
-		cptr[0]=total_chim;
-		cptr[1]=mapped_chim;
-		cptr[2]=multi_chim;
-		cptr[3]=inv_chimeras;
-	} catch (std::exception& e) {
-		UNPROTECT(1);
-		throw;
-	}
-	UNPROTECT(1);
-	return total_output;
+    return Rcpp::List::create(filepaths, 
+        Rcpp::IntegerVector::create(total, dupped, filtered, mapped), // Dumping mapping diagnostics.
+        Rcpp::IntegerVector::create(dangling, selfie), // Dumping self-interaction diagnostics.
+        Rcpp::IntegerVector::create(single), // Dumping the number designated 'single'.
+        Rcpp::IntegerVector::create(total_chim, mapped_chim, multi_chim, inv_chimeras)); // Dumping chimeric diagnostics.
 }
 
 SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP chrconvert, SEXP bamfile, SEXP outfile, SEXP storage, 
-        SEXP chimera_strict, SEXP chimera_span, SEXP minqual, SEXP do_dedup) try {
+        SEXP chimera_strict, SEXP chimera_span, SEXP minqual, SEXP do_dedup) {
+    BEGIN_RCPP 
 	fragment_finder ff(start_list, end_list);
 	
 	check_invalid_by_fragid invfrag; // Bit clunky to define both, but easiest to avoid nested try/catch.
@@ -573,8 +534,7 @@ SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP chrconvert, SEXP bam
 	else { invchim=&invdist; }
 	
 	return internal_loop(&ff, &get_status, invchim, chrconvert, bamfile, outfile, storage, chimera_strict, minqual, do_dedup);
-} catch (std::exception& e) {
-	return mkString(e.what());
+    END_RCPP;
 }
 
 /************************
@@ -584,22 +544,25 @@ SEXP report_hic_pairs (SEXP start_list, SEXP end_list, SEXP chrconvert, SEXP bam
 class simple_finder : public base_finder {
 public:
 	simple_finder(SEXP);
+    size_t nchrs() const;
 	int find_fragment(const segment&) const;
 private:
-	int bin_width;
+    std::vector<int> chrlens;
 };
 
-simple_finder::simple_finder(SEXP chrlens) { 
-    if (!isInteger(chrlens)) { throw std::runtime_error("chromosome lengths must be an integer vector"); }
-    const int nchrs=LENGTH(chrlens);
-    const int* nptr=INTEGER(chrlens);
-	for (int i=0; i<nchrs; ++i) { pos.push_back(chr_stats(NULL, NULL, nptr[i])); }
+size_t simple_finder::nchrs() const {
+    return chrlens.size();
+}
+
+simple_finder::simple_finder(SEXP clens) { 
+    Rcpp::IntegerVector _clens(clens);
+    chrlens.insert(chrlens.end(), _clens.begin(), _clens.end());
 	return;	
 }
 
 int simple_finder::find_fragment(const segment& current) const {
-	if (current.reverse && current.get_5pos() > pos[current.chrid].num) { 
-        warning("read aligned off end of chromosome"); 
+	if (current.reverse && current.get_5pos() > chrlens[current.chrid]) { 
+        Rcpp::warning("read aligned off end of chromosome"); 
     }
     return 0;
 }
@@ -614,58 +577,49 @@ status no_status_check (const segment& left, const segment& right) {
 }
 
 SEXP report_hic_binned_pairs (SEXP chrlens, SEXP chrconvert, SEXP bamfile, SEXP outfile, SEXP storage,
-        SEXP chimera_strict, SEXP chimera_span, SEXP minqual, SEXP do_dedup) try {
+        SEXP chimera_strict, SEXP chimera_span, SEXP minqual, SEXP do_dedup) {
+    BEGIN_RCPP
 	simple_finder ff(chrlens);
 	check_invalid_by_dist invchim(chimera_span);
 	return internal_loop(&ff, &no_status_check, &invchim, chrconvert, bamfile, outfile, storage, chimera_strict, minqual, do_dedup);
-} catch (std::exception& e) {
-	return mkString(e.what());
+    END_RCPP
 }
 
 /********************
  * Testing functions.
  *******************/
 
-SEXP test_parse_cigar (SEXP incoming) try {
-	if (!isString(incoming) || LENGTH(incoming)!=1) { throw std::runtime_error("BAM file path should be a string"); }
-    
-    Bamfile input(CHAR(STRING_ELT(incoming, 0)));
+SEXP test_parse_cigar (SEXP incoming) {
+    BEGIN_RCPP
+
+    const char* bampath=check_string(incoming, "BAM file path");
+    Bamfile input(bampath);
     if (sam_read1(input.in, input.header, input.read)<0) { 
         throw std::runtime_error("BAM file is empty");
     } 
    
-	SEXP output=PROTECT(allocVector(INTSXP, 2));
-	int* optr=INTEGER(output);
-    parse_cigar(input.read, optr[1], optr[0]);
-
-    UNPROTECT(1);
-	return(output);
-} catch (std::exception& e) {
-	return mkString(e.what());
+    Rcpp::IntegerVector output(2);
+    parse_cigar(input.read, output[1], output[0]);
+    return output;
+    END_RCPP
 }
 
-SEXP test_fragment_assign(SEXP starts, SEXP ends, SEXP chrs, SEXP pos, SEXP rev, SEXP len) try {
+SEXP test_fragment_assign(SEXP starts, SEXP ends, SEXP chrs, SEXP pos, SEXP rev, SEXP len) {
+    BEGIN_RCPP
 	fragment_finder ff(starts, ends);
-	if (!isInteger(chrs) || !isInteger(pos) || !isLogical(rev) || !isInteger(len)) { throw std::runtime_error("data types are wrong"); }
-	const int n=LENGTH(chrs);
-	if (n!=LENGTH(pos) || n!=LENGTH(rev) || n!=LENGTH(len)) { throw std::runtime_error("length of data vectors are not consistent"); }
-	
-	const int* cptr=INTEGER(chrs);
-	const int* pptr=INTEGER(pos);
-	const int* rptr=LOGICAL(rev);
-	const int* lptr=INTEGER(len);
 
-	SEXP output=PROTECT(allocVector(INTSXP, n));
-	int *optr=INTEGER(output);
+    Rcpp::IntegerVector _chrs(chrs), _pos(pos), _len(len);
+    Rcpp::LogicalVector _rev(rev);
+	const int n=_chrs.size();
+	if (n!=_pos.size() || n!=_len.size() || n!=_rev.size()) { throw std::runtime_error("length of data vectors are not consistent"); }
 
+    Rcpp::IntegerVector output(n);
 	for (int i=0; i<n; ++i) {
-        segment current(cptr[i], pptr[i], bool(rptr[i]), 0, lptr[i]); 
-		optr[i]=ff.find_fragment(current)+1;
+        segment current(_chrs[i], _pos[i], bool(_rev[i]), 0, _len[i]); 
+		output[i]=ff.find_fragment(current)+1;
 	}
 	
-	UNPROTECT(1);
 	return output;
-} catch (std::exception& e) {
-	return mkString(e.what());
+    END_RCPP
 }
 

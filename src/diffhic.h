@@ -10,8 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "R.h"
-#include "Rinternals.h"
+#include "Rcpp.h"
 
 template <class T>
 struct sort_row_index {
