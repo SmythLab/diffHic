@@ -181,7 +181,6 @@
             out <- .getPairs(files[x], anchor1, anchor2)
             if (!is.na(width)) { out <- .binReads(out, width, first1, first2, last1, last2) } 
             check <- .Call(cxx_check_input, out$anchor1.id, out$anchor2.id)
-            if (is.character(check)) { stop(check) }
 
             # Checking that we're all on the right chromosome.
             if (nrow(out)) { 
@@ -208,7 +207,6 @@
             # Removing read pairs above the cap for each restriction fragment pair.
             if (do.cap) { 
                 capped <- .Call(cxx_cap_input, out$anchor1.id, out$anchor2.id, cap)
-                if (is.character(capped)) { stop(capped) }
                 out <- out[capped,]
             }
 

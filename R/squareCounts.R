@@ -50,7 +50,6 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 			# Aggregating them in C++ to obtain count combinations for each bin pair.
 			out <- .Call(cxx_count_patch, pairs, bin.id, filter, 
 				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]])
-			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
 			# Storing counts and locations. 

@@ -41,7 +41,6 @@ domainDirections <- function(files, param, width=50000, span=10)
 		last.index <- bin.by.chr$last[[chr]]
 	
 		out <- .Call(cxx_directionality, pairs, bin.id, span, first.index, last.index)
-		if (is.character(out)) { stop(out) }
 		if (!length(out[[1]])) { next }
 
         pnts <- first.index:last.index

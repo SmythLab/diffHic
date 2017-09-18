@@ -50,7 +50,6 @@ enrichedPairs <- function(data, flank=5, exclude=0, assay.in=1, assay.out=NULL)
             for (lib in seq_len(nl)) { 
                 collected <- .Call(cxx_quadrant_bg, all.a, all.t, all.c[,lib],
                                    flank, exclude, a.len, t.len, anchor==target)
-                if (is.character(collected)) { stop(collected) }
 
                 for (m in seq_along(modes)) {
                     cur.counts <- collected[[1]][[m]]

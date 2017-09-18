@@ -69,11 +69,10 @@ clusterPairs <- function(..., tol, upper=1e6, index.only=FALSE)
 		po <- order(curas, curts)
 	
 		out <- .Call(cxx_cluster_2d, curas[po], curts[po], curae[po], curte[po], tol, FALSE)
-		if (is.character(out)) { stop(out) }
 		out[po] <- out
+
 		if (length(upper)) {
 			out <- .Call(cxx_split_clusters, out, curas, curts, curae, curte, upper)
-			if (is.character(out)) { stop(out) }
 			xo <- order(out)
 			out[xo]<-cumsum(c(TRUE, diff(out[xo])!=0L)) # Cleaning it up a little, to keep the IDs reasonably tight.
 		}
@@ -112,10 +111,8 @@ clusterPairs <- function(..., tol, upper=1e6, index.only=FALSE)
 
 .minBoundingBox <- function(all.ids, achrs, astarts, aends, tchrs, tstarts, tends, seqinf) {
 	a.out <- .Call(cxx_get_bounding_box, all.ids, astarts, aends)
-	if (is.character(a.out)) { stop(a.out) }
 	anchor.bounds <- GRanges(achrs[a.out[[1]]], IRanges(a.out[[2]], a.out[[3]] - 1L), seqinfo=seqinf)
 	t.out <- .Call(cxx_get_bounding_box, all.ids, tstarts, tends)
-	if (is.character(t.out)) { stop(t.out) }
 	target.bounds <- GRanges(tchrs[t.out[[1]]], IRanges(t.out[[2]], t.out[[3]] - 1L), seqinfo=seqinf)
 	return(list(anchors=anchor.bounds, targets=target.bounds))
 }

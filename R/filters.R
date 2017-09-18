@@ -129,7 +129,6 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.
 
 		extra.dist <- .Call(cxx_get_missing_dist, cumsum(runLength(all.chrs)),
 			a.pts-1L, t.pts-1L, (start(regions(data))+end(regions(data)))/2)
-		if (is.character(extra.dist)) { stop(extra.dist) }
 		extra.dist <- log10(extra.dist + .getBinSize(data))
 		trend.threshold <- loessFit(x=c(log.dist, extra.dist), 
 			y=c(ave.ab, rep(empty, length(extra.dist))), 

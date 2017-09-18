@@ -65,8 +65,7 @@ correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.
 	out<-.Call(cxx_iterative_correction, ave.counts[nzero], 
                anchors(data, type="first", id=TRUE)[nzero], anchors(data, type="second", id=TRUE)[nzero], 
                is.local[nzero], length(regions(data)), iterations, exclude.local, ignore.low, winsor.high)
- 	if (is.character(out)) { stop(out) }
-	full.truth <- rep(0, length(nzero))
+	full.truth <- numeric(length(nzero))
 	full.truth[nzero] <- out[[1]]
 	out[[1]] <- full.truth
 	

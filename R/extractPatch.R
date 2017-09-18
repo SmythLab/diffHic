@@ -72,7 +72,6 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
 
     # Collating them into counts and creating an output ISet.
     out <- .Call(cxx_count_patch, list(current[retain,]), bin.id, 1L, t.start, t.end)
-    if (is.character(out)) { stop(out) }
     return(InteractionSet(list(counts=out[[3]]), metadata=List(param=param, width=width, flipped=flipped),
                           interactions=GInteractions(anchor1=out[[1]], anchor2=out[[2]], 
                                                      regions=bin.region, mode="reverse"))) 

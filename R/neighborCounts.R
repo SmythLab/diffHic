@@ -62,7 +62,6 @@ neighborCounts <- function(files, param, width=50000, filter=1L, flank=NULL, exc
 			out <- .Call(cxx_count_background, pairs, bin.id, flank, exclude, filter, 
 				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]], 
                 bin.by.chr$first[[anchor1]], bin.by.chr$last[[anchor1]])
-			if (is.character(out)) { stop(out) }
 			if (!length(out[[1]])) { next }
 
 			# Storing counts and locations. 

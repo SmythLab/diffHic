@@ -76,7 +76,6 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 			# Extracting counts. Running through the fragments and figuring out what matches where.
 			out <- .Call(cxx_count_connect, pairs, by.frag1$start, by.frag1$end, reg.id1, 
                          by.frag2$start, by.frag2$end, reg.id2, filter)
-			if (is.character(out)) { stop(out) }
 			out.counts[[idex]] <- out[[3]]
 			out.left[[idex]] <- out[[1]]
 			out.right[[idex]] <- out[[2]]
@@ -277,7 +276,6 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         
             # Compiling the counts together.
             out <- .Call(cxx_count_reconnect, collected, filter)
-            if (is.character(out)) { stop(out) }
             out.counts[[idex]] <- out[[3]]
             out.left[[idex]] <- out[[1]]
             out.right[[idex]] <- out[[2]]

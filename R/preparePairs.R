@@ -72,7 +72,6 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 
     # Calling the C++ code that does everything.
 	out <- .Call(cxx_report_hic_pairs, scuts, ecuts, m-1L, path.expand(bam), prefix, storage, !ichim, chim.dist, minq, dedup)
-    if (is.character(out)) { stop(out) }
     .process_output(out, file, chrs, boost.idx)
 }
 
@@ -148,7 +147,6 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 
     # Running through the C++ code and returning output.
     out <- .Call(cxx_report_hic_binned_pairs, chrlens, m-1L, path.expand(bam), prefix, storage, !ichim, chim.dist, minq, dedup)
-    if (is.character(out)) { stop(out) }
     final <- .process_output(out, file, chrs, before.first)
     final$same.id <- NULL
     return(final)
