@@ -154,16 +154,16 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
          * Now, the first index of each entry is the larger of the two indices; if an entry has a first index below the current
          * smallest anchor-overlapped region, it cannot possibly be updated at later iterations. This means we can remove it.
   		 */
-        const int& s1x=_start1[curab];
-        const int& e1x=_end1[curab];
-        const int altsmallest1=*std::min_element(_region1.begin()+s1x, _region1.begin()+e1x);
+        const int& s1x=*(s1It+curab);
+        const int& e1x=*(e1It+curab);
+        const int altsmallest1=*std::min_element(r1It+s1x, r1It+e1x);
         if (altsmallest1 < smallest) { 
             smallest=altsmallest1;
         }
         if (use_second) { 
-            const int& s2x=_start2[curab];
-            const int& e2x=_end2[curab];
-            const int altsmallest2=*std::min_element(_region2.begin()+s2x, _region2.begin()+e2x);
+            const int& s2x=*(s2It+curab);
+            const int& e2x=*(e2It+curab);
+            const int altsmallest2=*std::min_element(r2It+s2x, r2It+e2x);
             if (altsmallest2 < smallest) { 
                 smallest=altsmallest2;
             }
