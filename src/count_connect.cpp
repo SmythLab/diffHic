@@ -149,17 +149,15 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
 		/* Saving all entries where the first region index is below the smallest anchor-overlapped region index for the current read pair.
          * This frees up the map to make it almost 1-dimensional, which should reduce memory usage and improve speed.
          *
-         * The logic is that, as the anchor index increases, the anchor fragment cannot overlap a region with a lower index in 'r(1/2)ptr'
+         * The logic is that, as the anchor index increases, the anchor fragment cannot overlap a region with a lower index in 'r(1/2)It'
          * (assuming that the regions have been sorted at the R level). So, the anchor-overlapped region index cannot decrease.
          * Now, the first index of each entry is the larger of the two indices; if an entry has a first index below the current
          * smallest anchor-overlapped region, it cannot possibly be updated at later iterations. This means we can remove it.
   		 */
         const int& s1x=*(s1It+curab);
         const int& e1x=*(e1It+curab);
-        const int altsmallest1=*std::min_element(r1It+s1x, r1It+e1x);
-        if (altsmallest1 < smallest) { 
-            smallest=altsmallest1;
-        }
+        smallest=*std::min_element(r1It+s1x, r1It+e1x);
+
         if (use_second) { 
             const int& s2x=*(s2It+curab);
             const int& e2x=*(e2It+curab);
