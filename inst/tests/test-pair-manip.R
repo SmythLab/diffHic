@@ -65,7 +65,7 @@ savecomp(50, 50, 15)
 savecomp(50, 50, 25)
 
 ####################################################################################################
-# Finally, chekcing the merging algorithms.
+# Checking the merging algorithms.
 
 mergecomp<-function(nl, n, nfrags, nchrs) {
 	blah<-GRanges(sample(paste0("chr", 1:nchrs), nfrags, replace=TRUE), IRanges(1:nfrags, 1:nfrags+10),
