@@ -12,7 +12,15 @@ mergeCMs <- function(..., deflate.args=list(), filter=1, binned=TRUE)
 
     # Choosing which interactions to keep.
     total.sum <- as.matrix(inputs[[1]])
+    ref.regions <- regions(inputs[[1]])
+    ref.anchors <- anchors(inputs[[1]], id=TRUE)
+
     for (cm in inputs[-1]) {
+        if (length(ref.regions)!=length(regions(cm)) || !all(regions(cm)==ref.regions)) {
+            stop("'regions' should be the same across ContactMatrix objects")
+        } else if (!identical(ref.anchors, anchors(cm, id=TRUE))) {
+            stop("anchor indices should be the same across ContactMatrix objects")
+        }
         total.sum <- total.sum + as.matrix(cm)
     }
     to.keep <- total.sum >= filter
@@ -28,7 +36,7 @@ mergeCMs <- function(..., deflate.args=list(), filter=1, binned=TRUE)
 
     # Merging together into a single output object.
     data <- do.call(cbind, isets)
-    interactions(data.com) <- as(interactions(data), "ReverseStrictGInteractions")
+    interactions(data) <- as(interactions(data), "ReverseStrictGInteractions")
     colnames(data) <- names(inputs)
     data$totals <- totals
 

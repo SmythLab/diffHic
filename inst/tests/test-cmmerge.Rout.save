@@ -1,0 +1,258 @@
+
+R version 3.4.0 (2017-04-21) -- "You Stupid Darkness"
+Copyright (C) 2017 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ####################################################################################################
+> # Checking the mergeCMs function.
+> 
+> suppressPackageStartupMessages(library(diffHic))
+Warning messages:
+1: package ‘GenomicRanges’ was built under R version 3.4.1 
+2: package ‘S4Vectors’ was built under R version 3.4.1 
+3: package ‘IRanges’ was built under R version 3.4.1 
+4: package ‘InteractionSet’ was built under R version 3.4.1 
+5: package ‘SummarizedExperiment’ was built under R version 3.4.1 
+6: package ‘DelayedArray’ was built under R version 3.4.1 
+> suppressPackageStartupMessages(library(Matrix))
+Warning message:
+package ‘Matrix’ was built under R version 3.4.1 
+> 
+> cmcomp <- function(chrs, Nr, Nc, nsamples, lambda=10, mat.type="matrix", filter=10) {
++     N <- sum(chrs)
++     all.starts <- round(runif(N, 1, 100))
++     all.ends <- all.starts + round(runif(N, 5, 20))
++     all.regions <- GRanges(rep(names(chrs), chrs), IRanges(all.starts, all.ends))
++         
++     all.anchor1 <- sample(N, Nr)
++     all.anchor2 <- sample(N, Nc)
++ 
++     original <- collected <- list()
++     for (i in seq_len(nsamples)) { 
++         counts <- matrix(rpois(N*N, lambda=lambda), N, N)
++         counts <- as.matrix(forceSymmetric(counts)) # Force symmetry, avoid considering non-identical redundant interactions.
++         counts <- counts[all.anchor1, all.anchor2, drop=FALSE]
++         original[[i]] <- counts
++ 
++         counts <- as(counts, mat.type)
++         x <- ContactMatrix(counts, all.anchor1, all.anchor2, all.regions)
++         collected[[i]] <- x
++     }
++ 
++     # Without any filtering. Checking that this is the same as sample-wise inflations.
++     output <- do.call(mergeCMs, c(collected, list(filter=0)))
++     stopifnot(isTRUE(all.equal(output$totals, sapply(original, sum))))
++ 
++     for (i in seq_along(nsamples)) {
++         current <- collected[[i]]
++         test <- deflate(current, use.zero=TRUE) # Forcing use of zeros for sparse matrices.
++         stopifnot(identical(regions(test), regions(output)))
++ 
++         ax <- anchors(test, id=TRUE)
++         stopifnot(identical(anchors(output, type="first", id=TRUE), pmax(ax$first, ax$second)))
++         stopifnot(identical(anchors(output, type="second", id=TRUE), pmin(ax$first, ax$second)))
++         stopifnot(identical(assay(test)[,1], assay(output)[,i]))
++     }
++ 
++     # With filtering.
++     filtered <- do.call(mergeCMs, c(collected, list(filter=filter)))
++     keep <- rowSums(assay(output)) >= filter
++     refiltered <- output[keep,]
++     
++     stopifnot(identical(regions(refiltered), regions(filtered)))
++     stopifnot(identical(anchors(refiltered, id=TRUE), anchors(filtered, id=TRUE)))
++     stopifnot(isTRUE(all.equal(assay(refiltered), assay(filtered))))
++     
++     return(head(assay(output)))
++ }
+> 
+> set.seed(10000)
+> chrs <- c(chrA=10, chrB=10)
+> cmcomp(chrs, 10, 10, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    8    5
+[2,]    3    4
+[3,]    4    4
+[4,]    5    7
+[5,]    5    5
+[6,]    6    5
+> cmcomp(chrs, 10, 10, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    0    2    3    2
+[2,]    3    0    1    1
+[3,]    1    2    3    3
+[4,]    1    4    2    1
+[5,]    4    4    1    2
+[6,]    1    0    1    0
+> cmcomp(chrs, 15, 5, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    4    3
+[2,]    0    5
+[3,]    4    6
+[4,]    5    8
+[5,]    8    3
+[6,]    6    6
+> cmcomp(chrs, 15, 5, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    4    3    1    5
+[2,]    3    3    2    1
+[3,]    1    3    5    3
+[4,]    3    0    2    2
+[5,]    2    3    3    2
+[6,]    5    2    0    4
+> cmcomp(chrs, 5, 15, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    5    3
+[2,]    5    2
+[3,]    5    4
+[4,]    7    6
+[5,]    7    4
+[6,]    5    4
+> cmcomp(chrs, 5, 15, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    4    3    4    2
+[2,]    4    2    2    1
+[3,]    2    4    2    0
+[4,]    2    0    3    0
+[5,]    2    0    2    1
+[6,]    1    3    2    0
+> 
+> # Testing out behaviour with sparse matrices.
+> cmcomp(chrs, 10, 10, nsamples=2, lambda=5, mat.type="dgCMatrix")
+     [,1] [,2]
+[1,]    7    3
+[2,]    6    6
+[3,]    2    8
+[4,]    4    2
+[5,]    5    6
+[6,]    3    3
+> cmcomp(chrs, 10, 10, nsamples=4, lambda=2, mat.type="dgCMatrix")
+     [,1] [,2] [,3] [,4]
+[1,]    1    1    1    1
+[2,]    6    2    1    2
+[3,]    2    3    3    1
+[4,]    4    3    2    2
+[5,]    4    3    0    2
+[6,]    3    0    1    0
+> cmcomp(chrs, 10, 10, nsamples=10, lambda=1, mat.type="dgCMatrix")
+     [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+[1,]    0    0    0    2    0    0    1    2    1     0
+[2,]    1    1    1    1    0    1    1    1    0     1
+[3,]    1    0    1    2    1    0    2    2    1     1
+[4,]    0    2    0    0    0    0    0    2    1     0
+[5,]    1    0    1    0    1    1    0    1    1     1
+[6,]    1    0    1    0    1    1    1    1    1     1
+> cmcomp(chrs, 10, 10, nsamples=2, lambda=5, mat.type="dgeMatrix")
+     [,1] [,2]
+[1,]    3    4
+[2,]    7    3
+[3,]    4    2
+[4,]    4    5
+[5,]    6    9
+[6,]    4    7
+> cmcomp(chrs, 10, 10, nsamples=4, lambda=2, mat.type="dgeMatrix")
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    4    0
+[2,]    1    2    2    1
+[3,]    5    4    6    4
+[4,]    2    2    2    2
+[5,]    0    3    1    4
+[6,]    1    4    2    0
+> 
+> # Testing out behaviour with more chromosomes.
+> chrs <- c(chrA=15, chrB=10, chrC=5)
+> cmcomp(chrs, 10, 10, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    3    7
+[2,]    4    2
+[3,]    7    6
+[4,]    4    4
+[5,]    6    9
+[6,]    1    5
+> cmcomp(chrs, 10, 10, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    2    3    0    3
+[2,]    1    2    1    3
+[3,]    0    0    1    3
+[4,]    1    0    5    0
+[5,]    3    0    1    4
+[6,]    3    4    3    1
+> cmcomp(chrs, 15, 5, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    3    3
+[2,]    5    7
+[3,]    4    5
+[4,]    5    7
+[5,]    5    4
+[6,]    2    9
+> cmcomp(chrs, 15, 5, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    0    0    2    7
+[2,]    6    2    0    1
+[3,]    1    5    1    0
+[4,]    4    2    3    2
+[5,]    3    0    3    4
+[6,]    0    1    1    0
+> cmcomp(chrs, 5, 15, nsamples=2, lambda=5)
+     [,1] [,2]
+[1,]    6    0
+[2,]    9    5
+[3,]    6    4
+[4,]    6    4
+[5,]    9   10
+[6,]    3    5
+> cmcomp(chrs, 5, 15, nsamples=4, lambda=2)
+     [,1] [,2] [,3] [,4]
+[1,]    0    1    2    1
+[2,]    0    3    2    0
+[3,]    2    1    1    2
+[4,]    1    2    3    1
+[5,]    1    3    4    3
+[6,]    2    1    0    4
+> 
+> # Ensuring that an error is chucked when the regions involved are not identical.
+>     
+> N <- 30
+> all.starts <- round(runif(N, 1, 100))
+> all.ends <- all.starts + round(runif(N, 5, 20))
+> all.regions <- GRanges(rep(c("chrA", "chrB"), c(N-10, 10)), IRanges(all.starts, all.ends))
+> 
+> Nr <- 10
+> Nc <- 20
+> all.anchor1 <- sample(N, Nr)
+> all.anchor2 <- sample(N, Nc)
+> counts <- matrix(rpois(Nr*Nc, lambda=10), Nr, Nc)
+> x <- ContactMatrix(counts, all.anchor1, all.anchor2, all.regions)
+>      
+> try(mergeCMs(x, x[,1]))
+Error in mergeCMs(x, x[, 1]) : 
+  anchor indices should be the same across ContactMatrix objects
+> try(mergeCMs(x, x[1,]))
+Error in mergeCMs(x, x[1, ]) : 
+  anchor indices should be the same across ContactMatrix objects
+> x2 <- x
+> regions(x2) <- resize(regions(x2), width=100)
+> try(mergeCMs(x, x2))
+Error in mergeCMs(x, x2) : 
+  'regions' should be the same across ContactMatrix objects
+> 
+> ##################################################################################################
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 13.420   0.345  13.981 
