@@ -26,7 +26,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
     # Stetching a little to allow for some space beyond the plot boundaries.
     f.expanded <- suppressWarnings(trim(resize(first.region, fix="center", width=width(first.region)*2 + 200)))
     s.expanded <- suppressWarnings(trim(resize(second.region, fix="center", width=width(second.region)*2 + 200)))
-    patch <- extractPatch(file, param, first.region=first.region, second.region=second.region, width=width)
+    patch <- extractPatch(file, param, first.region=f.expanded, second.region=s.expanded, width=width)
 
 	# Generating a plot.
 	if (is.null(xlab)) { xlab <- first.chr }
