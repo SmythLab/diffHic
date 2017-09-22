@@ -11,6 +11,8 @@ All entries of input regions are now retained, though not necessarily in the inp
 \item Fixed bug in savePairs() involving failure to swap other information when enforcing index ordering.
 
 \item Added mergeCMs() function to allow entry into the pipeline from ContactMatrix objects.
+
+\item Moved pre-processing scripts out of the package to the repository for the user's guide.
 }}
 
 \section{Version 1.8.0}{\itemize{
