@@ -323,15 +323,15 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
         SEXP chr_converter, SEXP bamfile, SEXP prefix, SEXP storage, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) {
 
     // Checking input values.
-    const char* bampath=check_string(bamfile, "BAM file path");
-    const char* oprefix=check_string(prefix, "output prefix");
+    Rcpp::String bampath=check_string(bamfile, "BAM file path");
+    Rcpp::String oprefix=check_string(prefix, "output prefix");
     const bool rm_invalid=check_logical_scalar(chimera_strict, "chimera removal specification");
     const bool rm_dup=check_logical_scalar(do_dedup, "duplicate removal specification");
     const int minq=check_integer_scalar(minqual ,"minimum mapping quality");
 	const bool rm_min=!ISNA(minq);
     const size_t stored_pairs=check_integer_scalar(storage, "number of stored pairs");
 
-    Bamfile input(bampath);
+    Bamfile input(bampath.get_cstring());
     
     // Initializing the chromosome conversion table (to get from BAM TIDs to chromosome indices in the 'fragments' GRanges).
 	const size_t nc=ffptr->nchrs();
@@ -346,7 +346,7 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
 	std::vector<std::deque<OutputFile> > collected(nc);
 	for (size_t i=0; i<nc; ++i) { 
         for (size_t j=0; j<=i; ++j) { 
-            collected[i].push_back(OutputFile(oprefix, i, j, stored_pairs));
+            collected[i].push_back(OutputFile(oprefix.get_cstring(), i, j, stored_pairs));
         }
     }
 	int single=-1; // First one always reported as a singleton, as qname is empty.
@@ -592,8 +592,8 @@ SEXP report_hic_binned_pairs (SEXP chrlens, SEXP chrconvert, SEXP bamfile, SEXP 
 SEXP test_parse_cigar (SEXP incoming) {
     BEGIN_RCPP
 
-    const char* bampath=check_string(incoming, "BAM file path");
-    Bamfile input(bampath);
+    Rcpp::String bampath=check_string(incoming, "BAM file path");
+    Bamfile input(bampath.get_cstring());
     if (sam_read1(input.in, input.header, input.read)<0) { 
         throw std::runtime_error("BAM file is empty");
     } 

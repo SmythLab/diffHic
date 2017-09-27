@@ -8,6 +8,6 @@ int check_integer_scalar(Rcpp::RObject x, const char* thing);
 
 double check_numeric_scalar(Rcpp::RObject x, const char* thing);
 
-const char* check_string(Rcpp::RObject x, const char* thing);
+Rcpp::String check_string(Rcpp::RObject x, const char* thing);
 
 #endif

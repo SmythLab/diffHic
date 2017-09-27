@@ -25,9 +25,8 @@ double check_numeric_scalar(Rcpp::RObject x, const char* thing) {
     return check_scalar_value<double, Rcpp::NumericVector>(x, "double-precision scalar", thing);
 }
 
-const char* check_string(Rcpp::RObject x, const char* thing) {
-    Rcpp::String current=check_scalar_value<Rcpp::String, Rcpp::StringVector>(x, "string", thing);
-    return CHAR(current.get_sexp());
+Rcpp::String check_string(Rcpp::RObject x, const char* thing) {
+    return check_scalar_value<Rcpp::String, Rcpp::StringVector>(x, "string", thing);
 }
 
 #endif
