@@ -24,14 +24,14 @@ SEXP count_connect(SEXP all, SEXP start1, SEXP end1, SEXP region1,
         SEXP start2, SEXP end2, SEXP region2, SEXP filter) {		
     BEGIN_RCPP
 
-    Rcpp::IntegerVector _start1(start1), _end1(end1);
+    const Rcpp::IntegerVector _start1(start1), _end1(end1);
     const int ni1=_start1.size();
     if (_end1.size()!=ni1) { 
         throw std::runtime_error("start/end index vectors (1) should be the same length"); 
     }
     auto s1It=_start1.begin()-1, e1It=_end1.begin()-1; // Account for 1-based indexing.
 
-    Rcpp::IntegerVector _region1(region1);
+    const Rcpp::IntegerVector _region1(region1);
     const int nrp1=_region1.size()+1; // As 'end' refers to one-past-the-end. 
     auto r1It=_region1.begin()-1;
     

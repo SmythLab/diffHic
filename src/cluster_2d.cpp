@@ -21,7 +21,8 @@ const int nothing=-1;
 
 SEXP cluster_2d (SEXP start_anchor1, SEXP start_anchor2, SEXP end_anchor1, SEXP end_anchor2, SEXP tol, SEXP verbose) {
     BEGIN_RCPP
-    Rcpp::IntegerVector as1(start_anchor1), as2(start_anchor2), ae1(end_anchor1), ae2(end_anchor2);
+
+    const Rcpp::IntegerVector as1(start_anchor1), as2(start_anchor2), ae1(end_anchor1), ae2(end_anchor2);
     const int npts=as1.size();
     if (npts!=as2.size() || npts!=ae1.size() || npts!=ae2.size()) { 
         throw std::runtime_error("lengths of coordinate vectors are not equal"); 

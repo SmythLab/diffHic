@@ -4,8 +4,8 @@
 SEXP get_missing_dist (SEXP chrends, SEXP existing_anchor1, SEXP existing_anchor2, SEXP middies) {
     BEGIN_RCPP
 
-    Rcpp::IntegerVector ce(chrends), ea1(existing_anchor1), ea2(existing_anchor2);
-    Rcpp::NumericVector mid(middies);
+    const Rcpp::IntegerVector ce(chrends), ea1(existing_anchor1), ea2(existing_anchor2);
+    const Rcpp::NumericVector mid(middies);
 	const int nchrs = ce.size();
 	const int npts = ea1.size();
 	if (npts!=ea2.size()) { throw std::runtime_error("first and second anchor index vectors must be of the same length"); }

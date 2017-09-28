@@ -6,9 +6,9 @@ SEXP iterative_correction(SEXP avecount, SEXP anchor1, SEXP anchor2, SEXP local,
     BEGIN_RCPP
 
 	// Checking vector type and length.
-    Rcpp::NumericVector ac(avecount);
-    Rcpp::IntegerVector a1(anchor1), a2(anchor2);
-    Rcpp::LogicalVector l(local);
+    const Rcpp::NumericVector ac(avecount);
+    const Rcpp::IntegerVector a1(anchor1), a2(anchor2);
+    const Rcpp::LogicalVector l(local);
     const int npairs=ac.size();
     if (npairs!=a1.size() || npairs!=a2.size() || npairs!=l.size()) { 
         throw std::runtime_error("lengths of input vectors are not equal"); 

@@ -323,8 +323,8 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
         SEXP chr_converter, SEXP bamfile, SEXP prefix, SEXP storage, SEXP chimera_strict, SEXP minqual, SEXP do_dedup) {
 
     // Checking input values.
-    Rcpp::String bampath=check_string(bamfile, "BAM file path");
-    Rcpp::String oprefix=check_string(prefix, "output prefix");
+    const Rcpp::String bampath=check_string(bamfile, "BAM file path");
+    const Rcpp::String oprefix=check_string(prefix, "output prefix");
     const bool rm_invalid=check_logical_scalar(chimera_strict, "chimera removal specification");
     const bool rm_dup=check_logical_scalar(do_dedup, "duplicate removal specification");
     const int minq=check_integer_scalar(minqual ,"minimum mapping quality");
@@ -335,7 +335,7 @@ SEXP internal_loop (const base_finder * const ffptr, status (*check_self_status)
     
     // Initializing the chromosome conversion table (to get from BAM TIDs to chromosome indices in the 'fragments' GRanges).
 	const size_t nc=ffptr->nchrs();
-    Rcpp::IntegerVector converter(chr_converter);
+    const Rcpp::IntegerVector converter(chr_converter);
     const int nbamc=converter.size();
     if (nbamc > int(nc)) { throw std::runtime_error("more chromosomes in the BAM file than in the fragment list"); }
     for (int i=0; i<nbamc; ++i) {

@@ -9,7 +9,7 @@
 SEXP check_input (SEXP anchor1, SEXP anchor2) { 
     BEGIN_RCPP
 
-    Rcpp::IntegerVector a1(anchor1), a2(anchor2);
+    const Rcpp::IntegerVector a1(anchor1), a2(anchor2);
 	const int nlen=a1.size();
 	if (a2.size()!=nlen) { 
         throw std::runtime_error("vectors should be of the same length"); 
@@ -37,7 +37,7 @@ SEXP check_input (SEXP anchor1, SEXP anchor2) {
 
 SEXP cap_input (SEXP anchor1, SEXP anchor2, SEXP cap) { 
     BEGIN_RCPP
-    Rcpp::IntegerVector a1(anchor1), a2(anchor2);
+    const Rcpp::IntegerVector a1(anchor1), a2(anchor2);
     const int nlen=a1.size();
     int recap=check_integer_scalar(cap, "cap");
 

@@ -1,6 +1,6 @@
 #include "read_count.h"
 
-int setup_pair_data (Rcpp::List pairs, std::vector<Rcpp::IntegerVector>& anchor1, 
+int setup_pair_data (const Rcpp::List pairs, std::vector<Rcpp::IntegerVector>& anchor1, 
         std::vector<Rcpp::IntegerVector>& anchor2, std::vector<int>& nums, std::vector<int>& indices) {
 
     int nlibs=pairs.size();
@@ -10,14 +10,14 @@ int setup_pair_data (Rcpp::List pairs, std::vector<Rcpp::IntegerVector>& anchor1
 	nums.resize(nlibs);
 	
 	for (int i=0; i<nlibs; ++i) {
-        Rcpp::List current=pairs[i];
+        const Rcpp::List current=pairs[i];
 		if (current.size()!=2) { 
 			throw std::runtime_error("interactions must be supplied as a data.frame with anchor.id and target.id"); 
         }
 
 		// We assume anchor1, anchor2 have been ordered on R's side.
         for (int j=0; j<2; ++j) {
-            Rcpp::IntegerVector curvec(current[j]);
+            const Rcpp::IntegerVector curvec(current[j]);
 			switch (j) {
 				case 0: 
 					anchor1[i]=curvec;

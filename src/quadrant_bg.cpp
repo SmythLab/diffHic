@@ -7,7 +7,7 @@ SEXP quadrant_bg (SEXP anchor1, SEXP anchor2, SEXP count,
 		SEXP anchor1_len, SEXP anchor2_len, SEXP issame) {
     BEGIN_RCPP
 
-    Rcpp::IntegerVector a1(anchor1), a2(anchor2), _count(count);
+    const Rcpp::IntegerVector a1(anchor1), a2(anchor2), _count(count);
 	const int npair=a1.size();
     if (npair!=a2.size() || npair!=_count.size()) { 
         throw std::runtime_error("input vectors must have the same length");

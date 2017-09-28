@@ -9,13 +9,14 @@ SEXP pair_stats (SEXP anchor1_id, SEXP anchor2_id, SEXP anchor1_pos, SEXP anchor
 		SEXP same_chr, SEXP fstarts, SEXP fends) {
     BEGIN_RCPP
 
-    Rcpp::IntegerVector a1id(anchor1_id), a2id(anchor2_id), a1pos(anchor1_pos), a2pos(anchor2_pos), a1len(anchor1_len), a2len(anchor2_len);
+    const Rcpp::IntegerVector a1id(anchor1_id), a2id(anchor2_id), a1pos(anchor1_pos), 
+        a2pos(anchor2_pos), a1len(anchor1_len), a2len(anchor2_len);
 	const int np=LENGTH(a1id);
 	if (np!=a2id.size() || np!=a1pos.size() || np!=a2pos.size() || np!=a1len.size() || np!=a2len.size()) {
 		throw std::runtime_error("length of anchor/target position/length/index vectors must be equal"); 
 	}
 
-    Rcpp::IntegerVector fs(fstarts), fe(fends);
+    const Rcpp::IntegerVector fs(fstarts), fe(fends);
 	const int nf=fs.size();
 	if (nf!=fe.size()) { throw std::runtime_error("length of fragment start and end vectors should be equal"); }
 
