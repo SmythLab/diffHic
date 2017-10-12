@@ -113,6 +113,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             to.add.query <- queryHits(lap2)
             to.add.subject <- subjectHits(lap2)
             second.regions <- .redefineRegions(lap2, fragments, second.regions)
+            second.original <- seq_along(second.regions)
 
         } else {
             second.regions <- as.integer(second.regions)
@@ -121,13 +122,13 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             to.add.query <- seq_along(fragments)
             to.add.subject <- binned$id 
             second.regions <- binned$region
-       }
+            second.original <- rep(NA_integer_, length(second.regions))
+        }
 
-		n.first <- length(regions)
-		n.second <- length(second.regions)
+        n.first <- length(regions) # need here, as 'regions' is modified in the next line!
 		regions <- suppressWarnings(c(regions, second.regions))
-		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
-        regions$original <- c(seq_len(n.first), seq_len(n.second))
+		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, length(second.regions)))
+        regions$original <- c(seq_len(n.first), second.original)
 
 		frag.ids <- c(frag.ids, to.add.query)
 		reg.ids <- c(reg.ids, to.add.subject + n.first)

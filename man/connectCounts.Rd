@@ -56,9 +56,7 @@ Any element metadata in the input \code{regions} is also removed in the output.
 The \code{second.regions} argument allows specification of a second set of regions.
 Interactions are only considered between one entry in \code{regions} and one entry in \code{second.regions}.
 This differs from supplying all regions to \code{regions}, which would consider all pairwise interactions between regions regardless of whether they belong in the first or second set.
-If an integer scalar is supplied as \code{second.regions}, this value is used as a width to partition the genome into bins.
-These bins are then used as the set of second regions.
-	
+
 Specification of \code{second.regions} is useful for efficiently identifying interactions between two sets of regions.
 For example, the first set can be set to several ``viewpoint'' regions of interest.
 This is similar to the bait region in 4C-seq, or the captured regions in Capture Hi-C.
@@ -68,6 +66,11 @@ The output InteractionSet will merge all \code{regions} and \code{second.regions
 However, those in the second set can be distinguished with the \code{is.second} metadata field.
 Each \code{original} index will also point towards the corresponding entry in the original \code{second.regions} when \code{is.second=TRUE}.
 Similarly, if \code{is.second=FALSE}, the index will point towards the corresponding entry in the original \code{regions}.
+
+If an integer scalar is supplied as \code{second.regions}, this value is used as a width to partition the genome into bins.
+These bins are then used as the set of second regions.
+This is useful for 4C-like experiments where interactions between viewpoints and the rest of the genome are of interest.
+Note that the \code{original} metadata field is set to \code{NA} for these bins, as no original GRanges existed for these intervals.
 
 Note that this function does \emph{not} guarantee that the second set of regions will be treated as the second anchor region (or the first) for each interaction.
 Those definitions are dependent on the sorting order of the coordinates for all regions.
