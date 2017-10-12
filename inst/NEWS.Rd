@@ -2,11 +2,14 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.9.6}{\itemize{
+\section{Version 1.9.8}{\itemize{
 \item Added extractPatch() function to count bin pairs in a specified area of the interaction space.
 
 \item Modified connectCounts() to eliminate warnings upon stranded entries, unknown chromosomes.
 All entries of input regions are now retained, though not necessarily in the input order.
+Also switched original metadata to NA when second.regions is an integer.
+
+\item Modified preparePairs() to be more generous when considering inward-facing reads if they overlap past each other.
 
 \item Fixed bug in savePairs() involving failure to swap other information when enforcing index ordering.
 
