@@ -56,6 +56,7 @@ Any element metadata in the input \code{regions} is also removed in the output.
 The \code{second.regions} argument allows specification of a second set of regions.
 Interactions are only considered between one entry in \code{regions} and one entry in \code{second.regions}.
 This differs from supplying all regions to \code{regions}, which would consider all pairwise interactions between regions regardless of whether they belong in the first or second set.
+Note that the sets are not parallel, and any pairing is considered if as long as it contains one region from the first set and another from the second set.
 
 Specification of \code{second.regions} is useful for efficiently identifying interactions between two sets of regions.
 For example, the first set can be set to several ``viewpoint'' regions of interest.
