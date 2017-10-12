@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -367,6 +367,7 @@ Type 'q()' to quit R.
 + 	if (!identical(assays(subref), assays(out))) { stop("extracted counts don't match up") }
 + 	if (!identical(colData(subref), colData(out))) { stop("extracted colData doesn't match up") }
 + 	if (!identical(metadata(subref), metadata(out))) { stop("extracted metadata doesn't match up") }
++     if (!identical(filterPeaks(subref, get.enrich=TRUE), filterPeaks(out, get.enrich=TRUE))) { stop("enrichment values don't match up") }
 + 
 +     return(head(assay(out, diffHic:::.neighbor_locales()[1])))
 + }
@@ -538,4 +539,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 15.888   0.160  16.059 
+ 15.508   0.184  15.733 

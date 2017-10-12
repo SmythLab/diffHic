@@ -201,6 +201,7 @@ comp2 <- function(npairs1, npairs2, width, cuts, filter=1, flank=5, exclude=0) {
 	if (!identical(assays(subref), assays(out))) { stop("extracted counts don't match up") }
 	if (!identical(colData(subref), colData(out))) { stop("extracted colData doesn't match up") }
 	if (!identical(metadata(subref), metadata(out))) { stop("extracted metadata doesn't match up") }
+    if (!identical(filterPeaks(subref, get.enrich=TRUE), filterPeaks(out, get.enrich=TRUE))) { stop("enrichment values don't match up") }
 
     return(head(assay(out, diffHic:::.neighbor_locales()[1])))
 }
