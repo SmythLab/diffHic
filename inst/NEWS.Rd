@@ -16,6 +16,8 @@ Also switched original metadata to NA when second.regions is an integer.
 \item Added mergeCMs() function to allow entry into the pipeline from ContactMatrix objects.
 
 \item Moved pre-processing scripts out of the package to the repository for the user's guide.
+
+\item Updated user's guide.
 }}
 
 \section{Version 1.8.0}{\itemize{
