@@ -193,9 +193,9 @@ for x, curf in enumerate([args.fq1, args.fq2]):
 	# (split, 5' and 3'), we'd need to assume some sorting order and I'm
 	# not willing to do that. Sorting afterward enforces the 'samtools'
 	# name ordering over anything that might have been there originally.
-	bsorted=os.path.join(tmpdir, "sorted")
-	pysam.sort("-n", outbam, bsorted)
-	os.rename(bsorted+".bam", outbam)
+	bsorted=os.path.join(tmpdir, "sorted.bam")
+	pysam.sort("-o", bsorted, "-n", outbam)
+	os.rename(bsorted, outbam)
 	
 ####################################################################################################
 # Stitching two files together to reform a single BAM file.

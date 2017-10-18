@@ -2,7 +2,7 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.9.8}{\itemize{
+\section{Version 1.9.9}{\itemize{
 \item Added extractPatch() function to count bin pairs in a specified area of the interaction space.
 
 \item Modified connectCounts() to eliminate warnings upon stranded entries, unknown chromosomes.
@@ -16,6 +16,8 @@ Also switched original metadata to NA when second.regions is an integer.
 \item Added mergeCMs() function to allow entry into the pipeline from ContactMatrix objects.
 
 \item Moved pre-processing scripts out of the package to the repository for the user's guide.
+
+\item Updated presplit_map.py to use new samtools API for sorting.
 
 \item Updated user's guide.
 }}
