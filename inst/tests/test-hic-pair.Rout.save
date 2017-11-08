@@ -1,5 +1,5 @@
 
-R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+R Under development (unstable) (2017-10-27 r73632) -- "Unsuffered Consequences"
 Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -185,7 +185,8 @@ In assign2fragment(starts, ends, 1L, 992L, TRUE, 10L) :
 > assign2fragment(starts, ends, 0L, 991L, TRUE, 10L)
 [1] 7
 > try(assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L)) # This should fail, as it gets assigned into the nested fragment.
-Error : ends[[chr]][out] >= fiveprime && (out == 1L || ends[[chr]][out -  .... is not TRUE
+Error in assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) : 
+  ends[[chr]][out] >= fiveprime && (out == 1L || ends[[chr]][out -  .... is not TRUE
 In addition: Warning message:
 In assign2fragment(starts, ends, 0L, 1000L, TRUE, 10L) :
   read aligned off end of chromosome
@@ -1421,4 +1422,4 @@ other.2                  7          7     30           3     10
 > 
 > proc.time()
    user  system elapsed 
- 28.220   0.276  28.521 
+ 22.608   0.448  23.059 
