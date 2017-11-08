@@ -13,7 +13,9 @@
 ####################################################################################################
 
 .isDNaseC <- function(param, fragments) {
-    if (missing(fragments)) fragments <- param$fragments
+    if (missing(fragments)) { 
+        fragments <- param$fragments
+    }
     return(length(fragments)==0L)
 }
 
@@ -179,7 +181,9 @@
 
             # Pulling out the reads, binning if necessary, and checking fidelity of the input.
             out <- .getPairs(files[x], anchor1, anchor2)
-            if (!is.na(width)) { out <- .binReads(out, width, first1, first2, last1, last2) } 
+            if (!is.na(width)) { 
+                out <- .binReads(out, width, first1, first2, last1, last2) 
+            } 
             check <- .Call(cxx_check_input, out$anchor1.id, out$anchor2.id)
 
             # Checking that we're all on the right chromosome.
@@ -211,7 +215,10 @@
             }
 
             dim(out$anchor1.id) <- dim(out$anchor2.id) <- NULL
-            overall[[x]] <- out[,retain]
+            if (!is.null(retain)) { 
+                out <- out[,retain]
+            }
+            overall[[x]] <- out
         }
     }
     return(overall)

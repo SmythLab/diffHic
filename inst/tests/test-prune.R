@@ -7,35 +7,30 @@ suppressPackageStartupMessages(require(rhdf5))
 source("simcounts.R")
 
 dir.create("temp-filt")
-dir1<-"temp-filt/1.h5"
-dir2<-"temp-filt/2.h5"
-dir1x<-"temp-filt/1b.h5"
-dir2x<-"temp-filt/2b.h5"
+dir1 <- "temp-filt/1.h5"
+dir2 <- "temp-filt/2.h5"
+dir1x <- "temp-filt/1a.h5"
+dir2x <- "temp-filt/2a.h5"
+dir1y <- "temp-filt/1b.h5"
+dir2y <- "temp-filt/2b.h5"
 
-filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outgap=NA, max.frag=NA, discard.param=NULL, cap=NA) {
+filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outgap=NA, max.frag=NA) { 
 	simgen(dir1, npairs1, chromos)
 	simgen(dir2, npairs2, chromos)
 	cuts <- simcuts(chromos, overlap=overlap)
 	augmentsim(dir1, cuts)
 	augmentsim(dir2, cuts)
-	cap <- as.integer(cap)
 
-	# Pruning.
-	totes1 <- prunePairs(dir1, pairParam(fragments=cuts), file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
-	totes2 <- prunePairs(dir2, pairParam(fragments=cuts), file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+	# Straightforward pruning on min/max gap/frag.
+    param <- pairParam(fragments=cuts)
+  	totes1 <- prunePairs(dir1, param, file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+	totes2 <- prunePairs(dir2, param, file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
 
-	# Setting up parameters.
+    # Setting up parameters.
 	min.ingap <- as.integer(min.ingap)
 	min.outgap <- as.integer(min.outgap)
 	max.frag <- as.integer(max.frag)
-	if (is.null(discard.param)) { 
-		discard <- NULL
-	} else {
-		discard <- makeDiscard(discard.param[1], discard.param[2], seqlengths(cuts))
-	}
-	xdiscard <- diffHic:::.splitDiscards(discard)
 	lost.frag <- lost.in <- lost.out <- lost.disc <- 0L
-	frag.by.chr <- diffHic:::.splitByChr(cuts)
 
 	combo <- c(dir1, dir2, dir1x, dir2x)
 	stuff <- diffHic:::.loadIndices(combo, seqlevels(cuts))
@@ -44,21 +39,21 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 		for (tx in names(current)) { 
 
 			everything <- list()
-			for (d in 1:2) {
-				if (current[[tx]][d]) { 
-					collected <- h5read(combo[d], file.path(ax, tx))
+			for (i in 1:2) {
+				if (current[[tx]][i]) { 
+					collected <- h5read(combo[i], file.path(ax, tx))
 				} else {
-					collected <- data.frame(anchor1.id=integer(0),
-						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
-						anchor1.len=integer(0), anchor2.len=integer(0))
+					collected <- data.frame(anchor1.id=integer(0), anchor2.id=integer(0), 
+                                            anchor1.pos=integer(0), anchor2.pos=integer(0),
+                                            anchor1.len=integer(0), anchor2.len=integer(0))
 				}
-				mod.d <- d+2
-				if (current[[tx]][mod.d]) { 
-					counter <- h5read(combo[mod.d], file.path(ax, tx))
+				mod.i <- i+2
+				if (current[[tx]][mod.i]) { 
+					counter <- h5read(combo[mod.i], file.path(ax, tx))
 				} else {
-					counter <- data.frame(anchor1.id=integer(0),
-						anchor2.id=integer(0), anchor1.pos=integer(0), anchor2.pos=integer(0),
-						anchor1.len=integer(0), anchor2.len=integer(0))
+					counter <- data.frame(anchor1.id=integer(0), anchor2.id=integer(0), 
+                                          anchor1.pos=integer(0), anchor2.pos=integer(0),
+                                          anchor1.len=integer(0), anchor2.len=integer(0))
 				}
 
 				# Pruning the statistics.
@@ -79,50 +74,17 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 					lost.in <- lost.in + sum(!nokill)
 					keep <- keep & nokill 
 				}
-				mod.col <- collected[keep,]
+                mod.col <- collected[keep,]
 				row.names(mod.col) <- NULL
-				for (x in 1:ncol(counter)) { 
+				for (x in seq_len(ncol(counter))) { 
 					attributes(mod.col[[x]]) <- attributes(counter[[x]]) <- NULL 
 				}
 				stopifnot(identical(counter, mod.col)) 
-				
-				# Checking discards.
-				disc.keep <- !logical(nrow(collected))
-				if (!is.null(discard)) { 
-					nokill <- !overlapsAny(GRanges(ax, IRanges(collected$anchor1.pos, collected$anchor1.pos+abs(collected$anchor1.len)-1L)), discard, type="within") & 
-						!overlapsAny(GRanges(tx, IRanges(collected$anchor2.pos, collected$anchor2.pos+abs(collected$anchor2.len)-1L)), discard, type="within")
-					lost.disc <- lost.disc + sum(!nokill)
-					disc.keep <- nokill 
-				}
-				collected <- collected[disc.keep,1:2]
-
-				# Comparing it to the cap.
-				if (!is.na(cap)) { 
-					is.diff <- c(TRUE, diff(collected$anchor1.id)!=0L | diff(collected$anchor2.id)!=0L)
-					uniq.ids <- cumsum(is.diff)
-					by.ids <- split(1:nrow(collected), uniq.ids)
-					to.keep <- logical(nrow(collected))
-					for (x in by.ids) {
-						if (length(x)>cap) { x <- x[1:cap] } 
-						to.keep[x] <- TRUE
-					}
-					collected <- collected[to.keep,]
-				} 
-
-				dim(collected$anchor1.id) <- dim(collected$anchor2.id) <- NULL
-				everything[[d]] <- collected
-			}
-									
-			# Running through them with every possible check.
-			comparator <- diffHic:::.baseHiCParser(current[[tx]][1:2], combo[1:2], ax, tx, 
-				chr.limits=frag.by.chr, discard=xdiscard, cap=cap)
-			for (d in 1:2) {
-				stopifnot(identical(everything[[d]], comparator[[d]]))
 			}
 		}
 	}
 
-	stopifnot(identical(lost.frag, totes1[["length"]]+totes2[["length"]]))	
+    stopifnot(identical(lost.frag, totes1[["length"]]+totes2[["length"]]))	
 	stopifnot(identical(lost.in, totes1[["inward"]]+totes2[["inward"]]))	
 	stopifnot(identical(lost.out, totes1[["outward"]]+totes2[["outward"]]))	
 	return(c(by.frag=lost.frag, by.in=lost.in, by.out=lost.out, by.disc=lost.disc))
@@ -134,37 +96,76 @@ set.seed(38247)
 chromos <- c(chrA=50, chrB=20, chrC=30)
 
 filtsim(100, 100, chromos, 4)
-filtsim(100, 100, chromos, 4, min.ingap=100)
-filtsim(100, 100, chromos, 4, min.ingap=1000)
-filtsim(100, 100, chromos, 4, min.outgap=100)
-filtsim(100, 100, chromos, 4, min.outgap=1000)
+filtsim(100, 100, chromos, 4, min.ingap=10000)
+filtsim(100, 100, chromos, 4, min.ingap=50000)
+filtsim(100, 100, chromos, 4, min.outgap=10000)
+filtsim(100, 100, chromos, 4, min.outgap=50000)
 filtsim(100, 100, chromos, 4, max.frag=100)
 filtsim(100, 100, chromos, 4, max.frag=1000)
 
 filtsim(200, 50, chromos, 2)
-filtsim(200, 50, chromos, 2, min.ingap=100, min.outgap=1000)
-filtsim(200, 50, chromos, 2, min.ingap=1000, min.outgap=100)
-filtsim(200, 50, chromos, 2, min.outgap=100, max.frag=100)
-filtsim(200, 50, chromos, 2, min.outgap=1000, max.frag=1000)
-filtsim(200, 50, chromos, 2, max.frag=100, min.ingap=100)
-filtsim(200, 50, chromos, 2, max.frag=1000, min.ingap=1000)
+filtsim(200, 50, chromos, 2, min.ingap=10000, min.outgap=10000)
+filtsim(200, 50, chromos, 2, min.ingap=50000, min.outgap=10000)
+filtsim(200, 50, chromos, 2, min.outgap=10000, max.frag=100)
+filtsim(200, 50, chromos, 2, min.outgap=10000, max.frag=1000)
+filtsim(200, 50, chromos, 2, max.frag=100, min.ingap=10000)
+filtsim(200, 50, chromos, 2, max.frag=1000, min.ingap=10000)
 
-filtsim(200, 200, chromos, 2, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=1000, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.outgap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.outgap=1000, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, max.frag=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, max.frag=1000, discard.param=c(10, 100))
+#########################################################################
 
-filtsim(200, 200, chromos, 2, cap=1, min.ingap=200)
-filtsim(200, 200, chromos, 2, cap=1, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, min.ingap=100, min.outgap=1000, cap=2)
-filtsim(200, 200, chromos, 2, cap=2, max.frag=100)
-filtsim(200, 200, chromos, 2, cap=5, max.frag=1000, min.ingap=1000)
-filtsim(200, 200, chromos, 2, cap=5, min.outgap=100)
-filtsim(200, 200, chromos, 2, ca=10, min.ingap=100, discard.param=c(10, 100))
-filtsim(200, 200, chromos, 2, ca=10, discard.param=c(10, 100))
+addparamsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outgap=NA, max.frag=NA, restrict=NULL, discard.param=NULL, cap=NA) { 
+ 	simgen(dir1, npairs1, chromos)
+	simgen(dir2, npairs2, chromos)
+	cuts <- simcuts(chromos, overlap=overlap)
+	augmentsim(dir1, cuts)
+	augmentsim(dir2, cuts)
+
+    # Pruning with constant arguments.
+    param <- pairParam(fragments=cuts)
+    prunePairs(dir1, param, file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+	prunePairs(dir2, param, file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+
+   # Pruning with additional arguments.
+    new.param <- pairParam(fragments=cuts, restrict=restrict, cap=cap)
+	if (!is.null(discard.param)) { 
+		discard <- makeDiscard(discard.param[1], discard.param[2], seqlengths(cuts))
+        new.param <- reform(new.param, discard=discard)
+	}
+	totes1 <- prunePairs(dir1, new.param, file.out=dir1y, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+	totes2 <- prunePairs(dir2, new.param, file.out=dir2y, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+
+    # Checking that the counting behaves the same.
+    ref <- squareCounts(c(dir1x, dir2x), new.param, width=1)
+    out <- squareCounts(c(dir1y, dir2y), param, width=1)
+    stopifnot(identical(interactions(ref), interactions(out)))
+    stopifnot(identical(assay(ref), assay(out)))
+    stopifnot(identical(ref$totals, out$totals))
+
+    return(totes1 + totes2)
+}
+
+set.seed(10893)
+addparamsim(200, 200, chromos, 2) # for reference.
+
+addparamsim(200, 200, chromos, 2, discard.param=c(10, 100))
+addparamsim(200, 200, chromos, 2, discard.param=c(100, 200))
+addparamsim(200, 200, chromos, 2, min.ingap=1000, discard.param=c(10, 100))
+addparamsim(200, 200, chromos, 2, min.outgap=1000, discard.param=c(10, 100))
+addparamsim(200, 200, chromos, 2, max.frag=100, discard.param=c(10, 100))
+
+addparamsim(200, 200, chromos, 2, restrict="chrB")
+addparamsim(200, 200, chromos, 2, restrict=cbind("chrA", "chrB"))
+addparamsim(200, 200, chromos, 2, min.ingap=1000, restrict="chrB") 
+addparamsim(200, 200, chromos, 2, min.outgap=1000, restrict="chrB") 
+addparamsim(200, 200, chromos, 2, max.frag=100, restrict="chrB") 
+
+addparamsim(200, 200, chromos, 2, cap=2)
+addparamsim(200, 200, chromos, 2, cap=2, discard.param=c(10, 100))
+addparamsim(200, 200, chromos, 2, cap=2, restrict="chrB")
+addparamsim(200, 200, chromos, 2, cap=5)
+addparamsim(200, 200, chromos, 2, min.ingap=1000, cap=2)
+addparamsim(200, 200, chromos, 2, min.outgap=1000, cap=2)
+addparamsim(200, 200, chromos, 2, max.frag=100, cap=2)
 
 #########################################################################
 
