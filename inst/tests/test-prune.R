@@ -122,8 +122,13 @@ addparamsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.
 
     # Pruning with constant arguments.
     param <- pairParam(fragments=cuts)
-    prunePairs(dir1, param, file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
-	prunePairs(dir2, param, file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+    if (is.na(min.ingap) && is.na(min.outgap) && is.na(max.frag)) { 
+        dir1x <- dir1
+        dir2x <- dir2
+    } else {
+        prunePairs(dir1, param, file.out=dir1x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+        prunePairs(dir2, param, file.out=dir2x, min.inward=min.ingap, min.outward=min.outgap, max.frag=max.frag)
+    }
 
    # Pruning with additional arguments.
     new.param <- pairParam(fragments=cuts, restrict=restrict, cap=cap)
@@ -140,6 +145,17 @@ addparamsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.
     stopifnot(identical(interactions(ref), interactions(out)))
     stopifnot(identical(assay(ref), assay(out)))
     stopifnot(identical(ref$totals, out$totals))
+
+    # Additional statistics check with getPairData on the pruned files.
+    if (is.na(min.ingap) && is.na(min.outgap) && is.na(max.frag)) { 
+        ref1 <- getPairData(dir1, new.param)
+        out1 <- getPairData(dir1y, param)
+        stopifnot(identical(ref1, out1))
+        ref2 <- getPairData(dir2, new.param)
+        out2 <- getPairData(dir2y, param)
+        stopifnot(identical(ref2, out2))
+    }
+
 
     return(totes1 + totes2)
 }
@@ -162,7 +178,6 @@ addparamsim(200, 200, chromos, 2, max.frag=100, restrict="chrB")
 addparamsim(200, 200, chromos, 2, cap=2)
 addparamsim(200, 200, chromos, 2, cap=2, discard.param=c(10, 100))
 addparamsim(200, 200, chromos, 2, cap=2, restrict="chrB")
-addparamsim(200, 200, chromos, 2, cap=5)
 addparamsim(200, 200, chromos, 2, min.ingap=1000, cap=2)
 addparamsim(200, 200, chromos, 2, min.outgap=1000, cap=2)
 addparamsim(200, 200, chromos, 2, max.frag=100, cap=2)
