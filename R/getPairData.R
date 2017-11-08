@@ -5,10 +5,22 @@ getPairData <- function(file, param)
 #
 # written by Aaron Lun
 # created 20 September 2014
-# last modified 22 March 2017
+# last modified 8 November 2017
 {
+    # Figuring out which chromosomes to load in.
     parsed <- .parseParam(param, bin=FALSE)
-	allstuff <- .loadIndices(file, parsed$chrs)
+    chrs <- parsed$chrs
+    frag.by.chr <- parsed$frag.by.chr
+    restrict <- parsed$restrict
+    allstuff <- .loadIndices(file, chrs, restrict)
+
+    # Figuring out which reads to keep.
+    discard <- parsed$discard
+    cap <- parsed$cap
+    if (.isDNaseC(param)) { 
+        cap <- NA # no binning here, so cap is useless.
+    }
+
 	alll <- allo <- alli <- vector("list", sum(lengths(allstuff)))
 	ix <- 1L
 
@@ -16,7 +28,10 @@ getPairData <- function(file, param)
 	for (ax in names(allstuff)) {
 		current <- allstuff[[ax]] 
 		for (tx in names(current)) { 
-			extracted <- .getPairs(file, ax, tx)
+            extracted <- .baseHiCParser(TRUE, file, ax, tx, chr.limits=frag.by.chr, 
+                discard=discard, cap=cap, width=NA, retain=NULL)[[1]]
+
+            # Calculating the statistics.
 			yielded <- .getStats(extracted, ax==tx, param$fragments)
 			alll[[ix]] <- yielded$length
 			allo[[ix]] <- yielded$orientation

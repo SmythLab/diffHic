@@ -166,8 +166,6 @@
 {
     adisc <- discard[[anchor1]]
     tdisc <- discard[[anchor2]]
-    do.cap <- !is.na(cap) 
-    do.bin <- !is.na(width)
     overall <- vector("list", length(ok))
 
     for (x in seq_along(ok)) {
@@ -209,7 +207,7 @@
             }
 
             # Removing read pairs above the cap for each restriction fragment pair.
-            if (do.cap) { 
+            if (!is.na(cap)) { 
                 capped <- .Call(cxx_cap_input, out$anchor1.id, out$anchor2.id, cap)
                 out <- out[capped,]
             }

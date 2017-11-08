@@ -32,9 +32,10 @@ Values for interchromosomal pairs are set to \code{NA}.
 For \code{orientation}, setting 0x1 or 0x2 means that the read mapped into the first or second anchor fragment respectively is on the reverse strand.
 For intrachromosomal reads, an orientation value of 1 represents inward-facing reads whereas a value of 2 represents outward-facing reads.
 
-Note that a \code{pairParam} object is only used here for consistency.
-Specifically, the restriction fragment coordinates in \code{param$fragments} are required.
-No removal of read pairs will be performed here, so the values of \code{param$restrict} or \code{param$discard} will be ignored.
+\code{getPairData} will now respect any settings of \code{restrict}, \code{discard} or \code{cap} in the input \code{pairParam} object.
+Statistics will not be reported for read pairs that lie outside of restricted chromosomes, within discarded regions or exceed the cap for a restriction fragment pair.
+Note that \code{cap} will be ignored for DNase-C experiments as this depends on an unknown bin size.
+
 }
 
 \seealso{
