@@ -2,7 +2,13 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.9.9}{\itemize{
+\section{Version 1.11.1}{\itemize{
+\item Extended prunePairs() to acknowledge restrict, discard and cap in param= argument.
+
+\item Extended getPairs() to acknowledge restrict, discard and cap in param= argument.
+}}
+
+\section{Version 1.10.0}{\itemize{
 \item Added extractPatch() function to count bin pairs in a specified area of the interaction space.
 
 \item Modified connectCounts() to eliminate warnings upon stranded entries, unknown chromosomes.
