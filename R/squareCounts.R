@@ -19,7 +19,6 @@ squareCounts <- function(files, param, width=50000, filter=1L)
     # Constructing bins across the genome.
     is.dnase <- .isDNaseC(param)
     if (is.dnase) { 
-        param <- reform(param, cap=NA)
         retainer <- c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
         bins <- .createBins(param, width, restricted=FALSE)
     } else {

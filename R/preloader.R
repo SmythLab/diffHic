@@ -5,6 +5,7 @@ preloader <- function(fnames, param=NULL, retain=NULL)
     if (is.null(param)) { 
         chrs <- frag.by.chr <- discard <- restrict <- NULL
         do.restrict <- paired <- FALSE
+        cap <- NA_integer_
     } else {
         # Checking how we want to do restriction.
         restrict <- param$restrict
@@ -19,9 +20,11 @@ preloader <- function(fnames, param=NULL, retain=NULL)
         # Pulling out the chromosomes we want.
         fragments <- param$fragments
         if (!.isDNaseC(fragments=fragments)) { 
+            cap <- param$cap
             chrs <- seqlevelsInUse(fragments)
             frag.by.chr <- .splitByChr(fragments) 
         } else {
+            cap <- NA_integer_ # pointless to cap as all IDs are zeroes.
             all.lengths <- seqlengths(fragments)
             chrs <- names(all.lengths)
             first <- last <- integer(length(chrs)) # set to zero if we're not binning.
@@ -73,7 +76,7 @@ preloader <- function(fnames, param=NULL, retain=NULL)
 				if (is.null(overall[[ac]][[tc]])) { 
                     overall[[ac]][[tc]] <- rep(list(EMPTY_FUN(retain)), length(y)) 
                 }
-				overall[[ac]][[tc]][[ix]] <- RETRIEVAL_FUN(y[ix], ac, tc, frag.by.chr, discard, param$cap, retain=retain)
+				overall[[ac]][[tc]][[ix]] <- RETRIEVAL_FUN(y[ix], ac, tc, frag.by.chr, discard, cap, retain=retain)
 			}
 		}
 	}
