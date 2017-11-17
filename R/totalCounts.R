@@ -11,24 +11,17 @@ totalCounts <- function(files, param)
 	if (nlibs==0L) { stop("number of libraries must be positive") }
 	full.sizes <- integer(nlibs)
 
-	# Setting up other local references.
-    parsed <- .parseParam(param, bin=FALSE)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    cap <- parsed$cap
-    discard <- parsed$discard
-    restrict <- parsed$restrict
-
 	# Running through each pair of chromosomes.
-	overall <- .loadIndices(files, chrs, restrict)
-    for (anchor in names(overall)) {
-        current <- overall[[anchor]]
+	loadfuns <- preloader(files, param=param)
+    for (anchor in names(loadfuns)) {
+        current <- loadfuns[[anchor]]
 		for (target in names(current)) {
+            curfuns <- current[[target]]
 
 			# Getting totals.
-			pairs <- .baseHiCParser(current[[target]], files, anchor, target, 
-				chr.limits=frag.by.chr, discard=discard, cap=cap, width=NA_integer_)
-			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+            for (lib in seq_len(nlibs)) { 
+                full.sizes[lib] <- full.sizes[lib] + nrow(curfuns[[lib]]())
+            }
 		}
 	}
 

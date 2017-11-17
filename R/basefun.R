@@ -19,19 +19,27 @@
     return(length(fragments)==0L)
 }
 
-.assignBins <- function(fragments, width) 
+.assignBins <- function(param, width, restricted=FALSE)
 # Determines which bin each restriction fragment is in. Also records the rounded
 # start and stop site for each bin. Returns a set of bin ids for each restriction
 # fragment on each chromosome, as well as the coordinates of each bin.
 {
-    width<-as.integer(width)
+    fragments <- param$fragments
+    width <- as.integer(width)
     out.ids <- integer(length(fragments))
     last <- 0L 
+
     frag.data <- .splitByChr(fragments)
-    nchrs <- length(frag.data$chrs)
-    out.ranges <- nfrags <- vector("list", nchrs)
-    
-    for (x in seq_len(nchrs)) {
+    out.ranges <- nfrags <- vector("list", length(frag.data$chrs))
+
+    # Ignoring fragments not in our restricted set.
+    if (restricted && length(param$restricted)) { 
+        chrs.to.use <- which(frag.data$chrs %in% param$restricted)
+    } else {
+        chrs.to.use <- seq_along(frag.data$chrs)
+    }
+
+    for (x in chrs.to.use) { 
         curindex <- frag.data$first[x]:frag.data$last[x]
         curf <- fragments[curindex]
         mids <- (start(curf)+end(curf))/2
@@ -39,17 +47,21 @@
         # The '-0.1' in the preceding step reduces 'mids' that are exact multiples 
         # of 'width', so each bin is from (n*width, (n+1)*width] for integer 'n'.
 
+        # Setting up the bin ID for each fragment.
         processed <- rle(bin.id)
         ns <- length(processed$value)
         processed$values <- seq_len(ns)
         nfrags[[x]] <- processed$length
         out.ids[curindex] <- inverse.rle(processed)+last
+        last <- last+ns
         
+        # Setting up the restriction-fragment-rounded coordinates for each bin.
         endx <- cumsum(processed$length)
         startx <- rep(1L, ns)
-        if (ns>=2L) { startx[-1] <- endx[-ns]+1L }
+        if (ns>=2L) { 
+            startx[-1] <- endx[-ns]+1L 
+        }
         out.ranges[[x]] <- GRanges(frag.data$chrs[x], IRanges(start(curf[startx]), end(curf[endx])))
-        last <- last+ns
     }
 
     # Wrapping up.
@@ -60,17 +72,23 @@
     return(list(id=out.ids, region=out.ranges))
 }
 
-.createBins <- function(fragments, width) 
+.createBins <- function(fragments, width, restricted=NULL) 
 # This creates regular contiguous bins of size 'width'. Each bin
 # is assigned to itself; allocation of read pairs into bins is done below.
 # This allows free-floating bins for use with DNase-C data.
 {
-    ref.len <- seqlengths(fragments)
+    ref.len <- seqlengths(param$fragments)
     chr.names <- names(ref.len)
-    nchrs <- length(ref.len)
-    everything <- vector("list", nchrs)
+    everything <- vector("list", length(ref.len))
 
-    for (i in seq_len(nchrs)) {
+    # Ignoring fragments not in our restricted set.
+    if (restricted && length(param$restricted)) { 
+        chrs.to.use <- which(chr.names %in% param$restricted)
+    } else {
+        chrs.to.use <- seq_along(chr.names)
+    }
+
+    for (i in chrs.to.use) {
         chr.len <- ref.len[i]
         bin.dex <- seq_len(ceiling(chr.len/width))
         end.pt <- pmin(bin.dex * width, chr.len)
@@ -86,21 +104,26 @@
 
 ####################################################################################################
 
-.parseParam <- function(param, bin=FALSE, width=NA_integer_)
+.parseParam <- function(param, bin=FALSE, width=NA_integer_, restrict.only=FALSE)
 # Parses the parameters and returns all values, depending on
 # whether we're dealing with a DNase-C experiment or not.
 # Also assigns fragments into bins, if requested.
 {
     fragments <- param$fragments
-    restrict <- param$restrict
     discard <- .splitDiscards(param$discard)
+    restrict <- param$restrict
+    if (restrict.only) {
+        restricted.regions <- restrict
+    } else {
+        restricted.regions <- NULL
+    }
 
     if (.isDNaseC(fragments=fragments)) { 
         all.lengths <- seqlengths(fragments)
         chrs <- names(all.lengths)
     
         if (bin) {
-            bins <- .createBins(fragments, width)
+            bins <- .createBins(fragments, width, restricted=restricted.regions)
             bin.by.chr <- .splitByChr(bins$region)
             frag.by.chr <- bin.by.chr # Bins _are_ the fragments in a DNase-C experiment.
         } else {
@@ -119,7 +142,7 @@
         bwidth <- NA_integer_
 
         if (bin) { 
-            bins <- .assignBins(fragments, width)
+            bins <- .assignBins(fragments, width, restricted=restricted.regions)
             bin.by.chr <- .splitByChr(bins$region)
         }
     }

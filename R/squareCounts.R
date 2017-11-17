@@ -5,7 +5,7 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 #
 # written by Aaron Lun
 # some time ago
-# last modified 17 March 2017
+# last modified 17 November 2017
 {
 	nlibs <- length(files)
 	if (nlibs==0L) {
@@ -16,19 +16,19 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	width <- as.integer(width) 
 	filter <- as.integer(filter) 
 
-    # Setting up the bins.
-
-    # Setting up the other statistics.
-    parsed <- .parseParam(param, width=width, bin=TRUE)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    cap <- parsed$cap
-    bwidth <- parsed$bwidth
-    discard <- parsed$discard
-	bin.id <- parsed$bin.id
-    bin.region <- parsed$bin.region
-	bin.by.chr <- parsed$bin.by.chr
-    restrict <- parsed$restrict
+    # Constructing bins across the genome.
+    is.dnase <- .isDNaseC(param)
+    if (is.dnase) { 
+        param <- reform(param, cap=NA)
+        retainer <- c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
+        bins <- .createBins(param, width, restricted=FALSE)
+    } else {
+        retainer <- c("anchor1.id", "anchor2.id")
+        bin.out <- .assignBins(param, width, restricted=FALSE)
+    }
+    bin.region <- bin.out$region
+    bin.id <- bin.out$id
+    bin.by.chr <- .splitByChr(bin.region)
 
 	# Output vectors.
 	full.sizes <- integer(nlibs)
@@ -37,20 +37,33 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 	idex <- 1L
 
 	# Running through each pair of chromosomes.
-	overall <- .loadIndices(files, chrs, restrict)
-    for (anchor1 in names(overall)) {
-        current <- overall[[anchor1]]
+    loadfuns <- preloader(files, param=param, retain=retainer)
+    for (anchor1 in names(loadfuns)) {
+        current <- loadfuns[[anchor1]]
 		for (anchor2 in names(current)) {
+            curfuns <- current[[anchor2]]
 
-			# Extracting counts and checking them.
-			pairs <- .baseHiCParser(current[[anchor2]], files, anchor1, anchor2, 
-				chr.limits=frag.by.chr, discard=discard, cap=cap, width=bwidth)
+			# Extracting counts.
+            pairs <- vector("list", nlibs)
+            for (lib in seq_len(nlibs)) { 
+                pairs[[lib]] <- curfuns[[lib]]()
+            }
 			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+
+            # Switching to bin IDs for DNase-C data.
+            if (is.dnase) {
+                for (lib in seq_len(nlibs)) { 
+                    pairs[[lib]] <- .binReads(pairs[[lib]], width, 
+                                              bin.by.chr$first[[anchor1]], bin.by.chr$first[[anchor2]],
+                                              bin.by.chr$last[[anchor1]], bin.by.chr$last[[anchor2]])
+                }
+            }
 			
 			# Aggregating them in C++ to obtain count combinations for each bin pair.
-			out <- .Call(cxx_count_patch, pairs, bin.id, filter, 
-				bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]])
-			if (!length(out[[1]])) { next }
+			out <- .Call(cxx_count_patch, pairs, bin.id, filter, bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]])
+			if (!length(out[[1]])) { 
+                next 
+            }
 
 			# Storing counts and locations. 
 			if (any(out[[1]] < out[[2]])) { stop("anchor1 ID should not be less than anchor2 ID") }
