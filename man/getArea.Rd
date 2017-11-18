@@ -49,7 +49,7 @@ ends <- cumsum(frag.sizes)
 cuts <- GRanges("chrA", IRanges(c(1, ends[-nfrags]+1), ends))
 param <- pairParam(cuts) 
 
-regions <- diffHic:::.assignBins(cuts, 20)$region
+regions <- diffHic:::.assignBins(param, 20)$region
 all.combos <- combn(length(regions), 2)
 y <- InteractionSet(matrix(0, ncol(all.combos), 1), 
     GInteractions(anchor1=all.combos[2,], anchor2=all.combos[1,], 
