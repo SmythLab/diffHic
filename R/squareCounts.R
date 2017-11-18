@@ -7,14 +7,14 @@ squareCounts <- function(files, param, width=50000, filter=1L)
 # some time ago
 # last modified 17 November 2017
 {
-	nlibs <- length(files)
-	if (nlibs==0L) {
-		stop("number of libraries must be positive")
-	} else if (width < 0) { 
-		stop("width must be a non-negative integer")
-	} 
-	width <- as.integer(width) 
-	filter <- as.integer(filter) 
+    nlibs <- length(files)
+    if (nlibs==0L) {
+        stop("number of libraries must be positive")
+    } else if (width < 0) { 
+        stop("width must be a non-negative integer")
+    } 
+    width <- as.integer(width) 
+    filter <- as.integer(filter) 
 
     # Constructing bins across the genome.
     is.dnase <- .isDNaseC(param)
@@ -29,57 +29,64 @@ squareCounts <- function(files, param, width=50000, filter=1L)
     bin.id <- bin.out$id
     bin.by.chr <- .splitByChr(bin.region)
 
-	# Output vectors.
-	full.sizes <- integer(nlibs)
-	out.counts <- list(matrix(0L, 0, nlibs))
-	out.a <- out.t <- list(integer(0))
-	idex <- 1L
+    # Output vectors.
+    full.sizes <- integer(nlibs)
+    out.counts <- list(matrix(0L, 0, nlibs))
+    out.a <- out.t <- list(integer(0))
+    idex <- 1L
 
-	# Running through each pair of chromosomes.
+    # Running through each pair of chromosomes.
     loadfuns <- preloader(files, param=param, retain=retainer)
     for (anchor1 in names(loadfuns)) {
         current <- loadfuns[[anchor1]]
-		for (anchor2 in names(current)) {
-            curfuns <- current[[anchor2]]
+        first.anchor1 <- bin.by.chr$first[[anchor1]]
+        last.anchor1 <- bin.by.chr$last[[anchor1]]
 
-			# Extracting counts.
+        for (anchor2 in names(current)) {
+            curfuns <- current[[anchor2]]
+            first.anchor2 <- bin.by.chr$first[[anchor2]]
+            last.anchor2 <- bin.by.chr$last[[anchor2]]
+
+            # Extracting counts.
             pairs <- vector("list", nlibs)
             for (lib in seq_len(nlibs)) { 
-                pairs[[lib]] <- curfuns[[lib]]()
+                cur.pairs <- curfuns[[lib]]()
+                if (is.dnase) {
+                    cur.pairs <- .binReads(cur.pairs, width, first.anchor1, first.anchor2,
+                                           last.anchor1, last.anchor2)
+                }
+                pairs[[lib]] <- cur.pairs
             }
-			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+            full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
             # Switching to bin IDs for DNase-C data.
             if (is.dnase) {
                 for (lib in seq_len(nlibs)) { 
-                    pairs[[lib]] <- .binReads(pairs[[lib]], width, 
-                                              bin.by.chr$first[[anchor1]], bin.by.chr$first[[anchor2]],
-                                              bin.by.chr$last[[anchor1]], bin.by.chr$last[[anchor2]])
                 }
             }
-			
-			# Aggregating them in C++ to obtain count combinations for each bin pair.
-			out <- .Call(cxx_count_patch, pairs, bin.id, filter, bin.by.chr$first[[anchor2]], bin.by.chr$last[[anchor2]])
-			if (!length(out[[1]])) { 
+            
+            # Aggregating them in C++ to obtain count combinations for each bin pair.
+            out <- .Call(cxx_count_patch, pairs, bin.id, filter, first.anchor2, last.anchor2)
+            if (!length(out[[1]])) { 
                 next 
             }
 
-			# Storing counts and locations. 
-			if (any(out[[1]] < out[[2]])) { stop("anchor1 ID should not be less than anchor2 ID") }
-			out.a[[idex]] <- out[[1]]
- 			out.t[[idex]] <- out[[2]]
-			out.counts[[idex]] <- out[[3]]
-			idex<-idex+1L
-		}
-	}
+            # Storing counts and locations. 
+            if (any(out[[1]] < out[[2]])) { stop("anchor1 ID should not be less than anchor2 ID") }
+            out.a[[idex]] <- out[[1]]
+             out.t[[idex]] <- out[[2]]
+            out.counts[[idex]] <- out[[3]]
+            idex<-idex+1L
+        }
+    }
 
-	# Collating all the other results.
-	out.a <- unlist(out.a)
-	out.t <- unlist(out.t)
-	out.counts <- do.call(rbind, out.counts)
+    # Collating all the other results.
+    out.a <- unlist(out.a)
+    out.t <- unlist(out.t)
+    out.counts <- do.call(rbind, out.counts)
 
-	return(InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
-		interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=bin.region, mode="reverse"), 
+    return(InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
+        interactions=GInteractions(anchor1=out.a, anchor2=out.t, regions=bin.region, mode="reverse"), 
         metadata=List(param=param, width=width)))
 }
 
