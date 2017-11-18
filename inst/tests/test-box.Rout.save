@@ -1,5 +1,5 @@
 
-R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+R Under development (unstable) (2017-10-27 r73632) -- "Unsuffered Consequences"
 Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -29,7 +29,7 @@ Type 'q()' to quit R.
 + 	collected <- list()
 + 	for (w in widths) {
 + 		output <- list()
-+ 		bindata <- diffHic:::.assignBins(cutted, w)
++ 		bindata <- diffHic:::.assignBins(pairParam(cutted), w)
 + 		n <- round(runif(1, 20, 100))
 + 		all.a <- as.integer(runif(n, 1, length(bindata$region)))
 + 		all.t <- as.integer(runif(n, 1, all.a))
@@ -246,4 +246,4 @@ $w250
 > 
 > proc.time()
    user  system elapsed 
- 16.484   0.148  16.632 
+ 18.288   0.148  18.441 

@@ -10,7 +10,7 @@ comp <- function(reference, widths, minbox=FALSE) {
 	collected <- list()
 	for (w in widths) {
 		output <- list()
-		bindata <- diffHic:::.assignBins(cutted, w)
+		bindata <- diffHic:::.assignBins(pairParam(cutted), w)
 		n <- round(runif(1, 20, 100))
 		all.a <- as.integer(runif(n, 1, length(bindata$region)))
 		all.t <- as.integer(runif(n, 1, all.a))
