@@ -285,7 +285,6 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 
     # Adding an extra chromosome to the start, to see if the match is still correct when it's not 1:1.
     # Also deleting a chromosome to trigger an error.
-    chrs.of.interest <- seqlevels(outfrags)
     if (!is.null(extras)) { 
         if (extras[1]==-1L) {
             used.frags <- dropSeqlevels(outfrags, seqnames(outfrags)[1], pruning.mode="coarse")
@@ -320,19 +319,18 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 
 	# Anchor1/anchor2 synchronisation is determined by order in 'fragments' (and thusly, in max.cuts).
     if (pseudo) { 
-        offset <- integer(length(chromosomes))
-        # 'extras' don't matter, as ID is set to zero anyway.
+        offset <- integer(length(chromosomes)) # 'extras' don't matter, as ID is set to zero anyway.
     } else { 
         offset <- c(0L, cumsum(max.cuts))
         names(offset) <- NULL
         offset <- offset + length(extras)
     }
-	indices <- diffHic:::.loadIndices(tmpdir, chrs.of.interest)
-	used <- indices
-	fchrs <- as.character(seqnames(used.frags))
 
+    indices <- diffHic:::preloader(tmpdir)
+	fchrs <- as.character(seqnames(used.frags))
 	for (i in seq_along(max.cuts)) {
 		for (j in seq_len(i)) {
+
             # Getting the fragment IDs for the remaining pairs for this chromosome.
 			stuff <- (pchrs==i & schrs==j) | (pchrs==j & schrs==i) 
 			if (!pseudo) { stuff <- stuff & (codes==0L | codes==2L) }
@@ -357,8 +355,8 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
 			o <- order(anchor1, anchor2, ap1, ap2, al1, al2, totes, cur.ori, cur.insert)
 
             # Extracting data from HDF5 and computing statistics.
-			achr<-names(max.cuts)[i]
-			tchr<-names(max.cuts)[j]
+			achr <- names(max.cuts)[i]
+			tchr <- names(max.cuts)[j]
 			if (!(achr%in%names(indices)) || !(tchr %in% names(indices[[achr]]))) { 
 				if (length(o)) { stop("true interactions are missing") }
 				next
@@ -406,12 +404,14 @@ comp <- function (fname, npairs, max.cuts, sizes=c(100, 500), singles=0, rlen=10
                 if (length(uniq.a)!=1L || length(uniq.t)!=1L) { stop("file contains more than one combination") }
                 if (achr!=uniq.a || tchr!=uniq.t) { stop("file contains the incorrect combination") }
             }
-            used[[achr]][[tchr]]<-NULL
+
+            # Wiping it out to indicate that we've visited this place.
+            indices[[achr]][[tchr]]<-NULL
         }
 	}
 
 	# Checking there's nothing left.
-	if (!is.null(unlist(used))) { stop("objects left unused in the directory") }
+	if (!is.null(unlist(indices))) { stop("objects left unused in the directory") }
 
 	# Length insert and orientation checking.
 	if (!pseudo) { 
@@ -581,15 +581,10 @@ namefun <- function(extracted) {
     return(my.names)
 }
 
-# We also have 3 unmapped reads, 5 dangling ends, 2 self-circles, 2 singletons.
-# For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
-
-preparePairs(hic.file, param, tmpdir, dedup=FALSE)
-
 printfun<-function(dir) {
 	output<-list()
 	ix <- 1L
-	indices <- suppressWarnings(diffHic:::.loadIndices(tmpdir))
+	indices <- suppressWarnings(diffHic:::preloader(tmpdir))
 	for (ax in names(indices)) {
 		if (is.null(output[[ax]])) { output[[ax]]<-list() }
 		for (tx in names(indices[[ax]])) {
@@ -603,6 +598,11 @@ printfun<-function(dir) {
 	}
 	return(output)
 }
+
+# We also have 3 unmapped reads, 5 dangling ends, 2 self-circles, 2 singletons.
+# For chimeras, all have mapped 5' and 3' ends, 7 of which are invalid.
+
+preparePairs(hic.file, param, tmpdir, dedup=FALSE)
 printfun(tmpdir)
 
 # Alright, so once duplicates are removed, we lose:
