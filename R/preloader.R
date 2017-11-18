@@ -21,8 +21,8 @@ preloader <- function(fnames, param=NULL, retain=NULL)
         fragments <- param$fragments
         if (!.isDNaseC(fragments=fragments)) { 
             cap <- param$cap
-            chrs <- seqlevelsInUse(fragments)
             frag.by.chr <- .splitByChr(fragments) 
+            chrs <- frag.by.chr$chrs
         } else {
             cap <- NA_integer_ # pointless to cap as all IDs are zeroes.
             all.lengths <- seqlengths(fragments)
@@ -85,14 +85,21 @@ preloader <- function(fnames, param=NULL, retain=NULL)
 }
 
 EMPTY_FUN <- function(retain) {
-    out <- matrix(0, 0, length(retain)) 
-    colnames(out) <- retain
-    return(data.frame(out))
+    if (!is.null(retain)) { 
+        out <- matrix(0L, 0, length(retain)) 
+        colnames(out) <- retain
+        out <- data.frame(out)
+        return(function() { out })
+    } else {
+        return(NULL)
+    }
 }
 
 RETRIEVAL_FUN <- function(fname, anchor1, anchor2, chr.limits, discard, cap, retain) { 
     adisc <- discard[[anchor1]]
     tdisc <- discard[[anchor2]]
+
+    check.limits <- !is.null(chr.limits)
     first1 <- chr.limits$first[[anchor1]]
     first2 <- chr.limits$first[[anchor2]]
     last1 <- chr.limits$last[[anchor1]] 
@@ -110,7 +117,7 @@ RETRIEVAL_FUN <- function(fname, anchor1, anchor2, chr.limits, discard, cap, ret
         check <- .Call(cxx_check_input, out$anchor1.id, out$anchor2.id)
     
         # Checking that we're all on the right chromosome.
-        if (nrow(out)) { 
+        if (check.limits && nrow(out)) { 
             if (max(out$anchor1.id) > last1 || min(out$anchor1.id) < first1) {
                 stop("anchor1 index outside range of fragment object") 
             }

@@ -93,12 +93,12 @@ mergecomp<-function(nl, n, nfrags, nchrs) {
 	mergePairs(allfiles, mdir)
 
 	# Comparing internal objects.
-	combodirs<-c(mdir, rdir)
-	out <- diffHic:::.loadIndices(combodirs, seqlevels(blah))
+	combodirs <- c(mdir, rdir)
+	out <- diffHic:::preloader(combodirs)
 	for (x in names(out)) {
 		for (y in names(out[[x]])) {
-			current<-out[[x]][[y]]
-			stopifnot(all(current))
+			current <- out[[x]][[y]]
+			stopifnot(all(!is.null(current)))
 
 			alpha <- h5read(mdir, file.path(x, y))
 			alpha <- alpha[do.call(order, alpha),]

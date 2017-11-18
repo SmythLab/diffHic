@@ -1,7 +1,7 @@
 
-R version 3.4.0 (2017-04-21) -- "You Stupid Darkness"
+R Under development (unstable) (2017-10-27 r73632) -- "Unsuffered Consequences"
 Copyright (C) 2017 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -175,12 +175,12 @@ Type 'q()' to quit R.
 + 	mergePairs(allfiles, mdir)
 + 
 + 	# Comparing internal objects.
-+ 	combodirs<-c(mdir, rdir)
-+ 	out <- diffHic:::.loadIndices(combodirs, seqlevels(blah))
++ 	combodirs <- c(mdir, rdir)
++ 	out <- diffHic:::preloader(combodirs)
 + 	for (x in names(out)) {
 + 		for (y in names(out[[x]])) {
-+ 			current<-out[[x]][[y]]
-+ 			stopifnot(all(current))
++ 			current <- out[[x]][[y]]
++ 			stopifnot(all(!is.null(current)))
 + 
 + 			alpha <- h5read(mdir, file.path(x, y))
 + 			alpha <- alpha[do.call(order, alpha),]
@@ -254,4 +254,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 18.135   1.011  20.539 
+ 16.200   0.280  16.481 

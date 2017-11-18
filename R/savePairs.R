@@ -6,25 +6,27 @@ savePairs <- function(x, file, param)
 #
 # written by Aaron Lun 
 # created some time ago
-# last modified 14 May 2017
+# last modified 18 November 2017
 {
     if (any(colnames(x) %in% c("anchor.id", "target.id"))) { 
         stop("colnames 'anchor.*' and 'target.*' should be changed to 'anchor1.*' and 'anchor2.*'")
     }
     x <- .enforcePairOrder(x)
-	if (file.exists(file)) { unlink(file, recursive=TRUE) }
+	if (file.exists(file)) { 
+        unlink(file, recursive=TRUE) 
+    }
 
 	# Need to reorder so fragments are sorted by chromosome COMBINATION.
-    parsed <- .parseParam(param, bin=FALSE)
-	frag.out <- parsed$frag.by.chr
-	all.chrs <- parsed$chrs
     if (!.isDNaseC(param)) { 
+        frag.out <- .splitByChr(param$fragments) 
+        all.chrs <- frag.out$chr
         full.chrs <- rep(seq_along(all.chrs), frag.out$last-frag.out$first+1L)
         achr <- full.chrs[x$anchor1.id]
         tchr <- full.chrs[x$anchor2.id]
         new.o <- order(achr, tchr, x$anchor1.id, x$anchor2.id)
     } else{ 
         # For DNase-C data, the anchor IDs are assumed to be chromosome indices to 'seqlengths'.
+        all.chrs <- seqlevels(param$fragments)
         achr <- x$anchor1.id
         tchr <- x$anchor2.id
         new.o <- order(achr, tchr)
@@ -39,11 +41,15 @@ savePairs <- function(x, file, param)
 		is.diff <- c(TRUE, diff(new.achr)!=0L | diff(new.tchr)!=0L)
 		first.in.combo <- which(is.diff)
 		last.in.combo <- c(first.in.combo[-1]-1L, length(new.o))
-	} else { first.in.combo <- last.in.combo <- integer(0) }
+	} else { 
+        first.in.combo <- last.in.combo <- integer(0) 
+    }
 
 	# Saving results.
 	.initializeH5(file)
-	for (ax in unique(new.achr[first.in.combo])) { .addGroup(file, all.chrs[ax]) }
+	for (ax in unique(new.achr[first.in.combo])) { 
+        .addGroup(file, all.chrs[ax]) 
+    }
 	for (y in seq_along(first.in.combo)) {
 		current <- first.in.combo[y]:last.in.combo[y]
 		cur.a <- all.chrs[new.achr[current[1]]] 
