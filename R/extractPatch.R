@@ -48,17 +48,27 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
 
     if (!is.null(loadfuns[[first.chr]][[second.chr]])) {
         current <- loadfuns[[first.chr]][[second.chr]][[1]]()
-        filter.a <- keep.frag.first
-        filter.t <- keep.frag.second
         t.start <- bin.by.chr$first[[second.chr]]
         t.end <- bin.by.chr$last[[second.chr]]
+        if (is.dnase) { 
+            a.start <- bin.by.chr$first[[first.chr]]
+            a.end <- bin.by.chr$last[[first.chr]]
+            current <- .binReads(current, width, a.start, t.start, a.end, t.end)
+        }
+        filter.a <- keep.frag.first
+        filter.t <- keep.frag.second
 
     } else if (!is.null(loadfuns[[second.chr]][[first.chr]])) { 
         current <- loadfuns[[second.chr]][[first.chr]][[1]]()
-        filter.a <- keep.frag.second
-        filter.t <- keep.frag.first
         t.start <- bin.by.chr$first[[first.chr]]
         t.end <- bin.by.chr$last[[first.chr]]
+        if (is.dnase) { 
+            a.start <- bin.by.chr$first[[second.chr]]
+            a.end <- bin.by.chr$last[[second.chr]]
+            current <- .binReads(current, width, a.start, t.start, a.end, t.end)
+        }
+        filter.a <- keep.frag.second
+        filter.t <- keep.frag.first
         flipped <- TRUE
 
     } else {

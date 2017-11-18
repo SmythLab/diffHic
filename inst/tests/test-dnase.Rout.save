@@ -1,5 +1,5 @@
 
-R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
+R Under development (unstable) (2017-10-27 r73632) -- "Unsuffered Consequences"
 Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -382,7 +382,7 @@ Type 'q()' to quit R.
 +     regions$original <- seq_along(regions)
 +     if (!is.null(seconds)) {
 +         if (is.numeric(seconds)) {
-+             extras <- diffHic:::.createBins(param$fragments, seconds)$region
++             extras <- diffHic:::.createBins(param, seconds)$region
 +         } else {
 +             extras <- seconds
 +             extras$nfrags <- 0L
@@ -823,4 +823,4 @@ null device
 > 
 > proc.time()
    user  system elapsed 
- 54.884   0.336  55.219 
+ 37.216   0.292  37.614 

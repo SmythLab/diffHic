@@ -13,29 +13,29 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     }    
     
     nlibs <- length(files)
-	if (nlibs==0L) { 
+    if (nlibs==0L) { 
         stop("number of libraries must be positive") 
     }
-	filter <- as.integer(filter)
+    filter <- as.integer(filter)
 
     # Processing regions.
-	fragments <- param$fragments
+    fragments <- param$fragments
     reg.out <- .processRegions(param, regions, type, second.regions)
     regions <- reg.out$regions
     frag.ids <- reg.out$frag.ids
     reg.ids <- reg.out$reg.ids
 
-   	# Ordering regions, consistent with the previous definitions of anchor/targets.
+    # Ordering regions, consistent with the previous definitions of anchor/targets.
     # Stable sort preserves order, if expanded intervals are identical (NA's get sorted towards the end and can be ignored).
-	ordered.chrs <- as.character(runValue(seqnames(fragments)))
-	matched <- match(as.character(seqnames(regions)), ordered.chrs)
-	o <- order(matched, start(regions), end(regions)) 
+    ordered.chrs <- as.character(runValue(seqnames(fragments)))
+    matched <- match(as.character(seqnames(regions)), ordered.chrs)
+    o <- order(matched, start(regions), end(regions)) 
 
     nfrags <- length(fragments)
-	regions <- regions[o]
-	ranked <- integer(length(regions))
-	ranked[o] <- seq_along(o)
-	reg.ids <- ranked[reg.ids]
+    regions <- regions[o]
+    ranked <- integer(length(regions))
+    ranked[o] <- seq_along(o)
+    reg.ids <- ranked[reg.ids]
 
     use.second <- !is.null(second.regions)
     if (!use.second) {
@@ -51,17 +51,17 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         by.frag2 <- .retrieveHits(frag.ids[is2], nfrags) 
     }
 
-	# Setting up output containers.
-	full.sizes <- integer(nlibs)
-	out.counts <- list(matrix(0L, 0, nlibs))
-	out.right <- out.left <- list(integer(0))
-	idex <- 1L
+    # Setting up output containers.
+    full.sizes <- integer(nlibs)
+    out.counts <- list(matrix(0L, 0, nlibs))
+    out.right <- out.left <- list(integer(0))
+    idex <- 1L
 
-	my.chrs <- unique(runValue(seqnames(regions)))
+    my.chrs <- unique(runValue(seqnames(regions)))
     loadfuns <- preloader(files, param=param, retain=c("anchor1.id", "anchor2.id"))
-	for (anchor in names(loadfuns)) {
-		current <- loadfuns[[anchor]]
-		for (target in names(current)) {
+    for (anchor in names(loadfuns)) {
+        current <- loadfuns[[anchor]]
+        for (target in names(current)) {
             curfuns <- current[[target]]
 
             pairs <- vector("list", nlibs)
@@ -71,19 +71,19 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
             # This check needs to be done after loading to obtain a valid 'full.sizes'.
-			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { 
+            if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { 
                 next 
             }
             
-			# Extracting counts. Running through the fragments and figuring out what matches where.
-			out <- .Call(cxx_count_connect, pairs, by.frag1$start, by.frag1$end, reg.id1, 
+            # Extracting counts. Running through the fragments and figuring out what matches where.
+            out <- .Call(cxx_count_connect, pairs, by.frag1$start, by.frag1$end, reg.id1, 
                          by.frag2$start, by.frag2$end, reg.id2, filter)
-			out.counts[[idex]] <- out[[3]]
-			out.left[[idex]] <- out[[1]]
-			out.right[[idex]] <- out[[2]]
-			idex <-  idex + 1L
-		}
-	}
+            out.counts[[idex]] <- out[[3]]
+            out.left[[idex]] <- out[[1]]
+            out.right[[idex]] <- out[[2]]
+            idex <-  idex + 1L
+        }
+    }
 
     .generateOutput(out.counts, out.left, out.right, full.sizes, regions, param)
 }
@@ -101,11 +101,11 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     strand(regions) <- "*"
     mcols(regions) <- NULL
 
-	# Checking out which regions overlap with each fragment.
-	olaps <- suppressWarnings(findOverlaps(fragments, regions, type=type))
-	frag.ids <- queryHits(olaps)
-	reg.ids <- subjectHits(olaps)
-	regions <- .redefineRegions(olaps, fragments, regions)
+    # Checking out which regions overlap with each fragment.
+    olaps <- suppressWarnings(findOverlaps(fragments, regions, type=type))
+    frag.ids <- queryHits(olaps)
+    reg.ids <- subjectHits(olaps)
+    regions <- .redefineRegions(olaps, fragments, regions)
 
     if (!is.null(second.regions)) { 
         if (is(second.regions, "GRanges")) {
@@ -129,18 +129,18 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         }
 
         n.first <- length(regions) # need here, as 'regions' is modified in the next line!
-		regions <- suppressWarnings(c(regions, second.regions))
-		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, length(second.regions)))
+        regions <- suppressWarnings(c(regions, second.regions))
+        regions$is.second <- rep(c(FALSE, TRUE), c(n.first, length(second.regions)))
         regions$original <- c(seq_len(n.first), second.original)
 
-		frag.ids <- c(frag.ids, to.add.query)
-		reg.ids <- c(reg.ids, to.add.subject + n.first)
-		o <- order(frag.ids, reg.ids)
-		frag.ids <- frag.ids[o]
-		reg.ids <- reg.ids[o]
- 	} else {
+        frag.ids <- c(frag.ids, to.add.query)
+        reg.ids <- c(reg.ids, to.add.subject + n.first)
+        o <- order(frag.ids, reg.ids)
+        frag.ids <- frag.ids[o]
+        reg.ids <- reg.ids[o]
+     } else {
         regions$original <- seq_along(regions)
-	}
+    }
 
     return(list(regions=regions, frag.ids=frag.ids, reg.ids=reg.ids))
 }
@@ -149,11 +149,11 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # Figures out the start and end index of the queryHits vector for
 # each fragment, allowing it to rapidly index the subjectHits vector.
 { 
-	start <- end <- integer(nfrags)
-	is.first <- c(TRUE, diff(frag.id)!=0L)
-	start[frag.id[is.first]] <- which(is.first)
-	end[frag.id[is.first]] <- c(which(is.first)[-1], length(frag.id)+1L)
-	return(list(start=start, end=end))
+    start <- end <- integer(nfrags)
+    is.first <- c(TRUE, diff(frag.id)!=0L)
+    start[frag.id[is.first]] <- which(is.first)
+    end[frag.id[is.first]] <- c(which(is.first)[-1], length(frag.id)+1L)
+    return(list(start=start, end=end))
 }
 
 .redefineRegions <- function(olaps, fragments, regions) 
@@ -161,33 +161,33 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # (regions that don't overlap any fragments are not modified,
 # which allows safe use for DNase-C data.
 {
-	so <- subjectHits(olaps)
-	qo <- queryHits(olaps)
-	reo <- order(so, qo)
-	so <- so[reo]
-	qo <- qo[reo]
-	
-	s.rle <- rle(so)
-	r.fin <- cumsum(s.rle$length)
-	r.beg <- r.fin - s.rle$length + 1L
-	ranges(regions)[s.rle$value] <- IRanges(start(fragments)[qo[r.beg]], 
+    so <- subjectHits(olaps)
+    qo <- queryHits(olaps)
+    reo <- order(so, qo)
+    so <- so[reo]
+    qo <- qo[reo]
+    
+    s.rle <- rle(so)
+    r.fin <- cumsum(s.rle$length)
+    r.beg <- r.fin - s.rle$length + 1L
+    ranges(regions)[s.rle$value] <- IRanges(start(fragments)[qo[r.beg]], 
                                             end(fragments)[qo[r.fin]])
-	# The preceding step is valid because fragments are sorted and non-nested.
+    # The preceding step is valid because fragments are sorted and non-nested.
 
-	nfrags <- integer(length(regions))
-	nfrags[s.rle$value] <- s.rle$length
-	regions$nfrags <- nfrags
-	return(regions)		
+    nfrags <- integer(length(regions))
+    nfrags[s.rle$value] <- s.rle$length
+    regions$nfrags <- nfrags
+    return(regions)        
 }
 
 .generateOutput <- function(out.counts, out.left, out.right, full.sizes, regions, param) 
 # A function to generate output.
 {
-	out.counts <- do.call(rbind, out.counts)
-	anchors <- unlist(out.left)
-	targets <- unlist(out.right)
-	out <- InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
-		interactions=GInteractions(anchor1=anchors, anchor2=targets, regions=regions, mode="reverse"), 
+    out.counts <- do.call(rbind, out.counts)
+    anchors <- unlist(out.left)
+    targets <- unlist(out.right)
+    out <- InteractionSet(list(counts=out.counts), colData=DataFrame(totals=full.sizes), 
+        interactions=GInteractions(anchor1=anchors, anchor2=targets, regions=regions, mode="reverse"), 
         metadata=List(param=param))
     sort(out)
 }
@@ -203,8 +203,8 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # last modified 18 November 2017
 {
     nlibs <- length(files)
-	if (nlibs==0L) { stop("number of libraries must be positive") } 
-	filter <- as.integer(filter)
+    if (nlibs==0L) { stop("number of libraries must be positive") } 
+    filter <- as.integer(filter)
     
     # Processing regions.
     strand(regions) <- "*"
@@ -224,8 +224,8 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         n.second <- length(region2)
 
         # Redefining the full set of regions.
-		regions <- suppressWarnings(c(region1, region2))
-		regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
+        regions <- suppressWarnings(c(region1, region2))
+        regions$is.second <- rep(c(FALSE, TRUE), c(n.first, n.second))
         d1 <- seq_len(n.first)
         d2 <- seq_len(n.second) 
         regions$original <- c(d1, d2)
@@ -236,27 +236,28 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 
     # Setting up output vectors.
     full.sizes <- integer(nlibs)
-	out.counts <- list(matrix(0L, 0, nlibs))
-	out.right <- out.left <- list(integer(0))
-	idex <- 1L
+    out.counts <- list(matrix(0L, 0, nlibs))
+    out.right <- out.left <- list(integer(0))
+    idex <- 1L
 
-	my.chrs <- unique(runValue(seqnames(regions)))
+    my.chrs <- unique(runValue(seqnames(regions)))
     loadfuns <- preloader(files, param=param, retain=c("anchor1.pos", "anchor1.len", "anchor2.pos", "anchor2.len"))
-	for (anchor in names(loadfuns)) {
-		current <- loadfuns[[anchor]]
-		for (target in names(current)) {
+    for (anchor in names(loadfuns)) {
+        current <- loadfuns[[anchor]]
+        for (target in names(current)) {
             curfuns <- current[[target]]
 
             # Extracting counts.
             pairs <- vector("list", nlibs)
             for (lib in seq_len(nlibs)) { 
-                cur.pairs <- curfuns[[lib]]()
-                pairs[[lib]] <- .binReads(cur.pairs, width, first.anchor1, first.anchor2, last.anchor1, last.anchor2)
+                pairs[[lib]] <- curfuns[[lib]]()
             }
             full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
             # Again, this needs to be done after full.sizes is collated.
-			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }
+            if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { 
+                next 
+            }
 
             # Forming a GInteractions object.  
             collected <- vector("list", length(pairs))

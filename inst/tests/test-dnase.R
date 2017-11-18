@@ -194,7 +194,7 @@ concomp <- function(chrs, npairs1, npairs2, regions, rlen=10, filter=1L, restric
     regions$original <- seq_along(regions)
     if (!is.null(seconds)) {
         if (is.numeric(seconds)) {
-            extras <- diffHic:::.createBins(param$fragments, seconds)$region
+            extras <- diffHic:::.createBins(param, seconds)$region
         } else {
             extras <- seconds
             extras$nfrags <- 0L
