@@ -10,6 +10,29 @@
     return(list(chrs=chrs, first=start.index, last=end.index))
 }
 
+.splitDiscards <- function(discard) 
+# Splits the discard GRanges into a list of constituent chromosomes,
+# along with IRanges for everything. This allows easy access to the
+# ranges on individual chromosomes, rather than overlapping with everything.
+{
+    if (is.null(discard) || length(discard)==0L) { return(NULL) }
+    discard <- sort(discard)
+    all.chrs <- as.character(runValue(seqnames(discard)))
+    all.len <- runLength(seqnames(discard))
+    chr.ends <- cumsum(all.len)
+    chr.starts <- c(1L, chr.ends[-length(chr.ends)]+1L)
+
+    nchrs <- length(all.chrs)
+    output <- vector("list", nchrs)
+    for (i in seq_len(nchrs)) { 
+        chr <- all.chrs[i]
+        ix <- chr.starts[i]:chr.ends[i]
+        output[[chr]] <- reduce(ranges(discard[ix]))
+    }
+
+    return(output)
+}
+
 ####################################################################################################
 
 .isDNaseC <- function(param, fragments) {
@@ -72,7 +95,7 @@
     return(list(id=out.ids, region=out.ranges))
 }
 
-.createBins <- function(param, width, restricted=NULL) 
+.createBins <- function(param, width, restricted=FALSE) 
 # This creates regular contiguous bins of size 'width'. Each bin
 # is assigned to itself; allocation of read pairs into bins is done below.
 # This allows free-floating bins for use with DNase-C data.
@@ -103,147 +126,6 @@
 }
 
 ####################################################################################################
-
-.parseParam <- function(param, bin=FALSE, width=NA_integer_, restrict.only=FALSE)
-# Parses the parameters and returns all values, depending on
-# whether we're dealing with a DNase-C experiment or not.
-# Also assigns fragments into bins, if requested.
-{
-    fragments <- param$fragments
-    discard <- .splitDiscards(param$discard)
-    restrict <- param$restrict
-    if (restrict.only) {
-        restricted.regions <- restrict
-    } else {
-        restricted.regions <- NULL
-    }
-
-    if (.isDNaseC(fragments=fragments)) { 
-        all.lengths <- seqlengths(fragments)
-        chrs <- names(all.lengths)
-    
-        if (bin) {
-            bins <- .createBins(fragments, width, restricted=restricted.regions)
-            bin.by.chr <- .splitByChr(bins$region)
-            frag.by.chr <- bin.by.chr # Bins _are_ the fragments in a DNase-C experiment.
-        } else {
-            first <- last <- integer(length(chrs)) # set to zero if we're not binning.
-            names(first) <- names(last) <- chrs
-            frag.by.chr <- list(first=first, last=last)
-        }
-
-        cap <- NA_integer_ # Doesn't make much sense when each 'fragment' is now a bin.
-        bwidth <- width
-
-    } else {
-        chrs <- seqlevelsInUse(fragments)
-        frag.by.chr <- .splitByChr(fragments) 
-        cap <- param$cap
-        bwidth <- NA_integer_
-
-        if (bin) { 
-            bins <- .assignBins(fragments, width, restricted=restricted.regions)
-            bin.by.chr <- .splitByChr(bins$region)
-        }
-    }
-
-    output <- list(chrs=chrs, frag.by.chr=frag.by.chr, # Fragment parameters
-                   cap=cap, bwidth=bwidth, discard=discard, restrict=restrict) # Extraction parameters
-    if (bin) { # Bin parameters
-        output$bin.region <- bins$region
-        output$bin.id <- bins$id
-        output$bin.by.chr <- bin.by.chr
-    }
-
-    return(output)
-}
-
-.splitDiscards <- function(discard) 
-# Splits the discard GRanges into a list of constituent chromosomes,
-# along with IRanges for everything. This allows easy access to the
-# ranges on individual chromosomes, rather than overlapping with everything.
-{
-    if (is.null(discard) || length(discard)==0L) { return(NULL) }
-    discard <- sort(discard)
-    all.chrs <- as.character(runValue(seqnames(discard)))
-    all.len <- runLength(seqnames(discard))
-    chr.ends <- cumsum(all.len)
-    chr.starts <- c(1L, chr.ends[-length(chr.ends)]+1L)
-
-    nchrs <- length(all.chrs)
-    output <- vector("list", nchrs)
-    for (i in seq_len(nchrs)) { 
-        chr <- all.chrs[i]
-        ix <- chr.starts[i]:chr.ends[i]
-        output[[chr]] <- reduce(ranges(discard[ix]))
-    }
-
-    return(output)
-}
-
-####################################################################################################
-
-.baseHiCParser <- function(ok, files, anchor1, anchor2, chr.limits, discard, cap, width=NA, retain=c("anchor1.id", "anchor2.id"))
-# A convenience function for loading counts from file for a given anchor/anchor pair.
-# It will also bin the read pairs if 'width' is specified (for DNase-C experiments).
-{
-    adisc <- discard[[anchor1]]
-    tdisc <- discard[[anchor2]]
-    overall <- vector("list", length(ok))
-
-    for (x in seq_along(ok)) {
-        if (!ok[x]) { 
-            overall[[x]] <- data.frame(anchor1.id=integer(0), anchor2.id=integer(0))
-        } else {
-            first1 <- chr.limits$first[[anchor1]] 
-            first2 <- chr.limits$first[[anchor2]] 
-            last1 <- chr.limits$last[[anchor1]] 
-            last2 <- chr.limits$last[[anchor2]] 
-
-            # Pulling out the reads, binning if necessary, and checking fidelity of the input.
-            out <- .getPairs(files[x], anchor1, anchor2)
-            if (!is.na(width)) { 
-                out <- .binReads(out, width, first1, first2, last1, last2) 
-            } 
-            check <- .Call(cxx_check_input, out$anchor1.id, out$anchor2.id)
-
-            # Checking that we're all on the right chromosome.
-            if (nrow(out)) { 
-                if (max(out$anchor1.id) > last1 || min(out$anchor1.id) < first1) {
-                    stop("anchor1 index outside range of fragment object") 
-                }
-                if (max(out$anchor2.id) > last2 || min(out$anchor2.id) < first2) {
-                    stop("anchor2 index outside range of fragment object") 
-                }
-            }
-
-            # Overlapping with those in the discard intervals.
-            if (!is.null(adisc) || !is.null(tdisc)) {
-                a.hits <- t.hits <- FALSE
-                if (!is.null(adisc)) {
-                    a.hits <- overlapsAny(IRanges(out$anchor1.pos, out$anchor1.pos+abs(out$anchor1.len)-1L), adisc, type="within")
-                }
-                if (!is.null(tdisc)) { 
-                    t.hits <- overlapsAny(IRanges(out$anchor2.pos, out$anchor2.pos+abs(out$anchor2.len)-1L), tdisc, type="within")
-                }
-                out <- out[!a.hits & !t.hits,,drop=FALSE]
-            }
-
-            # Removing read pairs above the cap for each restriction fragment pair.
-            if (!is.na(cap)) { 
-                capped <- .Call(cxx_cap_input, out$anchor1.id, out$anchor2.id, cap)
-                out <- out[capped,]
-            }
-
-            dim(out$anchor1.id) <- dim(out$anchor2.id) <- NULL
-            if (!is.null(retain)) { 
-                out <- out[,retain]
-            }
-            overall[[x]] <- out
-        }
-    }
-    return(overall)
-}
 
 .binReads <- function(pairs, width, first1, first2, last1, last2)
 # Binning the read pairs into bins of size 'width',
