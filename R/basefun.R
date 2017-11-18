@@ -72,7 +72,7 @@
     return(list(id=out.ids, region=out.ranges))
 }
 
-.createBins <- function(fragments, width, restricted=NULL) 
+.createBins <- function(param, width, restricted=NULL) 
 # This creates regular contiguous bins of size 'width'. Each bin
 # is assigned to itself; allocation of read pairs into bins is done below.
 # This allows free-floating bins for use with DNase-C data.
@@ -249,13 +249,15 @@
 # Binning the read pairs into bins of size 'width',
 # based on the 5' coordinates of each read.
 {
-    pairs$anchor1.id <- .readToBin(pairs$anchor1.pos, pairs$anchor1.len, 
-                                   bin.width=width, first.bin=first1, last.bin=last1)
-    pairs$anchor2.id <- .readToBin(pairs$anchor2.pos, pairs$anchor2.len, 
-                                   bin.width=width, first.bin=first2, last.bin=last2)
-    pairs <- .enforcePairOrder(pairs)
-    o <- order(pairs$anchor1.id, pairs$anchor2.id)
-    pairs[o,]
+    anchor1.id <- .readToBin(pairs$anchor1.pos, pairs$anchor1.len, 
+                             bin.width=width, first.bin=first1, last.bin=last1)
+    anchor2.id <- .readToBin(pairs$anchor2.pos, pairs$anchor2.len, 
+                             bin.width=width, first.bin=first2, last.bin=last2)
+
+    new.pairs <- data.frame(anchor1.id=anchor1.id, anchor2.id=anchor2.id)
+    new.pairs <- .enforcePairOrder(new.pairs)
+    o <- order(new.pairs$anchor1.id, new.pairs$anchor2.id)
+    new.pairs[o,]
 }
 
 .readToBin <- function(read.pos, read.len, bin.width, first.bin, last.bin)

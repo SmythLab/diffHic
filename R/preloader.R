@@ -28,6 +28,7 @@ preloader <- function(fnames, param=NULL, retain=NULL)
             all.lengths <- seqlengths(fragments)
             chrs <- names(all.lengths)
             first <- last <- integer(length(chrs)) # set to zero if we're not binning.
+            names(first) <- names(last) <- chrs
             frag.by.chr <- list(first=first, last=last)
         }
     
