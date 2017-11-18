@@ -2,30 +2,25 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # This counts the number of connections between specified regions in the genome (i.e. between regions
 # in 'anchor' and regions in 'target'). This is designed to make it easier to analyze results in terms
 # of genes. Note that everything is rounded up to the nearest outside restriction site (or to the
-# nearest inside restriction site, depending).
+# nearest inside restriction site, depending on the overlap parameters).
 #
 # written by Aaron Lun
 # a long time ago.
-# last modified 14 May 2017
+# last modified 18 November 2017
 {
     if (.isDNaseC(param)) {
         return(.connectCountsRaw(files, param, regions, filter=filter, type=type, second.regions=second.regions))
     }    
     
     nlibs <- length(files)
-	if (nlibs==0L) { stop("number of libraries must be positive") } 
+	if (nlibs==0L) { 
+        stop("number of libraries must be positive") 
+    }
 	filter <- as.integer(filter)
-    
-    parsed <- .parseParam(param, bin=FALSE)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    cap <- parsed$cap
-    discard <- parsed$discard
-    restrict <- parsed$restrict
 
     # Processing regions.
 	fragments <- param$fragments
-    reg.out <- .processRegions(regions, chrs, fragments, type, second.regions)
+    reg.out <- .processRegions(param, regions, type, second.regions)
     regions <- reg.out$regions
     frag.ids <- reg.out$frag.ids
     reg.ids <- reg.out$reg.ids
@@ -63,16 +58,23 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 	idex <- 1L
 
 	my.chrs <- unique(runValue(seqnames(regions)))
-	overall <- .loadIndices(files, chrs, restrict)
-	for (anchor in names(overall)) {
-		current<-overall[[anchor]]
+    loadfuns <- preloader(files, param=param, retain=c("anchor1.id", "anchor2.id"))
+	for (anchor in names(loadfuns)) {
+		current <- loadfuns[[anchor]]
 		for (target in names(current)) {
+            curfuns <- current[[target]]
 
-			pairs <- .baseHiCParser(current[[target]], files, anchor, target,
-				chr.limits=frag.by.chr, discard=discard, cap=cap, width=NA_integer_)
-			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
-			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }	
+            pairs <- vector("list", nlibs)
+            for (lib in seq_len(nlibs)) { 
+                pairs[[lib]] <- curfuns[[lib]]()
+            }
+            full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
 
+            # This check needs to be done after loading to obtain a valid 'full.sizes'.
+			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { 
+                next 
+            }
+            
 			# Extracting counts. Running through the fragments and figuring out what matches where.
 			out <- .Call(cxx_count_connect, pairs, by.frag1$start, by.frag1$end, reg.id1, 
                          by.frag2$start, by.frag2$end, reg.id2, filter)
@@ -88,15 +90,16 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 
 ##############################################################################################
 
-.processRegions <- function(regions, chrs, fragments, type, second.regions)
+.processRegions <- function(param, regions, type, second.regions)
 # Processes the regions into a common format for further use. Namely, we do
 # pre-screening to remove entries with chromosomes beyond those in 'fragments',
 # and identify the restriction fragments overlapping each region..
 {
     # Eliminating irrelevant strand information and metadata.
+    fragments <- param$fragments
+    strand(fragments) <- "*"
     strand(regions) <- "*"
     mcols(regions) <- NULL
-    strand(fragments) <- "*"
 
 	# Checking out which regions overlap with each fragment.
 	olaps <- suppressWarnings(findOverlaps(fragments, regions, type=type))
@@ -118,7 +121,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
         } else {
             second.regions <- as.integer(second.regions)
             if (second.regions < 0) { stop("bin size must be a positive integer") }
-            binned <- .assignBins(fragments, second.regions)
+            binned <- .assignBins(param, second.regions, restricted=FALSE)
             to.add.query <- seq_along(fragments)
             to.add.subject <- binned$id 
             second.regions <- binned$region
@@ -197,25 +200,18 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 #
 # written by Aaron Lun
 # created 17 March 2017
-# last modified 14 May 2017
+# last modified 18 November 2017
 {
     nlibs <- length(files)
 	if (nlibs==0L) { stop("number of libraries must be positive") } 
 	filter <- as.integer(filter)
     
-    parsed <- .parseParam(param, bin=FALSE)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    cap <- parsed$cap
-    discard <- parsed$discard
-    restrict <- parsed$restrict
-
     # Processing regions.
     strand(regions) <- "*"
     mcols(regions) <- NULL
     if (!is.null(second.regions)) { 
         if (is.numeric(second.regions)) { 
-            region2 <- .createBins(param$fragments, second.regions)$region
+            region2 <- .createBins(param, second.regions)$region
         } else {
             region2 <- second.regions
             mcols(region2) <- NULL
@@ -242,18 +238,24 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     full.sizes <- integer(nlibs)
 	out.counts <- list(matrix(0L, 0, nlibs))
 	out.right <- out.left <- list(integer(0))
-	idex<-1L
+	idex <- 1L
 
 	my.chrs <- unique(runValue(seqnames(regions)))
-	overall <- .loadIndices(files, chrs, restrict)
-	for (anchor in names(overall)) {
-		current<-overall[[anchor]]
+    loadfuns <- preloader(files, param=param, retain=c("anchor1.pos", "anchor1.len", "anchor2.pos", "anchor2.len"))
+	for (anchor in names(loadfuns)) {
+		current <- loadfuns[[anchor]]
 		for (target in names(current)) {
+            curfuns <- current[[target]]
 
-			pairs <- .baseHiCParser(current[[target]], files, anchor, target,
-				chr.limits=frag.by.chr, discard=discard, cap=cap, width=NA_integer_, 
-                retain=c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len"))
-			full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+            # Extracting counts.
+            pairs <- vector("list", nlibs)
+            for (lib in seq_len(nlibs)) { 
+                cur.pairs <- curfuns[[lib]]()
+                pairs[[lib]] <- .binReads(cur.pairs, width, first.anchor1, first.anchor2, last.anchor1, last.anchor2)
+            }
+            full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+
+            # Again, this needs to be done after full.sizes is collated.
 			if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) { next }
 
             # Forming a GInteractions object.  
