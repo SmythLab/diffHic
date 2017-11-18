@@ -1,6 +1,5 @@
 # This script tests the capability of the filtering methods, on filtration 
-# of read pairs during count loading, e.g. based on gap distances. We only
-# check the .baseHiCParser function here, as the interface is common.
+# of read pairs during count loading, e.g. based on gap distances. 
 
 suppressWarnings(suppressPackageStartupMessages(require(diffHic)))
 suppressPackageStartupMessages(require(rhdf5))
@@ -33,14 +32,14 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
 	lost.frag <- lost.in <- lost.out <- lost.disc <- 0L
 
 	combo <- c(dir1, dir2, dir1x, dir2x)
-	stuff <- diffHic:::.loadIndices(combo, seqlevels(cuts))
+	stuff <- diffHic:::preloader(combo, param)
 	for (ax in names(stuff)) { 
 		current <- stuff[[ax]]
 		for (tx in names(current)) { 
 
 			everything <- list()
 			for (i in 1:2) {
-				if (current[[tx]][i]) { 
+				if (!is.null(current[[tx]][[i]])) { 
 					collected <- h5read(combo[i], file.path(ax, tx))
 				} else {
 					collected <- data.frame(anchor1.id=integer(0), anchor2.id=integer(0), 
@@ -48,7 +47,7 @@ filtsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.outg
                                             anchor1.len=integer(0), anchor2.len=integer(0))
 				}
 				mod.i <- i+2
-				if (current[[tx]][mod.i]) { 
+				if (!is.null(current[[tx]][[mod.i]])) { 
 					counter <- h5read(combo[mod.i], file.path(ax, tx))
 				} else {
 					counter <- data.frame(anchor1.id=integer(0), anchor2.id=integer(0), 
@@ -155,7 +154,6 @@ addparamsim <- function(npairs1, npairs2, chromos, overlap=4, min.ingap=NA, min.
         out2 <- getPairData(dir2y, param)
         stopifnot(identical(ref2, out2))
     }
-
 
     return(totes1 + totes2)
 }

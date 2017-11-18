@@ -6,35 +6,30 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 #
 # written by Aaron Lun
 # created 9 September 2014
-# last modified 8 November 2017
+# last modified 18 November 2017
 {
     # Use a temporary file as a placeholder, in case file.out==file.in.
 	tmpf <- tempfile(tmpdir=".")
 	on.exit({ if (file.exists(tmpf)) { unlink(tmpf) } })
 	.initializeH5(tmpf)
 	retained <- total <- by.len <- by.in <- by.out <- 0L
-   
-    # Figuring out which chromosomes are of interest. 
-    parsed <- .parseParam(param, bin=FALSE)
-    chrs <- parsed$chrs
-    frag.by.chr <- parsed$frag.by.chr
-    restrict <- parsed$restrict
-	allstuff <- .loadIndices(file.in, chrs, restrict)
 
-    # Figuring out if filtering on the read pairs is necessary.
-    discard <- parsed$discard
-    cap <- parsed$cap
+    # Capping is handled after extraction, and needs to be turned off in 'preloader'.
+    cap <- param$cap
     if (.isDNaseC(param)) { 
-        cap <- NA # no binning here, so cap is useless.
+        cap <- NA_integer_ # no restriction fragments or binning, so capping is useless.
     }
-   
+    param <- reform(param, cap=NA_integer_)
+
 	# Parsing through the old index.
-	for (ax in names(allstuff)) { 
-		current <- allstuff[[ax]]
+    loadfuns <- preloader(file.in, param=param, retain=NULL)
+	for (ax in names(loadfuns)) { 
+		current <- loadfuns[[ax]]
 		loaded <- FALSE
+
 		for (tx in names(current)) { 
-            collected <- .baseHiCParser(TRUE, file.in, ax, tx, chr.limits=frag.by.chr, 
-                discard=discard, cap=NA, width=NA, retain=NULL)[[1]]
+            curfun <- current[[tx]][[1]]
+            collected <- curfun() # can't be NULL, only one library!
 			stats <- .getStats(collected, ax==tx, param$fragments)
 
             # Removing reads above the max.
