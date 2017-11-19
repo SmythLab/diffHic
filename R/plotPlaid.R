@@ -9,7 +9,7 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
 #
 # written by Aaron Lun
 # sometime in 2012.
-# last modified 13 May 2017 
+# last modified 19 November 2017 
 {
 	first.chr <- as.character(seqnames(first.region))
 	second.chr <- as.character(seqnames(second.region))
@@ -26,7 +26,8 @@ plotPlaid <- function(file, param, first.region, second.region=first.region,
     # Stetching a little to allow for some space beyond the plot boundaries.
     f.expanded <- suppressWarnings(trim(resize(first.region, fix="center", width=width(first.region)*2 + 200)))
     s.expanded <- suppressWarnings(trim(resize(second.region, fix="center", width=width(second.region)*2 + 200)))
-    patch <- extractPatch(file, param, first.region=f.expanded, second.region=s.expanded, width=width)
+    patch <- extractPatch(file, param, first.region=f.expanded, second.region=s.expanded, 
+                          width=width, restrict.regions=TRUE)
 
 	# Generating a plot.
 	if (is.null(xlab)) { xlab <- first.chr }

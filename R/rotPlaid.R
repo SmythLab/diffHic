@@ -5,7 +5,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 #
 # written by Aaron Lun
 # created 18 September 2014
-# last modified 17 March 2017
+# last modified 19 November 2017
 {
 	xchr <- as.character(seqnames(region))
 	if (length(xchr)!=1L) { stop("exactly one region is required for plotting") }
@@ -18,7 +18,7 @@ rotPlaid <- function(file, param, region, width=10000, col="black", max.count=20
 
     # Expanding the region to account for top-right/left regions of the plot.
     expanded <- suppressWarnings(trim(resize(region, fix="center", width=width(region) + max.height*1.5)))
-    patch <- extractPatch(file, param, first.region=expanded, width=width)
+    patch <- extractPatch(file, param, first.region=expanded, width=width, restrict.regions=TRUE)
 
 	# Making the plot.
 	if (is.null(xlab)) { xlab <- xchr }
