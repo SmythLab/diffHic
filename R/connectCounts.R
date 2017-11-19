@@ -136,8 +136,9 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             }
             binned <- .assignBins(param, second.regions, restricted=restricted)
 
-            to.add.query <- seq_along(fragments)
-            to.add.subject <- binned$id
+            keep <- !is.na(binned$id) # As NA's are possible when restricted=TRUE.
+            to.add.query <- which(keep)
+            to.add.subject <- binned$id[keep]
             second.regions <- binned$region
             second.original <- rep(NA_integer_, length(second.regions))
         }
