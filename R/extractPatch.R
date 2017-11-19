@@ -1,4 +1,4 @@
-extractPatch <- function(file, param, first.region, second.region=first.region, width=10000)
+extractPatch <- function(file, param, first.region, second.region=first.region, width=10000, restrict.regions=FALSE)
 # Creates an InteractionSet object involving only bin pairs in the first and second regions.
 # This provides a rapid subset of the functionality of squareCounts.
 #
@@ -18,13 +18,14 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
     }
 
     # Constructing bins across the genome.
+    param <- reform(param, restrict=cbind(first.chr, second.chr))
     is.dnase <- .isDNaseC(param)
     if (is.dnase) { 
         retainer <- c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
-        bin.out <- .createBins(param, width, restricted=FALSE)
+        bin.out <- .createBins(param, width, restricted=restrict.regions)
     } else {
         retainer <- c("anchor1.id", "anchor2.id")
-        bin.out <- .assignBins(param, width, restricted=FALSE)
+        bin.out <- .assignBins(param, width, restricted=restrict.regions)
     }
     bin.region <- bin.out$region
     bin.id <- bin.out$id
@@ -32,7 +33,7 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
 
     # Identifying the boxes that lie within our ranges of interest. We give it some leeway
     # to ensure that edges of the plot are retained.
-    chrs <- seqlevels(bin.region)
+    chrs <- seqlevelsInUse(bin.region)
     if (!(first.chr %in% chrs) || !(second.chr %in% chrs)) { 
         stop("anchor chromosome names not in cut site list") 
     }
@@ -42,7 +43,6 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
     }
 
     # Pulling out the read pair indices from each file, and checking whether chromosome names are flipped around.
-    param <- reform(param, restrict=cbind(first.chr, second.chr))
     loadfuns <- preloader(file, param=param, retain=retainer)
     flipped <- FALSE
 

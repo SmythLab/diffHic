@@ -1,4 +1,4 @@
-marginCounts <- function(files, param, width=50000)
+marginCounts <- function(files, param, width=50000, restrict.regions=FALSE)
 # Gets the marginal counts i.e. sum of counts for each bin or region.
 # This is useful to determine the `genomic coverage' of each region,
 # based on the number of Hi-C read pairs involving that region.
@@ -15,10 +15,10 @@ marginCounts <- function(files, param, width=50000)
     is.dnase <- .isDNaseC(param)
     if (is.dnase) { 
         retainer <- c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
-        bin.out <- .createBins(param, width, restricted=FALSE)
+        bin.out <- .createBins(param, width, restricted=restrict.regions)
     } else {
         retainer <- c("anchor1.id", "anchor2.id")
-        bin.out <- .assignBins(param, width, restricted=FALSE)
+        bin.out <- .assignBins(param, width, restricted=restrict.regions)
     }
     bin.region <- bin.out$region
     bin.id <- bin.out$id

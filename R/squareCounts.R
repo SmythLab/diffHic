@@ -1,4 +1,4 @@
-squareCounts <- function(files, param, width=50000, filter=1L)
+squareCounts <- function(files, param, width=50000, filter=1L, restrict.regions=FALSE)
 # This function collates counts across multiple experiments to get the full set of results. It takes 
 # a list of lists of lists of integer matrices (i.e. a list of the outputs of convertToInteractions) and
 # then compiles the counts into a list object for output. 
@@ -20,10 +20,10 @@ squareCounts <- function(files, param, width=50000, filter=1L)
     is.dnase <- .isDNaseC(param)
     if (is.dnase) { 
         retainer <- c("anchor1.pos", "anchor2.pos", "anchor1.len", "anchor2.len")
-        bin.out <- .createBins(param, width, restricted=FALSE)
+        bin.out <- .createBins(param, width, restricted=restrict.regions)
     } else {
         retainer <- c("anchor1.id", "anchor2.id")
-        bin.out <- .assignBins(param, width, restricted=FALSE)
+        bin.out <- .assignBins(param, width, restricted=restrict.regions)
     }
     bin.region <- bin.out$region
     bin.id <- bin.out$id
