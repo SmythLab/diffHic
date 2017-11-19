@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2015-11-22 r69685) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
+R Under development (unstable) (2017-10-27 r73632) -- "Unsuffered Consequences"
+Copyright (C) 2017 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -52,6 +52,15 @@ Type 'q()' to quit R.
 + 	if (!identical(frags$totals, y$totals) || !identical(as.integer(colSums(assay(frags))), frags$totals*2L)) { 
 + 		stop("mismatches in total counts") }
 + 	if (!identical(regions(y), rowRanges(frags)))  { stop("mismatches in final regions") }
++ 
++     if (!is.null(restrict)) { 
++     	frag.alt <- marginCounts(c(dir1, dir2), param=param, width=dist, restrict.regions=TRUE)
++         frag.sub <- frags[seqnames(rowRanges(frags)) %in% restrict,]
++         if (!identical(assay(frag.sub), assay(frag.alt)) ||  !identical(rowRanges(frag.sub), rowRanges(frag.alt))) {
++             stop("restrict.regions=TRUE doesn't work for marginCounts")
++         }
++     }
++ 
 + 	return(head(assay(frags)))
 + }
 > 
@@ -400,4 +409,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 16.898   0.425  17.337 
+ 18.808   0.200  19.008 

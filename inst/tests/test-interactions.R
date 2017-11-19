@@ -139,11 +139,19 @@ dir.create("temp-inter")
 dir1<-"temp-inter/1.h5"
 dir2<-"temp-inter/2.h5"
 
-comp<-function(npairs1, npairs2, dist, cuts, filter=1L, restrict=NULL, cap=NA) {
+comp <- function(npairs1, npairs2, dist, cuts, filter=1L, restrict=NULL, cap=NA) {
 	simgen(dir1, npairs1, chromos)
 	simgen(dir2, npairs2, chromos)
 	param <- pairParam(fragments=cuts, restrict=restrict, cap=cap)
 	y<-squareCounts(c(dir1, dir2), param=param, width=dist, filter=filter)
+
+    if (!is.null(restrict)) { 
+    	y.alt <- squareCounts(c(dir1, dir2), param=param, width=dist, filter=filter, restrict.regions=TRUE)
+        if (!identical(assay(y), assay(y.alt)) || !identical(anchors(y), anchors(y.alt)) ||
+                any(! seqlevelsInUse(regions(y.alt)) %in% restrict)) {
+            stop("restrict.regions=TRUE in squareCounts doesn't work")
+        }
+    }
 
 	ar <- anchors(y, type="first")
 	tr <- anchors(y, type="second")

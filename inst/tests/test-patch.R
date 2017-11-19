@@ -36,6 +36,13 @@ comp <- function(npairs1, dist, cuts, cap=NA) {
     stopifnot(identical(assay(ref), assay(ysub)))
     stopifnot(identical(anchors(ref, id=TRUE), anchors(ysub, id=TRUE)))
     stopifnot(identical(regions(ref), regions(ysub)))
+
+    # Checking we get the same results with restrict.regions=TRUE.
+    y.alt <- extractPatch(dir1, param, dummy.1, dummy.2, width=dist, restrict.regions=TRUE)
+    if (!identical(assay(ysub), assay(y.alt)) ||  !identical(anchors(ysub), anchors(y.alt)) ||
+            any(! seqlevelsInUse(regions(y.alt)) %in% as.character(c(seqnames(dummy.1), seqnames(dummy.2))))) {
+        stop("restrict.regions=TRUE doesn't work for extractPatch")        
+    }
     
     output <- interactions(ref)
     output$count <- assay(ref)

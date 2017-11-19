@@ -33,6 +33,15 @@ comp<-function(n1, n2, dist, cuts, restrict=NULL) {
 	if (!identical(frags$totals, y$totals) || !identical(as.integer(colSums(assay(frags))), frags$totals*2L)) { 
 		stop("mismatches in total counts") }
 	if (!identical(regions(y), rowRanges(frags)))  { stop("mismatches in final regions") }
+
+    if (!is.null(restrict)) { 
+    	frag.alt <- marginCounts(c(dir1, dir2), param=param, width=dist, restrict.regions=TRUE)
+        frag.sub <- frags[seqnames(rowRanges(frags)) %in% restrict,]
+        if (!identical(assay(frag.sub), assay(frag.alt)) ||  !identical(rowRanges(frag.sub), rowRanges(frag.alt))) {
+            stop("restrict.regions=TRUE doesn't work for marginCounts")
+        }
+    }
+
 	return(head(assay(frags)))
 }
 
