@@ -251,9 +251,9 @@ samecomp(1000, cuts=current.cuts, ranges=simranges(current.cuts, nranges=200, mi
 # Testing some restriction.	
 current.cuts <- simcuts(chromos)
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=1), restrict="chrA")
-samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), restrict="chrA")
+samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), restrict="chrB")
 samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=5), restrict="chrA")
-samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrA")
+samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrB")
 
 # Adding some extra elements to the ranges (should not fail).
 my.ranges <- simranges(current.cuts, nranges=10)
@@ -334,7 +334,7 @@ r2 <- simranges(current.cuts, nranges=5, min=1000, max=3000)
 secondcomp(100, current.cuts, r1, r2)
 secondcomp(100, current.cuts, r1, r2, filter=3)
 secondcomp(100, current.cuts, r1, r2, type="within")
-secondcomp(100, current.cuts, r1, r2, restrict="chrA")
+secondcomp(100, current.cuts, r1, r2, restrict="chrB")
 
 current.cuts <- simcuts(chromos)
 r1 <- simranges(current.cuts, nranges=5, min=1000, max=3000)
@@ -350,7 +350,7 @@ r2 <- 500
 secondcomp(100, current.cuts, r1, r2)
 secondcomp(100, current.cuts, r1, r2, filter=3)
 secondcomp(100, current.cuts, r1, r2, type="within")
-secondcomp(100, current.cuts, r1, r2, restrict="chrA")
+secondcomp(100, current.cuts, r1, r2, restrict="chrB")
 
 # Again, adding some extra elements to the ranges (should throw warnings but not fail).
 my.ranges <- simranges(current.cuts, nranges=10)

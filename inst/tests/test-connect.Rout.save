@@ -479,10 +479,10 @@ Type 'q()' to quit R.
 > samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=1), restrict="chrA")
   anchor1.id anchor2.id 1 2
 1          1          1 0 1
-> samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), restrict="chrA")
+> samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=2), restrict="chrB")
   anchor1.id anchor2.id 1 2
-1          1          1 3 1
-2          2          1 1 0
+1          3          3 0 1
+2          4          3 0 1
 > samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=5), restrict="chrA")
   anchor1.id anchor2.id 1 2
 1          2          1 1 0
@@ -491,14 +491,14 @@ Type 'q()' to quit R.
 4          4          2 1 0
 5          5          1 2 1
 6          5          3 0 1
-> samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrA")
+> samecomp(100, cuts=current.cuts, ranges=simranges(current.cuts, nranges=10), restrict="chrB")
   anchor1.id anchor2.id 1 2
-1          1          1 0 1
-2          2          1 0 2
-3          2          2 0 1
-4          3          1 1 4
-5          3          2 1 2
-6          3          3 2 0
+1         11         11 0 1
+2         12         11 0 3
+3         12         12 0 1
+4         13         11 1 3
+5         13         12 1 1
+6         13         13 2 1
 > 
 > # Adding some extra elements to the ranges (should not fail).
 > my.ranges <- simranges(current.cuts, nranges=10)
@@ -633,13 +633,14 @@ Type 'q()' to quit R.
      anchor1 anchor2    
 [1,]       2       1 1 0
 [2,]       4       1 1 0
-> secondcomp(100, current.cuts, r1, r2, restrict="chrA")
+> secondcomp(100, current.cuts, r1, r2, restrict="chrB")
      anchor1 anchor2    
-[1,]       2       1 1 0
-[2,]       3       2 0 1
-[3,]       5       1 1 0
-[4,]       6       4 0 1
-[5,]       9       1 0 1
+[1,]      14      11 1 0
+[2,]      17      13 1 0
+[3,]      17      15 1 0
+[4,]      17      16 1 0
+[5,]      18      11 0 1
+[6,]      18      12 0 1
 > 
 > current.cuts <- simcuts(chromos)
 > r1 <- simranges(current.cuts, nranges=5, min=1000, max=3000)
@@ -700,14 +701,14 @@ Type 'q()' to quit R.
 [4,]       4       3 0 1
 [5,]       6       5 1 0
 [6,]       7       6 1 0
-> secondcomp(100, current.cuts, r1, r2, restrict="chrA")
+> secondcomp(100, current.cuts, r1, r2, restrict="chrB")
      anchor1 anchor2    
-[1,]       4       1 0 3
-[2,]       4       3 1 1
-[3,]       5       2 1 1
-[4,]       5       4 1 0
-[5,]       6       1 2 2
-[6,]       6       3 1 1
+[1,]      46      45 1 0
+[2,]      48      45 0 1
+[3,]      49      46 0 1
+[4,]      49      47 0 1
+[5,]      49      48 1 1
+[6,]      50      45 0 1
 > 
 > # Again, adding some extra elements to the ranges (should throw warnings but not fail).
 > my.ranges <- simranges(current.cuts, nranges=10)
@@ -742,4 +743,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 49.796   0.220  50.040 
+ 50.292   0.300  50.642 

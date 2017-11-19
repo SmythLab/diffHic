@@ -260,14 +260,14 @@ Type 'q()' to quit R.
 [4,]    2    1
 [5,]    0    1
 [6,]    0    2
-> comp(chrs, 500, 500, 100, rlen=10, filter=1L, restrict="chrA", cap=NA)
+> comp(chrs, 500, 500, 100, rlen=10, filter=1L, restrict="chrB", cap=NA)
      [,1] [,2]
-[1,]    2    1
-[2,]    2    1
-[3,]    3    1
-[4,]    1    3
-[5,]    0    1
-[6,]    1    2
+[1,]    0    1
+[2,]    0    1
+[3,]    1    1
+[4,]    0    2
+[5,]    1    0
+[6,]    0    2
 > comp(chrs, 500, 500, 150, rlen=10, filter=1L, restrict="chrA", cap=NA)
      [,1] [,2]
 [1,]    3    4
@@ -276,14 +276,14 @@ Type 'q()' to quit R.
 [4,]    5    5
 [5,]    4    3
 [6,]    0    3
-> comp(chrs, 500, 500, 200, rlen=10, filter=1L, restrict="chrA", cap=NA)
+> comp(chrs, 500, 500, 200, rlen=10, filter=1L, restrict="chrB", cap=NA)
      [,1] [,2]
-[1,]    9    9
-[2,]   12    9
-[3,]    7    7
-[4,]    8    4
-[5,]    7   11
-[6,]    6    5
+[1,]    2    0
+[2,]    8    3
+[3,]    3    0
+[4,]    2    6
+[5,]    2    1
+[6,]    2    0
 > 
 > comp(chrs, 500, 500, 75, rlen=10, filter=1L, restrict=NULL, cap=5) # Should have no effect.
      [,1] [,2]
@@ -776,13 +776,21 @@ ReverseStrictGInteractions object with 36 interactions and 0 metadata columns:
 > 
 > yref <- squareCounts(file1, param=param, width=100, filter=1L)
 > dummy.1 <- resize(regions(yref)[1], width=200)
+> dummy.2 <- resize(regions(yref)[length(regions(yref))], fix="end", width=200)
 > 
-> patch <- extractPatch(file1, param, dummy.1, width=100)
-> ref <- yref[overlapsAny(yref, dummy.1, use.region="first") & overlapsAny(yref, dummy.1, use.region="second"),1]
-> stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
-> stopifnot(identical(regions(patch), regions(ref)))
-> stopifnot(identical(assay(patch), assay(ref)))
-> interactions(patch)
+> for (cur.dummy in list(dummy.1, dummy.2)) { 
++     patch <- extractPatch(file1, param, cur.dummy, width=100)
++     ref <- yref[overlapsAny(yref, cur.dummy, use.region="first") & overlapsAny(yref, cur.dummy, use.region="second"),1]
++     stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
++     stopifnot(identical(regions(patch), regions(ref)))
++     stopifnot(identical(assay(patch), assay(ref)))
++     print(interactions(patch))
++     
++     patch.alt <- extractPatch(file1, param, cur.dummy, width=100, restrict.regions=TRUE) # Checking restrict.regions= works.
++     stopifnot(identical(assay(patch), assay(patch.alt)))
++     stopifnot(identical(anchors(patch), anchors(patch.alt)))
++     stopifnot(all(seqnames(regions(patch.alt)) %in% seqnames(cur.dummy)))
++ }    
 ReverseStrictGInteractions object with 3 interactions and 0 metadata columns:
       seqnames1    ranges1     seqnames2    ranges2
           <Rle>  <IRanges>         <Rle>  <IRanges>
@@ -792,14 +800,17 @@ ReverseStrictGInteractions object with 3 interactions and 0 metadata columns:
   -------
   regions: 30 ranges and 1 metadata column
   seqinfo: 2 sequences from an unspecified genome
+ReverseStrictGInteractions object with 3 interactions and 0 metadata columns:
+      seqnames1      ranges1     seqnames2      ranges2
+          <Rle>    <IRanges>         <Rle>    <IRanges>
+  [1]      chrB [1801, 1900] ---      chrB [1801, 1900]
+  [2]      chrB [1901, 2000] ---      chrB [1801, 1900]
+  [3]      chrB [1901, 2000] ---      chrB [1901, 2000]
+  -------
+  regions: 30 ranges and 1 metadata column
+  seqinfo: 2 sequences from an unspecified genome
 > 
-> patch.alt <- extractPatch(file1, param, dummy.1, width=100, restrict.regions=TRUE) # Checking restrict.regions= works.
-> stopifnot(identical(assay(patch), assay(patch.alt)))
-> stopifnot(identical(anchors(patch), anchors(patch.alt)))
-> stopifnot(all(seqnames(regions(patch.alt)) %in% seqnames(dummy.1)))
-> 
-> dummy.2 <- resize(regions(yref)[length(regions(yref))], fix="end", width=200)
-> patch <- extractPatch(file1, param, dummy.1, dummy.2, width=100)
+> patch <- extractPatch(file1, param, dummy.1, dummy.2, width=100) # Different regions this time.
 > ref <- yref[overlapsAny(yref, dummy.2, use.region="first") & overlapsAny(yref, dummy.1, use.region="second"),1]
 > stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
 > stopifnot(identical(regions(patch), regions(ref)))
@@ -846,4 +857,4 @@ null device
 > 
 > proc.time()
    user  system elapsed 
- 37.880   0.292  38.173 
+ 38.692   0.272  38.963 

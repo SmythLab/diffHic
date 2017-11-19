@@ -149,9 +149,9 @@ comp(chrs, 500, 500, 150, rlen=50, filter=1L, restrict=NULL, cap=NA)
 comp(chrs, 500, 500, 200, rlen=50, filter=1L, restrict=NULL, cap=NA)
 
 comp(chrs, 500, 500, 75, rlen=10, filter=1L, restrict="chrA", cap=NA)
-comp(chrs, 500, 500, 100, rlen=10, filter=1L, restrict="chrA", cap=NA)
+comp(chrs, 500, 500, 100, rlen=10, filter=1L, restrict="chrB", cap=NA)
 comp(chrs, 500, 500, 150, rlen=10, filter=1L, restrict="chrA", cap=NA)
-comp(chrs, 500, 500, 200, rlen=10, filter=1L, restrict="chrA", cap=NA)
+comp(chrs, 500, 500, 200, rlen=10, filter=1L, restrict="chrB", cap=NA)
 
 comp(chrs, 500, 500, 75, rlen=10, filter=1L, restrict=NULL, cap=5) # Should have no effect.
 comp(chrs, 500, 500, 100, rlen=10, filter=1L, restrict=NULL, cap=5)
@@ -364,21 +364,23 @@ stopifnot(identical(out$indices[[2]], checkFUN(y2, out$interactions)))
 
 yref <- squareCounts(file1, param=param, width=100, filter=1L)
 dummy.1 <- resize(regions(yref)[1], width=200)
-
-patch <- extractPatch(file1, param, dummy.1, width=100)
-ref <- yref[overlapsAny(yref, dummy.1, use.region="first") & overlapsAny(yref, dummy.1, use.region="second"),1]
-stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
-stopifnot(identical(regions(patch), regions(ref)))
-stopifnot(identical(assay(patch), assay(ref)))
-interactions(patch)
-
-patch.alt <- extractPatch(file1, param, dummy.1, width=100, restrict.regions=TRUE) # Checking restrict.regions= works.
-stopifnot(identical(assay(patch), assay(patch.alt)))
-stopifnot(identical(anchors(patch), anchors(patch.alt)))
-stopifnot(all(seqnames(regions(patch.alt)) %in% seqnames(dummy.1)))
-
 dummy.2 <- resize(regions(yref)[length(regions(yref))], fix="end", width=200)
-patch <- extractPatch(file1, param, dummy.1, dummy.2, width=100)
+
+for (cur.dummy in list(dummy.1, dummy.2)) { 
+    patch <- extractPatch(file1, param, cur.dummy, width=100)
+    ref <- yref[overlapsAny(yref, cur.dummy, use.region="first") & overlapsAny(yref, cur.dummy, use.region="second"),1]
+    stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
+    stopifnot(identical(regions(patch), regions(ref)))
+    stopifnot(identical(assay(patch), assay(ref)))
+    print(interactions(patch))
+    
+    patch.alt <- extractPatch(file1, param, cur.dummy, width=100, restrict.regions=TRUE) # Checking restrict.regions= works.
+    stopifnot(identical(assay(patch), assay(patch.alt)))
+    stopifnot(identical(anchors(patch), anchors(patch.alt)))
+    stopifnot(all(seqnames(regions(patch.alt)) %in% seqnames(cur.dummy)))
+}    
+
+patch <- extractPatch(file1, param, dummy.1, dummy.2, width=100) # Different regions this time.
 ref <- yref[overlapsAny(yref, dummy.2, use.region="first") & overlapsAny(yref, dummy.1, use.region="second"),1]
 stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
 stopifnot(identical(regions(patch), regions(ref)))
