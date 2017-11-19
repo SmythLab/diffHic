@@ -129,7 +129,7 @@
 
     everything <- GRanges(Rle(chr.names, out.chrs),
                           IRanges(unlist(out.starts), unlist(out.ends)),
-                          seqinfo=Seqinfo(param$fragments))
+                          seqinfo=seqinfo(param$fragments))
     everything$nfrags <- 0L
     return(list(id=seq_along(everything), region=everything))
 }

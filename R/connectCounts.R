@@ -9,7 +9,8 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
 # last modified 18 November 2017
 {
     if (.isDNaseC(param)) {
-        return(.connectCountsRaw(files, param, regions, filter=filter, type=type, second.regions=second.regions))
+        return(.connectCountsRaw(files, param, regions, filter=filter, type=type, second.regions=second.regions, 
+                                 restrict.regions=restrict.regions))
     }
 
     nlibs <- length(files)
@@ -243,7 +244,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     if (!is.null(second.regions)) {
         if (is.numeric(second.regions)) {
             # Creating bins if requested.
-            region2 <- .createBins(param, second.regions, restricted)$region
+            region2 <- .createBins(param, second.regions, restricted=restrict.regions)$region
             original2 <- rep(NA_integer_, length(region2))
 
         } else {
@@ -254,7 +255,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             region2$nfrags <- 0L
 
             # Applying restriction if necessary.
-            res.out2 <- .restrictRegions(region2, param, restricted)
+            res.out2 <- .restrictRegions(region2, param, restricted=restrict.regions)
             region2 <- res.out2$region
             original2 <- res.out2$original
         }

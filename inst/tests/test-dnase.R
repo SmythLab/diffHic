@@ -106,6 +106,15 @@ comp <- function(chrs, npairs1, npairs2, dist, rlen=10, filter=1L, restrict=NULL
     totes <- totalCounts(c(file1, file2), param=param)
     stopifnot(identical(totes, y$totals))
 
+    # Checking for restriction.
+    if (!is.null(restrict)) {
+        y.alt <- squareCounts(c(file1, file2), param=param, width=dist, filter=filter, restrict.regions=TRUE)
+        if (!identical(assay(y), assay(y.alt)) || !identical(anchors(y), anchors(y.alt)) ||
+                any(! seqlevelsInUse(regions(y.alt)) %in% restrict)) {
+            stop("restrict.regions=TRUE in squareCounts doesn't work for DNase-C data")
+        }
+    }
+
     # Checking if the marginal counts... add up.
     mrg <- marginCounts(c(file1, file2), param=param, width=dist)
     out <- assay(mrg)
@@ -189,18 +198,27 @@ concomp <- function(chrs, npairs1, npairs2, regions, rlen=10, filter=1L, restric
         stopifnot(isTRUE(all.equal(y.filt, y[rowSums(assay(y)) >= filter,])))
     }
 
+    if (!is.null(restrict)) {
+        y.alt <- connectCounts(c(file1, file2), param=param, regions=regions, filter=1L, second.regions=seconds, type=type, restrict.regions=TRUE)
+        if (!identical(assay(y), assay(y.alt)) || !identical(anchors(y), anchors(y.alt)) ||
+                any(! seqlevelsInUse(regions(y.alt)) %in% restrict)) {
+            stop("restrict.regions=TRUE in connectCounts doesn't work for DNase-C data")
+        }
+    }
+
     # Reference block - first, making the regions.
     regions$nfrags <- 0L
     regions$original <- seq_along(regions)
     if (!is.null(seconds)) {
         if (is.numeric(seconds)) {
             extras <- diffHic:::.createBins(param, seconds)$region
+            extras$original <- NA_integer_
         } else {
             extras <- seconds
             extras$nfrags <- 0L
+            extras$original <- seq_along(extras)
         }
         regions$is.second <- FALSE
-        extras$original <- seq_along(extras)
         extras$is.second <- TRUE
         suppressWarnings(regions <- c(regions, extras))
     }
@@ -353,6 +371,11 @@ stopifnot(identical(anchors(patch, id=TRUE), anchors(ref, id=TRUE)))
 stopifnot(identical(regions(patch), regions(ref)))
 stopifnot(identical(assay(patch), assay(ref)))
 interactions(patch)
+
+patch.alt <- extractPatch(file1, param, dummy.1, width=100, restrict.regions=TRUE) # Checking restrict.regions= works.
+stopifnot(identical(assay(patch), assay(patch.alt)))
+stopifnot(identical(anchors(patch), anchors(patch.alt)))
+stopifnot(all(seqnames(regions(patch.alt)) %in% seqnames(dummy.1)))
 
 dummy.2 <- resize(regions(yref)[length(regions(yref))], fix="end", width=200)
 patch <- extractPatch(file1, param, dummy.1, dummy.2, width=100)
