@@ -6,13 +6,14 @@
 \description{Count the number of read pairs mapped to each bin across multiple Hi-C libraries.}
 
 \usage{
-marginCounts(files, param, width=50000)
+marginCounts(files, param, width=50000, restrict.regions=FALSE)
 }
 
 \arguments{
 	\item{files}{a character vector containing paths to the index files}
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{width}{an integer scalar specifying the width of each bin} 
+    \item{restrict.regions}{A logical scalar indicating whether the output regions should be limited to entries in \code{param$restrict}.}
 }
 
 \value{
@@ -30,7 +31,10 @@ Bin coordinates can be extracted using the \code{rowRanges} method.
 
 Larger marginal counts can be collected by increasing the \code{width} value. 
 However, this comes at the cost of spatial resolution as adjacent events in the same bin can no longer be distinguished. 
-Note that filtering is automatically performed to remove empty bins.
+
+Note that \emph{no} filtering is performed to remove empty bins.
+This is meant to make it easier to match up results with the output of \code{\link{squareCounts}}, as anchor IDs are directly comparable.
+If \code{restrict.regions=TRUE}, only counts for bins in chromosomes in \code{param$fragments} are returned.
 
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
 See \code{\link{pairParam}} for more details.

@@ -5,7 +5,8 @@
 \description{Count the number of read pairs connecting pairs of user-specified regions}
 
 \usage{ 
-connectCounts(files, param, regions, filter=1L, type="any", second.regions=NULL)
+connectCounts(files, param, regions, filter=1L, type="any", 
+    second.regions=NULL, restrict.regions=FALSE)
 }
 
 \arguments{
@@ -15,6 +16,7 @@ connectCounts(files, param, regions, filter=1L, type="any", second.regions=NULL)
    \item{filter}{an integer scalar specifying the minimum count for each interaction}
    \item{type}{a character string specifying how restriction fragments should be assigned to regions}
    \item{second.regions}{a GRanges object containing the second regions of interest, or an integer scalar specifying the bin size}
+   \item{restrict.regions}{A logical scalar indicating whether the output regions should be limited to entries in \code{param$restrict}.}
 }
 
 \value{
@@ -38,14 +40,9 @@ By default, a restriction fragment is assigned to one or more regions if said fr
 This expands the effective boundaries of each entry of \code{regions} to the nearest restriction site.
 In contrast, setting \code{type="within"} would contract each interval.
 
-The modified regions can be extracted from the \code{regions} slot in the output InteractionSet object.
-These will be reordered according to the new start positions.
-The ordering permutation can be recovered from the \code{original} metadata field of the GRanges object.
-Similarly, the number of restriction fragments assigned to each interval is stored in the \code{nfrags} metadata field.
-
 For DNase Hi-C experiments, the interval spanned by the alignment of each read is overlapped against the intervals in \code{regions}.
-This uses \code{\link{linkOverlaps}} and responds to any specification of \code{type}. 
-The boundaries of \code{regions} are not modified as no restriction fragments are involved, and all \code{nfrags} are set to zero.
+This uses the \code{\link{linkOverlaps}} function, which responds to any specification of \code{type}. 
+The boundaries of \code{regions} are not modified as no restriction fragments are involved.
 
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param} - see \code{\link{pairParam}} for more details.
 In all cases, strandedness of the intervals is ignored in input and set to \code{"*"} in the output object.
@@ -63,19 +60,37 @@ For example, the first set can be set to several ``viewpoint'' regions of intere
 This is similar to the bait region in 4C-seq, or the captured regions in Capture Hi-C.
 Interactions between these viewpoints and the rest of the genome can then be examined by setting \code{second.regions} to some appropriate bin size.
 
-The output InteractionSet will merge all \code{regions} and \code{second.regions} into a single GRanges object.
-However, those in the second set can be distinguished with the \code{is.second} metadata field.
-Each \code{original} index will also point towards the corresponding entry in the original \code{second.regions} when \code{is.second=TRUE}.
-Similarly, if \code{is.second=FALSE}, the index will point towards the corresponding entry in the original \code{regions}.
-
 If an integer scalar is supplied as \code{second.regions}, this value is used as a width to partition the genome into bins.
 These bins are then used as the set of second regions.
 This is useful for 4C-like experiments where interactions between viewpoints and the rest of the genome are of interest.
-Note that the \code{original} metadata field is set to \code{NA} for these bins, as no original GRanges existed for these intervals.
 
 Note that this function does \emph{not} guarantee that the second set of regions will be treated as the second anchor region (or the first) for each interaction.
 Those definitions are dependent on the sorting order of the coordinates for all regions.
 Users should only use the \code{is.second} field to identify the region from the second set in each interaction.
+}
+
+\section{Format of the output regions}{
+For standard Hi-C experiments, all supplied regions are expanded or contracted to the nearest restriction site.
+These modified regions can be extracted from the \code{regions} slot in the output InteractionSet object, which will be reordered according to the new start positions.
+The ordering permutation can be recovered from the \code{original} metadata field of the GRanges object.
+Similarly, the number of restriction fragments assigned to each interval is stored in the \code{nfrags} metadata field.
+
+For DNase-C experiments, no expansion of the regions is performed, so the coordinates in the output \code{regions} slot are the same as those in the input \code{regions}. 
+However, reordering may still be necessary, in which case the \code{original} field will specify the original index of each entry.
+All \code{nfrags} are set to zero as no restriction fragments are involved.
+
+If \code{second.regions} is specified, the output \code{regions} slot will contain both the input \code{regions} and the \code{second.regions} (though not necessarily in that order).
+Entries that were originally in \code{second.regions} can be distinguished with the \code{is.second} metadata field.
+Each \code{original} index will also point towards the corresponding entry in the original \code{second.regions} when \code{is.second=TRUE}.
+Conversely, if \code{is.second=FALSE}, the index will point towards the corresponding entry in the original \code{regions}.
+
+If \code{second.regions} is an integer scalar, the entries in the output \code{regions} slot will contain the coordinates for the resulting bins.
+Note that the \code{original} metadata field is set to \code{NA} for these bins, as no original GRanges existed for these intervals.
+
+If \code{restrict.regions=TRUE} and \code{param$restrict} is not \code{NULL}, 
+only bins on the chromosomes in \code{param$restrict} will be reported in the output \code{regions} slot.
+This avoids the overhead of constructing many bins when only a small subset of them are used.
+By default, \code{restrict.regions=FALSE} to ensure that the anchor IDs of the output object are directly comparable between different settings of \code{param$restrict},
 }
 
 \seealso{

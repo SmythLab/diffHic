@@ -5,7 +5,8 @@
 \description{Extract and count read pairs into bin pairs for a subset of the interaction space.}
 
 \usage{
-extractPatch(file, param, first.region, second.region=first.region, width=10000)
+extractPatch(file, param, first.region, second.region=first.region, 
+    width=10000, restrict.regions=FALSE)
 }
 
 \arguments{
@@ -14,6 +15,7 @@ extractPatch(file, param, first.region, second.region=first.region, width=10000)
 \item{first.region}{a \code{GRanges} object of length 1 specifying the first region}
 \item{second.region}{a \code{GRanges} object of length 1 specifying the second region}
 \item{width}{an integer scalar specifying the width of each bin in base pairs}
+\item{restrict.regions}{A logical scalar indicating whether the output regions should be limited to entries in \code{param$restrict}.}
 }
 
 \details{
@@ -25,6 +27,10 @@ Note that the first anchor region (i.e., bin) in each bin pair is not necessaril
 In each pair, the bins are sorted so that the first bin has a higher genomic coordinate than the second bin.
 The \code{flipped} flag in the metadata of the output object indicates whether this order is flipped.
 If \code{TRUE}, the first bin in each pair corresponds to \code{second.region}, and vice versa.
+
+If \code{restrict.regions=TRUE}, only bins on the chromosomes in \code{first.region} and \code{second.region} will be reported in the \code{regions} slot of the output object.
+This avoids the overhead of constructing many bins when only a small subset of them are used.
+By default, \code{restrict.regions=FALSE} to ensure that the anchor IDs of the output object are directly comparable between different calls to \code{extractPatch}.
 }
 
 \value{

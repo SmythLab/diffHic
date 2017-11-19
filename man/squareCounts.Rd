@@ -6,7 +6,7 @@
 \description{Collate count combinations for interactions between pairs of bins across multiple Hi-C libraries.}
 
 \usage{
-squareCounts(files, param, width=50000, filter=1L)
+squareCounts(files, param, width=50000, filter=1L, restrict.regions=FALSE)
 }
 
 \arguments{
@@ -14,6 +14,7 @@ squareCounts(files, param, width=50000, filter=1L)
 	\item{param}{a \code{pairParam} object containing read extraction parameters}
 	\item{width}{an integer scalar specifying the width of each bin in base pairs}
 	\item{filter}{an integer scalar specifying the minimum count for each square}
+    \item{restrict.regions}{A logical scalar indicating whether the output regions should be limited to entries in \code{param$restrict}.}
 }
 
 \value{
@@ -54,8 +55,15 @@ Another option is to increase \code{width} to reduce the total number of bins in
 %
 % It's hard to know which it is. Gets counted in the same squares, but can't tell if it's consistent with more or less compaction.
 
+If \code{restrict.regions=TRUE} and \code{param$restrict} is not \code{NULL}, 
+only bins on the chromosomes in \code{param$restrict} will be reported in the \code{regions} slot of the output InteractionSet object.
+This avoids the overhead of constructing many bins when only a small subset of them are used.
+By default, \code{restrict.regions=FALSE} to ensure that the anchor IDs of the output object are directly comparable between different settings of \code{param$restrict},
+e.g., for merging the results of multiple \code{squareCounts} calls.
+
 Counting will consider the values of \code{restrict}, \code{discard} and \code{cap} in \code{param}. 
 See \code{\link{pairParam}} for more details.
+
 }
 
 \examples{
