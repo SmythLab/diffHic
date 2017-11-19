@@ -53,13 +53,15 @@
     last <- 0L 
 
     frag.data <- .splitByChr(fragments)
-    out.ranges <- nfrags <- vector("list", length(frag.data$chrs))
+    nchrs <- length(frag.data$chrs)
+    out.chrs <- integer(nchrs)
+    out.starts <- out.ends <- nfrags <- vector("list", nchrs)
 
     # Ignoring fragments not in our restricted set.
-    if (restricted && length(param$restricted)) { 
-        chrs.to.use <- which(frag.data$chrs %in% param$restricted)
+    if (restricted && length(param$restrict)) { 
+        chrs.to.use <- which(frag.data$chrs %in% param$restrict)
     } else {
-        chrs.to.use <- seq_along(frag.data$chrs)
+        chrs.to.use <- seq_len(nchrs)
     }
 
     for (x in chrs.to.use) { 
@@ -84,13 +86,15 @@
         if (ns>=2L) { 
             startx[-1] <- endx[-ns]+1L 
         }
-        out.ranges[[x]] <- GRanges(frag.data$chrs[x], IRanges(start(curf[startx]), end(curf[endx])))
+        out.chrs[x] <- ns
+        out.starts[[x]] <- start(curf)[startx]
+        out.ends[[x]] <- end(curf)[endx]
     }
 
     # Wrapping up.
-    suppressWarnings(out.ranges <- do.call(c, out.ranges))
-    seqlevels(out.ranges) <- seqlevels(fragments)
-    seqlengths(out.ranges) <- seqlengths(fragments)
+    out.ranges <- GRanges(Rle(frag.data$chrs, out.chrs),
+                          IRanges(unlist(out.starts), unlist(out.ends)), 
+                          seqinfo=seqinfo(fragments))
     out.ranges$nfrags <- unlist(nfrags)
     return(list(id=out.ids, region=out.ranges))
 }
@@ -102,25 +106,30 @@
 {
     ref.len <- seqlengths(param$fragments)
     chr.names <- names(ref.len)
-    everything <- vector("list", length(ref.len))
+    nchrs <- length(chr.names)
+    out.chrs <- integer(nchrs)
+    out.starts <- out.ends <- vector("list", nchrs)
 
     # Ignoring fragments not in our restricted set.
-    if (restricted && length(param$restricted)) { 
-        chrs.to.use <- which(chr.names %in% param$restricted)
+    if (restricted && length(param$restrict)) { 
+        chrs.to.use <- which(chr.names %in% param$restrict)
     } else {
-        chrs.to.use <- seq_along(chr.names)
+        chrs.to.use <- seq_len(nchrs)
     }
 
     for (i in chrs.to.use) {
         chr.len <- ref.len[i]
-        bin.dex <- seq_len(ceiling(chr.len/width))
-        end.pt <- pmin(bin.dex * width, chr.len)
-        current <- GRanges(chr.names[i], IRanges((bin.dex - 1L)*width + 1L, end.pt))
-        everything[[i]] <- current
+        Nbins <- ceiling(chr.len/width)
+        bin.dex <- seq_len(Nbins)
+
+        out.chrs[i] <- Nbins
+        out.starts[[i]] <- (bin.dex - 1L)*width + 1L
+        out.ends[[i]] <- pmin(bin.dex * width, chr.len)
     }
 
-    suppressWarnings(everything <- do.call(c, everything))
-    seqlengths(everything) <- ref.len
+    everything <- GRanges(Rle(chr.names, out.chrs),
+                          IRanges(unlist(out.starts), unlist(out.ends)),
+                          seqinfo=Seqinfo(param$fragments))
     everything$nfrags <- 0L
     return(list(id=seq_along(everything), region=everything))
 }
