@@ -182,7 +182,17 @@ samecomp <- function(nreads, cuts, ranges, filter=0L, type="any", restrict=NULL)
 	if (!identical(ref$region, regions(out))) { stop("mismatch in region output") }	
 	if (!identical(ref$totals, out$totals) ||
 		!identical(ref$totals, totalCounts(c(dir1, dir2), param=param))) {
-		stop("mismatch in total output") }	
+		stop("mismatch in total output") 
+    }	
+    
+    # Checking restriction.
+    if (!is.null(restrict)) { 
+        out.alt <- connectCounts(c(dir1, dir2), regions=ranges, filter=filter, type=type, param=param, restrict.regions=TRUE)
+        if (!identical(assay(out), assay(out.alt)) || !identical(anchors(out), anchors(out.alt)) ||
+                any(!seqnames(regions(out.alt)) %in% restrict)) {
+            stop("restrict.regions=TRUE doesn't work for connectCounts")
+        }
+    }
 
 	return(cbind(head(ref$pairs), head(ref$counts)))
 }
@@ -261,8 +271,26 @@ secondcomp <- function(nreads, cuts, ranges1, ranges2, filter=0L, type="any", re
 	simgen(dir2, nreads, chromos)
 
 	param <- pairParam(cuts, restrict=restrict)
-	out <- connectCounts(c(dir1, dir2), regions=ranges1, filter=filter, type=type, param=param, second.regions=ranges2) 
+	out <- connectCounts(c(dir1, dir2), regions=ranges1, filter=filter, type=type, param=param, second.regions=ranges2)
 
+    # Checking all provided regions are represented in the output regions.
+    # Note that switch in overlapsAny() behaviour depending on whether output regions are expanded or truncated.
+    subreg1 <- ranges1
+    if (!is.null(restrict)) { 
+        subreg1 <- subreg1[seqnames(subreg1) %in% restrict]
+    }
+    suppressWarnings(stopifnot(all(overlapsAny(subreg1, regions(out)[!regions(out)$is.second], 
+                                               type=ifelse(type=="any", "within", "any"))))) 
+    if (is(ranges2, "GRanges")) { 
+        subreg2 <- ranges2
+        if (!is.null(restrict)) { 
+            subreg2 <- subreg2[seqnames(subreg2) %in% restrict]
+        }
+        suppressWarnings(stopifnot(all(overlapsAny(subreg2, regions(out)[regions(out)$is.second],
+                                                   type=ifelse(type=="any", "within", "any")))))
+    } 
+
+    # Comparing the counts from looking at the combined regions.
 	combined <- regions(out)
 	ref <- connectCounts(c(dir1, dir2), regions=combined, filter=filter, type="within", param=param) # Need within, avoid overlap from fill-in. 
     regions(ref)$is.second <- combined$is.second[regions(ref)$original]
@@ -274,6 +302,17 @@ secondcomp <- function(nreads, cuts, ranges1, ranges2, filter=0L, type="any", re
 	if (!identical(anchors(ref, id=TRUE, type="second"), anchors(out, id=TRUE, type="second"))) { stop("mismatch in anchor2 identities") }
 	if (!identical(assay(ref), assay(out))) { stop("mismatch in counts") }
 	if (!identical(ref$totals, out$totals)) { stop("mismatch in total output") }	
+
+    # Checking restriction.
+    if (!is.null(restrict)) { 
+        out.alt <- connectCounts(c(dir1, dir2), regions=ranges1, filter=filter, type=type, param=param, 
+                                 second.regions=ranges2, restrict.regions=TRUE)
+
+        if (!identical(assay(out), assay(out.alt)) || !identical(anchors(out), anchors(out.alt)) ||
+                any(!seqnames(regions(out.alt)) %in% restrict)) {
+            stop("restrict.regions=TRUE doesn't work for connectCounts")
+        }
+    }
 
 	return(cbind(anchor1=head(anchors(ref, type="first", id=TRUE)), 
                  anchor2=head(anchors(ref, type="second", id=TRUE)), head(assay(ref))))
