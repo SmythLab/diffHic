@@ -49,7 +49,7 @@
 {
     fragments <- param$fragments
     width <- as.integer(width)
-    out.ids <- integer(length(fragments))
+    out.ids <- rep(NA_integer_, length(fragments))
     last <- 0L 
 
     frag.data <- .splitByChr(fragments)

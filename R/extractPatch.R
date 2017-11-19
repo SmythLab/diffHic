@@ -32,16 +32,13 @@ extractPatch <- function(file, param, first.region, second.region=first.region, 
     bin.by.chr <- .splitByChr(bin.region)
 
     # Identifying the boxes that lie within our ranges of interest. 
-    # Note: don't use overlapsAny(...)[bin.id], due to zeroes in bin.id when restrict.regions=TRUE.
     chrs <- seqlevelsInUse(bin.region)
     if (!(first.chr %in% chrs) || !(second.chr %in% chrs)) { 
         stop("anchor chromosome names not in cut site list") 
     }
-    suppressWarnings(overlaps.first <- which(overlapsAny(bin.region, first.region))) 
-    keep.frag.first <- keep.frag.second <- bin.id %in% overlaps.first
+    keep.frag.first <- keep.frag.second <- suppressWarnings(overlapsAny(bin.region, first.region)[bin.id]) 
     if (suppressWarnings(first.region!=second.region)) { 
-        suppressWarnings(overlaps.second <- which(overlapsAny(bin.region, second.region)))
-        keep.frag.second <- bin.id %in% overlaps.second
+        keep.frag.second <- suppressWarnings(overlapsAny(bin.region, second.region)[bin.id])
     }
 
     # Pulling out the read pair indices from each file, and checking whether chromosome names are flipped around.
