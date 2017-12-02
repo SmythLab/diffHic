@@ -49,7 +49,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Not really that informative; see user's guide.
@@ -63,11 +63,8 @@ dir.logFC <- log2((up.counts+10)/(down.counts+10))
 dir.logFC
 
 # Calculating directionality index with Dixon's method.
-dixon.stat <- sign(up.counts-down.counts)*2*((up.counts-down.counts)/(up.counts+down.counts))^2
+dixon.stat <- sign(up.counts-down.counts)*2*(
+    (up.counts-down.counts)/(up.counts+down.counts))^2
 dixon.stat
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 

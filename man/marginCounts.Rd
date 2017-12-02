@@ -46,7 +46,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, fout))
 
 # Collating to count combinations.
@@ -64,10 +64,6 @@ mar <- marginCounts(fout, reform(param, cap=1), width=50)
 head(assay(mar))
 mar <- marginCounts(fout, reform(param, discard=GRanges("chrA", IRanges(1, 50))), width=50)
 head(assay(mar))
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \author{Aaron Lun}

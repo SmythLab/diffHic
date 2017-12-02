@@ -30,7 +30,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Counting totals, and comparing them.
@@ -48,10 +48,6 @@ squareCounts(fout, new.param, width=10)$totals
 new.param <- reform(param, cap=1)
 totalCounts(fout, new.param)
 squareCounts(fout, new.param, width=10)$totals
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \author{Aaron Lun}

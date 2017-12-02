@@ -80,7 +80,7 @@ originals <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(originals)
 
 # Setting up parameters
-fout <- "temp_saved.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, fout))
 
 # Constructing intra-chromosomal plaid plots around various regions.
@@ -108,13 +108,9 @@ plotPlaid(fout, param, first.region=GRanges("chrB", IRanges(1, 100)),
     second.region=GRanges("chrA", IRanges(1, 200)), width=100, max.count=40,
     count=TRUE, count.args=list(col="blue"))
 
-# Rotated
+# Rotated plot.
 rotPlaid(fout, param, region=GRanges("chrA", IRanges(1, 200)), width=50)
 rotPlaid(fout, param, region=GRanges("chrA", IRanges(1, 200)), width=100)
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \seealso{

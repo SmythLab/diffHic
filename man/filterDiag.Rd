@@ -53,7 +53,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
@@ -63,10 +63,6 @@ summary(filterDiag(y))
 summary(filterDiag(y, by.dist=100))
 summary(filterDiag(y, by.diag=1))
 summary(filterDiag(y, dist=pairdist(y)))
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \keyword{filtering}

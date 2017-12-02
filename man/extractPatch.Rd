@@ -49,7 +49,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 stuff <- extractPatch(fout, param, GRanges("chrA:1-100"))
@@ -57,9 +57,4 @@ interactions(stuff)
 
 stuff <- extractPatch(fout, param, GRanges("chrA:1-100"), GRanges("chrB:1-20"))
 interactions(stuff)
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
-
 }

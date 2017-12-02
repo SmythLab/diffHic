@@ -40,7 +40,7 @@ hic.file <- system.file("exdata", "hic_sort.bam", package="diffHic")
 cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(cuts) 
 
-tmpf <- "gunk.h5"
+tmpf <- tempfile(fileext=".h5")
 preparePairs(hic.file, param, tmpf)
 
 loadChromos(tmpf)
@@ -48,10 +48,6 @@ loadData(tmpf, "chrA", "chrA")
 loadData(tmpf, "chrB", "chrA")
 loadData(tmpf, "chrA", "chrB")
 try(loadData(tmpf, "chrA2", "chrB2"))
-
-\dontshow{
-unlink(tmpf)
-}
 }
 
 \keyword{preprocessing}

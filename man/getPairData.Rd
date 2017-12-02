@@ -50,13 +50,10 @@ hic.file <- system.file("exdata", "hic_sort.bam", package="diffHic")
 cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(cuts)
 
-tmpf <- "gunk.h5"
+
+tmpf <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, tmpf))
 getPairData(tmpf, param)
-
-\dontshow{
-unlink(tmpf)
-}
 }
 
 \keyword{diagnostics}

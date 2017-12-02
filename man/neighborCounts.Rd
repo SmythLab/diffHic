@@ -38,16 +38,12 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
 y <- neighborCounts(fout, param, width=50, filter=2, flank=5)
 y
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \author{Aaron Lun}

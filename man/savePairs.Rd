@@ -65,14 +65,11 @@ x <- data.frame(anchor1.id=all.a, anchor2.id=all.t,
 	anchor1.pos=runif(1:100), anchor1.len=10, 
 	anchor2.pos=runif(1:100), anchor2.len=-10)
 
-fout <- "temp2.h5"
+# Note: don't save to a temporary file for actual data.
+fout <- tempfile(fileext=".h5")
 savePairs(x, fout, param)
 require(rhdf5)
 head(h5read(fout, "chrA/chrA"))
-
-\dontshow{
-unlink(fout)
-}
 }
 
 \author{Aaron Lun}

@@ -144,7 +144,8 @@ hic.file <- system.file("exdata", "hic_sort.bam", package="diffHic")
 cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(cuts) 
 
-tmpf <- "gunk.h5"
+# Note: don't save to a temporary file for actual data.
+tmpf <- tempfile(fileext=".h5")
 preparePairs(hic.file, param, tmpf)
 preparePairs(hic.file, param, tmpf, minq=50)
 preparePairs(hic.file, param, tmpf, ichim=TRUE)
@@ -156,10 +157,6 @@ preparePairs(hic.file, eparam, tmpf)
 preparePairs(hic.file, eparam, tmpf, dedup=FALSE)
 preparePairs(hic.file, eparam, tmpf, minq=50)
 preparePairs(hic.file, eparam, tmpf, chim.dist=20)
-
-\dontshow{
-unlink(tmpf)
-}
 }
 
 \references{

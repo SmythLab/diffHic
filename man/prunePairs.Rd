@@ -55,11 +55,13 @@ hic.file <- system.file("exdata", "hic_sort.bam", package="diffHic")
 cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(cuts)
 
-require(rhdf5)
-fout <- "temp.h5"
-fout2 <- "temp2.h5"
+# Note: don't save to a temporary file for actual data.
+fout <- tempfile(fileext=".h5")
+fout2 <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, fout))
 x <- prunePairs(fout, param, fout2)
+
+require(rhdf5)
 h5read(fout2, "chrA/chrA")
 
 x <- prunePairs(fout, param, fout2, max.frag=50)
@@ -70,10 +72,6 @@ h5read(fout2, "chrA/chrA")
 
 x <- prunePairs(fout, param, fout2, min.outward=50)
 h5read(fout2, "chrA/chrA")
-
-\dontshow{
-unlink(c(fout, fout2))
-}
 }
 
 \author{Aaron Lun}

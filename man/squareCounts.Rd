@@ -72,7 +72,7 @@ cuts <- readRDS(system.file("exdata", "cuts.rds", package="diffHic"))
 param <- pairParam(fragments=cuts)
 
 # Setting up the parameters
-fout <- "output.h5"
+fout <- tempfile(fileext=".h5")
 invisible(preparePairs(hic.file, param, file=fout))
 
 # Collating to count combinations.
@@ -97,10 +97,6 @@ head(assay(y))
 y <- squareCounts(fout, width=100, filter=1, 
     param=reform(param, discard=GRanges("chrA", IRanges(1, 50))))
 head(assay(y))
-
-\dontshow{
-unlink(fout, recursive=TRUE)
-}
 }
 
 \author{Aaron Lun}
