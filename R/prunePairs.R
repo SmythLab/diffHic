@@ -5,11 +5,10 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 # close together (min.*ward) with the difference between the two specifying inward/outward facing pairs.
 #
 # written by Aaron Lun
-# created 9 September 2014
-# last modified 18 November 2017
 {
     # Use a temporary file as a placeholder, in case file.out==file.in.
-	tmpf <- tempfile(tmpdir=".")
+    # We use the same directory to avoid cross-device links.
+	tmpf <- tempfile(tmpdir=dirname(file.out))
 	on.exit({ if (file.exists(tmpf)) { unlink(tmpf) } })
 	.initializeH5(tmpf)
 	retained <- total <- by.len <- by.in <- by.out <- 0L

@@ -5,11 +5,10 @@ mergePairs <- function(files, file.out)
 # and combining the reads. This avoids having to read the entire structure into memory at once.
 #
 # written by Aaron Lun
-# some time ago
-# last modified 18 November 2017
 {
-	# Use a temporary file as a placeholder just in case 'file.out' is in 'files'.
-	tmpf <- tempfile(tmpdir=".")
+	# Use a temporary file (in the same directory as the output file) 
+    # as a placeholder just in case 'file.out' is in 'files'.
+	tmpf <- tempfile(tmpdir=dirname(file.out))
 	.initializeH5(tmpf) 
 	on.exit({ if (file.exists(tmpf)) { unlink(tmpf, recursive=TRUE) } })
 

@@ -4,8 +4,6 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
 # also returned describing various bits and pieces of hiC quality.
 #
 # written by Aaron Lun
-# created 30 May 2013
-# last modified 14 May 2017
 {
 	# Enforcing input types.
 	minq <- as.integer(minq)
@@ -17,9 +15,10 @@ preparePairs <- function(bam, param, file, dedup=TRUE, minq=NA, ichim=TRUE, chim
         stop("'storage' must be a positive integer")
     }
 
-    # Setting up the output directory.
+    # Setting up the output directory (in the same directory as 
+    # the output file, to avoid cross-device links).
     if (is.null(output.dir)) { 
-        output.dir <- tempfile(tmpdir=".")
+        output.dir <- tempfile(tmpdir=dirname(file))
     } else {
         output.dir <- path.expand(output.dir)
     }
