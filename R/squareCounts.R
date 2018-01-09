@@ -58,12 +58,6 @@ squareCounts <- function(files, param, width=50000, filter=1L, restrict.regions=
                 pairs[[lib]] <- cur.pairs
             }
             full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
-
-            # Switching to bin IDs for DNase-C data.
-            if (is.dnase) {
-                for (lib in seq_len(nlibs)) { 
-                }
-            }
             
             # Aggregating them in C++ to obtain count combinations for each bin pair.
             out <- .Call(cxx_count_patch, pairs, bin.id, filter, first.anchor2, last.anchor2)
@@ -74,9 +68,9 @@ squareCounts <- function(files, param, width=50000, filter=1L, restrict.regions=
             # Storing counts and locations. 
             if (any(out[[1]] < out[[2]])) { stop("anchor1 ID should not be less than anchor2 ID") }
             out.a[[idex]] <- out[[1]]
-             out.t[[idex]] <- out[[2]]
+            out.t[[idex]] <- out[[2]]
             out.counts[[idex]] <- out[[3]]
-            idex<-idex+1L
+            idex <- idex+1L
         }
     }
 
