@@ -14,7 +14,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     } else {
         raw.out <- .processRegionsRaw(param, regions=regions, second.regions=second.regions, restricted=restrict.regions)
         out <- .generalLoopFUN(files, param, raw.out$regions, retain=c("anchor1.pos", "anchor1.len", "anchor2.pos", "anchor2.len"),
-                               filter=filter, linkFUN=.linkRaw, region1=raw.out$region1, region2=raw.out$region2, 
+                               filter=filter, linkFUN=.linkRaw, regions=raw.out$regions, region1=raw.out$region1, region2=raw.out$region2, 
                                index1=raw.out$index1, index2=raw.out$index2, type=type)
     }
 
@@ -141,14 +141,14 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     regions$nfrags <- 0L
 
     # Applying restriction if requested.
-    rest.out <- .restrictRegions(regions, param, restrict.regions)
+    rest.out <- .restrictRegions(regions, param, restricted)
     regions <- rest.out$regions
     first.original <- rest.out$original
 
     if (!is.null(second.regions)) {
         if (is.numeric(second.regions)) {
             # Creating bins if requested.
-            region2 <- .createBins(param, second.regions, restricted=restrict.regions)$region
+            region2 <- .createBins(param, second.regions, restricted=restricted)$region
             original2 <- rep(NA_integer_, length(region2))
 
         } else {
@@ -159,7 +159,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             region2$nfrags <- 0L
 
             # Applying restriction if necessary.
-            res.out2 <- .restrictRegions(region2, param, restricted=restrict.regions)
+            res.out2 <- .restrictRegions(region2, param, restricted=restricted)
             region2 <- res.out2$region
             original2 <- res.out2$original
         }
@@ -185,7 +185,7 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
     return(list(regions=regions, region1=region1, region2=region2, index1=d1, index2=d2))
 }
 
-.linkRaw <- function(anchor, target, curpairs, region1, region2, index1, index2, type) { 
+.linkRaw <- function(anchor, target, curpairs, regions, region1, region2, index1, index2, type) { 
     sgi <- suppressWarnings(GInteractions(GRanges(anchor, IRanges(curpairs$anchor1.pos, width=abs(curpairs$anchor1.len))),
         GRanges(target, IRanges(curpairs$anchor2.pos, width=abs(curpairs$anchor2.len))), mode="strict"))
      if (is.null(region2)) {
