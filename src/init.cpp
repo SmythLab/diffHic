@@ -16,8 +16,7 @@ static const R_CallMethodDef all_call_entries[] = {
     CALLDEF(quadrant_bg, 8),
 
 	CALLDEF(count_background, 9),
-	CALLDEF(count_connect, 8),
-	CALLDEF(count_reconnect, 2),
+	CALLDEF(count_connect, 2),
 	CALLDEF(count_patch, 5),
     CALLDEF(directionality, 5),
 	
