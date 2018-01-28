@@ -18,7 +18,7 @@ export(diffHicUsersGuide,
     annotatePairs,
 	compartmentalize, domainDirections,
     plotPlaid, rotPlaid, plotDI, rotDI,
-	asDGEList, normOffsets, reform, normalize # From csaw, but also available to the user.
+	asDGEList, normOffsets, reform # From csaw, but also available to the user.
 )
 
 # Exporting classes.
