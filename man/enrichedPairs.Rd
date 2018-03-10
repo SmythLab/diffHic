@@ -1,8 +1,8 @@
 \name{enrichedPairs}
 \alias{enrichedPairs}
 
-\title{Compute local enrichment for bin pairs}
-\description{Calculate the log-fold increase in abundance for each bin pair against its local neighborhood.}
+\title{Collect local enrichment statistics for bin pairs}
+\description{Determine the count for a variety of local neighborhoods around a bin pair, for use in computing peak enrichment statistics.}
 
 \usage{
 enrichedPairs(data, flank=5, exclude=0, assay.in=1, assay.out=NULL)
