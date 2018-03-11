@@ -1,6 +1,6 @@
 correctedContact <- function(data, iterations=50, exclude.local=1, ignore.low=0.02, winsor.high=0.02, 
 	average=TRUE, dist.correct=FALSE, assay=1)
-# This performs the iterative correction method of Mirny et al. (2012) to
+# This performs the iterative correction method of Imakaev et al. (2012) to
 # identify the true contact probability of each patch of the interaction
 # space. The idea is to use the true contact probability as a filter
 # to identify the top set of patches (assuming that most patches represent
