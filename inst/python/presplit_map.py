@@ -77,7 +77,7 @@ def add_hard_clip(xread, is5, altlen):
 is_gz=re.compile("\\.gz$")
 def open_handle(fname, write=False):
     """A function that returns a Gzip file handle or a normal file handle, depending on the file name."""
-    if (is_gz.match(fname)):
+    if (is_gz.search(fname)):
         if write:
             mode='wb'
         else:
@@ -130,18 +130,18 @@ for x, curf in enumerate([args.fq1, args.fq2]):
         # we started cutting things up.
         counter=1
         totalsplit=0
-        original=SeqIO.parse(original, "fastq")
+        original=SeqIO.parse(original_0, "fastq")
 
         for record in SeqIO.parse(splitted, "fastq"):
             orecord=original.next()
 
             junction=len(record)+liglen/2
-            if junction < len(oline):
-                SeqIO.write(output5, orecord[:junction], "fastq")
-                SeqIO.write(output3, orecord[junction:], "fastq")
+            if junction < len(orecord):
+                SeqIO.write(orecord[:junction], output5, "fastq")
+                SeqIO.write(orecord[junction:], output3, "fastq")
                 totalsplit+=1
             else:
-                SeqIO.write(outputUs, orecord, "fastq")
+                SeqIO.write(orecord, outputUs, "fastq")
 
         totalsplit/=2
     
