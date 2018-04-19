@@ -33,7 +33,7 @@ args = parser.parse_args()
 
 ## Setting up imports.
 import pysam
-from subprocess import call
+from subprocess import Popen, PIPE
 import os
 
 from Bio import SeqIO
@@ -110,8 +110,10 @@ for x, curf in enumerate([args.fq1, args.fq2]):
 
     # Trimming the FASTQ file prior to input.
     init_split=os.path.join(tmpdir, "splitted_temp.fastq")
-    if call(cutcmd+["-o", init_split, "-a", ligseq, curf], stdout=dumpf, stderr=dumpf):
-        raise SystemError("cutadapt failed to trim reads")
+    cut_proc=Popen(cutcmd+["-o", init_split, "-a", ligseq, curf], stdout=dumpf, stderr=PIPE)
+    if cut_proc.wait():
+        cut_out, cut_err=cut_proc.communicate()
+        raise SystemError("cutadapt failed to trim reads\n"+cut_err)
 
     # Pulling out file handles.
     tempUs=os.path.join(tmpdir, "unsplit.fastq")
@@ -168,15 +170,19 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             curfile=temp3
             curout=mapped3
 
-        if call(bwtcmd+["--reorder", "--very-sensitive", "-U", curfile, "-S", curout], stdout=dumpf, stderr=dumpf):
-            raise SystemError("bowtie2 failed for presplit alignment")
+        map_proc=Popen(bwtcmd+["--reorder", "--very-sensitive", "-U", curfile, "-S", curout], stdout=dumpf, stderr=PIPE)
+        if map_proc.wait():
+            map_out, map_err=map_proc.communicate()
+            raise SystemError("bowtie2 failed for presplit alignment\n"+map_err)
 
         os.remove(curfile)
 
     # Mapping any unsplit reads with local alignment.
     mappedUs=os.path.join(tmpdir, "us.sam")
-    if call(bwtcmd+["--local", "--very-sensitive-local", "-U", tempUs, "-S", mappedUs], stdout=dumpf, stderr=dumpf):
-        raise SystemError("bowtie2 failed for unsplit alignment")
+    map_proc=Popen(bwtcmd+["--local", "--very-sensitive-local", "-U", tempUs, "-S", mappedUs], stdout=dumpf, stderr=PIPE)
+    if map_proc.wait():
+        map_out, map_err=map_proc.communicate()
+        raise SystemError("bowtie2 failed for unsplit alignment\n"+map_err)
 
     os.remove(tempUs)
 
