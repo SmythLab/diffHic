@@ -37,9 +37,9 @@ def open_handle(fname, write=False):
     """A function that returns a Gzip file handle or a normal file handle, depending on the file name."""
     if (is_gz.search(fname)):
         if write:
-            mode='wb'
+            mode='wt'
         else:
-            mode='rb'
+            mode='rt'
 
         return gzip.open(fname, mode)
     else:
