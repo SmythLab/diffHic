@@ -93,8 +93,8 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             read_src=currentfq
 
         map_proc=Popen(bwt2cmd+["--reorder", "--very-sensitive", "-U", read_src, "-S", newsam, "--trim3", str(thrown_away)], stdout=dumpf, stderr=PIPE)
-        if map_proc.wait():
-            map_out, map_err=map_proc.communicate()
+        map_out, map_err=map_proc.communicate()
+        if map_proc.returncode:
             raise SystemError("bowtie2 failed for iterative alignment\n"+map_err)
 
         # Running through the reads and figuring out which ones aligned (or did not).
@@ -110,7 +110,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             # Gradually extending the read from the 3' end. We compare the old
             # FASTQ with the old sam, see which ones aligned and which ones didn't.
             for curalign in samin:
-                record=inparse.next()
+                record=next(inparse)
                 if record.id!=curalign.qname:
                     raise ValueError("mismatch between read names in FASTQ and BAM file")
                 
@@ -140,7 +140,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
     os.remove(newsam)
     bsorted=os.path.join(tmpdir, "sorted.bam")
     pysam.sort("-n", allbam, "-o", bsorted)
-    os.rename(bsorted+".bam", allbam)
+    os.rename(bsorted, allbam)
     allnames.append(allbam)
 
 ####################################################################################################
