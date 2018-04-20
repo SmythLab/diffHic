@@ -83,7 +83,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
     allbam=os.path.join(tmpdir, fname+".bam")
 
     starting=True
-    for newlen in xrange(bottom, toplen+step+1, step):
+    for newlen in range(bottom, toplen+step+1, step):
         thrown_away=max(toplen-newlen, 0)
 
         # Aligning reads.

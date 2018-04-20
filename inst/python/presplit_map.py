@@ -131,22 +131,18 @@ for x, curf in enumerate([args.fq1, args.fq2]):
         # in a separate file as well. We also keep a log telling us what order everything was in before
         # we started cutting things up.
         counter=1
-        totalsplit=0
         original=SeqIO.parse(original_0, "fastq")
 
         for record in SeqIO.parse(splitted, "fastq"):
             orecord=next(original)
 
-            junction=len(record)+liglen/2
+            junction=len(record)+liglen//2
             if junction < len(orecord):
                 SeqIO.write(orecord[:junction], output5, "fastq")
                 SeqIO.write(orecord[junction:], output3, "fastq")
-                totalsplit+=1
             else:
                 SeqIO.write(orecord, outputUs, "fastq")
 
-        totalsplit/=2
-    
         try:
             next(original)
             raise IOError("mismatching number of lines in cutadapt output and original file")
@@ -162,7 +158,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
     # Mapping both ends, separately. Need reordering to stitch split reads back together.
     mapped5=os.path.join(tmpdir, "5.sam")
     mapped3=os.path.join(tmpdir, "3.sam")
-    for dex in xrange(2):
+    for dex in range(2):
         if not dex:
             curfile=temp5
             curout=mapped5
@@ -196,9 +192,8 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             pysam.Samfile(mappedUs, "r") as sinU, \
             pysam.Samfile(outbam, "wb", template=sin3) as sout:
 
-        for idx in xrange(totalsplit):
+        for read3 in sin3:
             try:
-                read3=next(sin3)
                 read5=next(sin5)
             except StopIteration:
                 raise IOError("ran out of split reads to add")
@@ -220,7 +215,13 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             read3.is_supplementary=True
             add_hard_clip(read3, False, len5)
             sout.write(read3)
-    
+   
+        try:
+            next(sin5)
+            raise IOError("mismatching number of alignments in 3' and 5' SAM files")
+        except StopIteration:
+            pass
+ 
         # Merging the unsplit reads.
         for okread in sinU:
             okread.is_paired=True
