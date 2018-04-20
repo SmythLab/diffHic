@@ -111,8 +111,8 @@ for x, curf in enumerate([args.fq1, args.fq2]):
     # Trimming the FASTQ file prior to input.
     init_split=os.path.join(tmpdir, "splitted_temp.fastq")
     cut_proc=Popen(cutcmd+["-o", init_split, "-a", ligseq, curf], stdout=dumpf, stderr=PIPE)
-    if cut_proc.wait():
-        cut_out, cut_err=cut_proc.communicate()
+    cut_out, cut_err=cut_proc.communicate()
+    if cut_proc.returncode:
         raise SystemError("cutadapt failed to trim reads\n"+cut_err)
 
     # Pulling out file handles.
@@ -135,7 +135,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
         original=SeqIO.parse(original_0, "fastq")
 
         for record in SeqIO.parse(splitted, "fastq"):
-            orecord=original.next()
+            orecord=next(original)
 
             junction=len(record)+liglen/2
             if junction < len(orecord):
@@ -148,7 +148,7 @@ for x, curf in enumerate([args.fq1, args.fq2]):
         totalsplit/=2
     
         try:
-            original.next()
+            next(original)
             raise IOError("mismatching number of lines in cutadapt output and original file")
         except StopIteration:
             pass
@@ -171,8 +171,8 @@ for x, curf in enumerate([args.fq1, args.fq2]):
             curout=mapped3
 
         map_proc=Popen(bwtcmd+["--reorder", "--very-sensitive", "-U", curfile, "-S", curout], stdout=dumpf, stderr=PIPE)
-        if map_proc.wait():
-            map_out, map_err=map_proc.communicate()
+        map_out, map_err=map_proc.communicate()
+        if map_proc.returncode:
             raise SystemError("bowtie2 failed for presplit alignment\n"+map_err)
 
         os.remove(curfile)
@@ -198,8 +198,8 @@ for x, curf in enumerate([args.fq1, args.fq2]):
 
         for idx in xrange(totalsplit):
             try:
-                read3=sin3.next()
-                read5=sin5.next()
+                read3=next(sin3)
+                read5=next(sin5)
             except StopIteration:
                 raise IOError("ran out of split reads to add")
     
