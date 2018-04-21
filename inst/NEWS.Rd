@@ -2,10 +2,16 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.11.1}{\itemize{
+\section{Version 1.11.8}{\itemize{
 \item Extended prunePairs() to acknowledge restrict, discard and cap in param= argument.
 
 \item Extended getPairs() to acknowledge restrict, discard and cap in param= argument.
+
+\item Added restrict.regions= option to connectCounts(), squareCounts().
+
+\item Removed unnecessary normalize() export.
+
+\item Upgraded presplit_map.py, iter_map.py to run on Python 3 and to use Bio.SeqIO.parse().
 }}
 
 \section{Version 1.10.0}{\itemize{
