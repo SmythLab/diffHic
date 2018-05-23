@@ -1,6 +1,6 @@
 Package: diffHic
-Version: 1.13.0
-Date: 2018-04-21
+Version: 1.13.1
+Date: 2018-05-22
 Title: Differential Analyis of Hi-C Data
 Author: Aaron Lun <alun@wehi.edu.au>
 Maintainer: Aaron Lun <alun@wehi.edu.au>
@@ -19,5 +19,5 @@ Description: Detects differential interactions across biological
         also available.
 License: GPL-3
 NeedsCompilation: yes
-LinkingTo: Rhtslib, zlibbioc, Rcpp
+LinkingTo: Rhtslib (>= 1.13.1), zlibbioc, Rcpp
 SystemRequirements: C++11
