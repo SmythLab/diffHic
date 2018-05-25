@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2016-10-17 r71531) -- "Unsuffered Consequences"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -28,7 +28,7 @@ Type 'q()' to quit R.
 > my.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 > 
 > all.inters <- expand.grid(1:10, 11:15) # i.e., only inter-chromosomal interactions here.
-> x <- InteractionSet(matrix(10, nrow=nrow(all.inters), 1), 
+> x <- InteractionSet(list(counts=matrix(10, nrow=nrow(all.inters), 1)), 
 +                     GInteractions(all.inters[,1], all.inters[,2], my.regions, mode="reverse"),
 +                     colData=DataFrame(totals=1e6)) 
 > 
@@ -75,7 +75,7 @@ In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
 > # Seeing what happens if we add in a whole bunch of intra-chromosomals.
 > 
 > all.combos <- combn(10, 2)
-> xi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+> xi <- InteractionSet(list(counts=matrix(100, nrow=ncol(all.combos), 1)), 
 +                     GInteractions(all.combos[1,], all.combos[2,], my.regions, mode="reverse"),
 +                     colData=DataFrame(totals=1e6)) 
 > xi <- rbind(x, xi, xi)
@@ -92,7 +92,7 @@ In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
 > ref.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 > 
 > all.inters <- expand.grid(1:10, 11:15)
-> ref <- InteractionSet(matrix(40, nrow=nrow(all.inters), 1), 
+> ref <- InteractionSet(list(counts=matrix(40, nrow=nrow(all.inters), 1)), 
 +                     GInteractions(all.inters[,1], all.inters[,2], ref.regions, mode="reverse"),
 +                     colData=DataFrame(totals=1e6)) 
 > 
@@ -125,7 +125,7 @@ In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
 > out.sub$threshold
 [1] 3.584957
 > 
-> refi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+> refi <- InteractionSet(list(counts=matrix(100, nrow=ncol(all.combos), 1)), 
 +                     GInteractions(all.combos[1,], all.combos[2,], ref.regions, mode="reverse"),
 +                     colData=DataFrame(totals=1e6)) 
 > refi <- rbind(ref, refi, refi)
@@ -145,7 +145,7 @@ In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
 > 
 > all.A1 <- sample(length(my.regions), 100, replace=TRUE)
 > all.A2 <- sample(length(my.regions), 100, replace=TRUE)
-> x <- InteractionSet(matrix(100, nrow=100, 1), 
+> x <- InteractionSet(list(counts=matrix(100, nrow=100, 1)), 
 +                     GInteractions(all.A1, all.A2, my.regions, mode="reverse"),
 +                     colData=DataFrame(totals=1e6)) 
 > 
@@ -215,4 +215,4 @@ In .getInterThreshold(all.chrs, ave.ab[is.inter], empty = empty.ab) :
 > 
 > proc.time()
    user  system elapsed 
-  7.564   0.208   7.773 
+  5.546   0.164   5.751 

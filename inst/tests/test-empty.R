@@ -24,7 +24,7 @@ unlink(f.out)
 
 # Testing with an empty InteractionSet.
 
-ghost <- InteractionSet(matrix(0, nrow=0, ncol=1), 
+ghost <- InteractionSet(list(counts=matrix(0, nrow=0, ncol=1)), 
     GInteractions(integer(0), integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)), mode="reverse"),
     colData=DataFrame(totals=1e6))
 
@@ -54,9 +54,6 @@ try(normalizeCNV(ghost, ghost.ranges)) # spits the dummy when totals are not the
 matchMargins(ghost, ghost.ranges)
 
 asDGEList(ghost)
-
-normOffsets(ghost, se.out=FALSE)
-normOffsets(ghost, type="loess", se.out=FALSE)
 
 diClusters(ghost, data.frame(PValue=integer(0), logFC=numeric(0)), target=0.05, cluster.args=list(tol=1))
 

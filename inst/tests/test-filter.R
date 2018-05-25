@@ -9,7 +9,7 @@ starts <- ends - 9L
 my.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 
 all.inters <- expand.grid(1:10, 11:15) # i.e., only inter-chromosomal interactions here.
-x <- InteractionSet(matrix(10, nrow=nrow(all.inters), 1), 
+x <- InteractionSet(list(counts=matrix(10, nrow=nrow(all.inters), 1)), 
                     GInteractions(all.inters[,1], all.inters[,2], my.regions, mode="reverse"),
                     colData=DataFrame(totals=1e6)) 
 
@@ -49,7 +49,7 @@ stopifnot(out2$threshold==edgeR::aveLogCPM(0, 1e6))
 # Seeing what happens if we add in a whole bunch of intra-chromosomals.
 
 all.combos <- combn(10, 2)
-xi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+xi <- InteractionSet(list(counts=matrix(100, nrow=ncol(all.combos), 1)), 
                     GInteractions(all.combos[1,], all.combos[2,], my.regions, mode="reverse"),
                     colData=DataFrame(totals=1e6)) 
 xi <- rbind(x, xi, xi)
@@ -65,7 +65,7 @@ starts <- ends - 19L
 ref.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 
 all.inters <- expand.grid(1:10, 11:15)
-ref <- InteractionSet(matrix(40, nrow=nrow(all.inters), 1), 
+ref <- InteractionSet(list(counts=matrix(40, nrow=nrow(all.inters), 1)), 
                     GInteractions(all.inters[,1], all.inters[,2], ref.regions, mode="reverse"),
                     colData=DataFrame(totals=1e6)) 
 
@@ -94,7 +94,7 @@ stopifnot(all(out.sub$abundances==out$abundances))
 stopifnot(all(out.sub$ref$threshold!=median(out.sub$ref$abundances)))
 out.sub$threshold
 
-refi <- InteractionSet(matrix(100, nrow=ncol(all.combos), 1), 
+refi <- InteractionSet(list(counts=matrix(100, nrow=ncol(all.combos), 1)), 
                     GInteractions(all.combos[1,], all.combos[2,], ref.regions, mode="reverse"),
                     colData=DataFrame(totals=1e6)) 
 refi <- rbind(ref, refi, refi)
@@ -113,7 +113,7 @@ my.regions <- GRanges(rep(c("chrA", "chrB"), c(10, 5)), IRanges(starts, ends))
 
 all.A1 <- sample(length(my.regions), 100, replace=TRUE)
 all.A2 <- sample(length(my.regions), 100, replace=TRUE)
-x <- InteractionSet(matrix(100, nrow=100, 1), 
+x <- InteractionSet(list(counts=matrix(100, nrow=100, 1)), 
                     GInteractions(all.A1, all.A2, my.regions, mode="reverse"),
                     colData=DataFrame(totals=1e6)) 
 

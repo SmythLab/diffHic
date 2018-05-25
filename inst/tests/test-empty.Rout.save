@@ -1,7 +1,7 @@
 
-R version 3.4.0 (2017-04-21) -- "You Stupid Darkness"
-Copyright (C) 2017 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin15.6.0 (64-bit)
+R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -84,7 +84,7 @@ regions: 1
 > 
 > # Testing with an empty InteractionSet.
 > 
-> ghost <- InteractionSet(matrix(0, nrow=0, ncol=1), 
+> ghost <- InteractionSet(list(counts=matrix(0, nrow=0, ncol=1)), 
 +     GInteractions(integer(0), integer(0), regions=GRanges("chrA", IRanges(1:5, 1:5)), mode="reverse"),
 +     colData=DataFrame(totals=1e6))
 > 
@@ -149,7 +149,7 @@ logical(0)
 class: InteractionSet 
 dim: 0 1 
 metadata(0):
-assays(5): '' quadrant vertical horizontal surrounding
+assays(5): counts quadrant vertical horizontal surrounding
 rownames: NULL
 rowData names(4): N.quadrant N.vertical N.horizontal N.surrounding
 colnames: NULL
@@ -202,11 +202,6 @@ $samples
 Sample1     1    1e+06            1
 
 > 
-> normOffsets(ghost, se.out=FALSE)
-[1] 1
-> normOffsets(ghost, type="loess", se.out=FALSE)
-     [,1]
-> 
 > diClusters(ghost, data.frame(PValue=integer(0), logFC=numeric(0)), target=0.05, cluster.args=list(tol=1))
 $indices
 $indices[[1]]
@@ -235,4 +230,4 @@ character(0)
 > 
 > proc.time()
    user  system elapsed 
- 11.083   0.310  11.531 
+  7.367   0.188   7.553 
