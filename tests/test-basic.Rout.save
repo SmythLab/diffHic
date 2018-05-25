@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2018-03-26 r74466) -- "Unsuffered Consequences"
+R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
 Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -223,40 +223,6 @@ Sample1     1       20            1
         group lib.size norm.factors
 Sample1     a       17            2
 > 
-> # Simple normalization with dummy data.
-> set.seed(3423746)
-> npts <- 100
-> npairs <- 5000
-> nlibs <- 4
-> anchors <- sample(npts, npairs, replace=TRUE)
-> targets <- sample(npts, npairs, replace=TRUE)
-> dummy <- InteractionSet(matrix(as.integer(rpois(npairs*nlibs, runif(npairs, 10, 100))), nrow=npairs),
-+     colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
-+     GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
-> 
-> normOffsets(dummy, se.out=FALSE)
-[1] 1.0797833 0.8315381 0.9929250 1.1216692
-> normOffsets(dummy, logratioTrim=0, se.out=FALSE)
-[1] 1.0811625 0.8302084 0.9910453 1.1241607
-> normOffsets(dummy, sumTrim=0.2, se.out=FALSE)
-[1] 1.0809185 0.8315821 0.9932535 1.1200614
-> head(normOffsets(dummy, type="loess", se.out=FALSE))
-             [,1]          [,2]         [,3]         [,4]
-[1,] -0.001441205  0.0009288925  0.004926866 -0.004414553
-[2,]  0.005400642  0.0041595535 -0.006896159 -0.002664036
-[3,]  0.003115172 -0.0016344146  0.001783304 -0.003264061
-[4,]  0.005334705  0.0035367018 -0.005104467 -0.003766940
-[5,] -0.003505626  0.0163064598 -0.001889796 -0.010911038
-[6,]  0.004070281  0.0090487722 -0.008279823 -0.004839230
-> head(normOffsets(dummy, type="loess", span=0.5, se.out=FALSE))
-              [,1]          [,2]         [,3]          [,4]
-[1,] -0.0024209802  0.0006743114  0.003720243 -0.0019735742
-[2,]  0.0063348094  0.0041435451 -0.006281532 -0.0041968230
-[3,] -0.0009160654 -0.0004010371  0.002050126 -0.0007330237
-[4,]  0.0067668226  0.0036523870 -0.005981149 -0.0044380604
-[5,] -0.0016877799  0.0152247018 -0.006733298 -0.0068036242
-[6,]  0.0031066311  0.0085339697 -0.006865167 -0.0047754340
-> 
 > # Playing around with some bin counts.
 > stuff <- correctedContact(data)
 > head(stuff$truth)
@@ -290,4 +256,4 @@ regions: 6
 > 
 > proc.time()
    user  system elapsed 
-  6.538   0.176   6.765 
+  5.571   0.168   5.757 

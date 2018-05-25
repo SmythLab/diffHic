@@ -43,23 +43,6 @@ asDGEList(data)
 asDGEList(data, lib.size=20)$samples
 asDGEList(data, norm.factors=2, group="a")$samples
 
-# Simple normalization with dummy data.
-set.seed(3423746)
-npts <- 100
-npairs <- 5000
-nlibs <- 4
-anchors <- sample(npts, npairs, replace=TRUE)
-targets <- sample(npts, npairs, replace=TRUE)
-dummy <- InteractionSet(matrix(as.integer(rpois(npairs*nlibs, runif(npairs, 10, 100))), nrow=npairs),
-    colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)), 
-    GInteractions(anchor1=anchors, anchor2=targets, regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"))
-
-normOffsets(dummy, se.out=FALSE)
-normOffsets(dummy, logratioTrim=0, se.out=FALSE)
-normOffsets(dummy, sumTrim=0.2, se.out=FALSE)
-head(normOffsets(dummy, type="loess", se.out=FALSE))
-head(normOffsets(dummy, type="loess", span=0.5, se.out=FALSE))
-
 # Playing around with some bin counts.
 stuff <- correctedContact(data)
 head(stuff$truth)
