@@ -16,7 +16,7 @@ compartmentalize <- function(data, centers=2, dist.correct=TRUE,
 		contacts <- trended$abundance - trended$threshold
 		dist2trend <- approxfun(x=trended$log.distance, y=trended$threshold, rule=2)
 	} else {
-		contacts <- aveLogCPM(asDGEList(data))
+		contacts <- scaledAverage(data)
 		dist2trend <- function(x) { 0 } # Trend correction function does nothing if no distance correction is requested.
 	}
 

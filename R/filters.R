@@ -14,7 +14,7 @@ filterDirect <- function(data, prior.count=2, reference=NULL, assay.data=1, assa
 		stopifnot(identical(reference$totals, data$totals))
 		scaling <- (.getBinSize(reference)/.getBinSize(data))^2
         ref <- .direct_filter(reference, prior.count=prior.count, scaling=scaling, assay=assay.ref)
-        actual.ab <- scaledAverage(asDGEList(data, assay=assay.data), prior.count=prior.count, scale=1)
+        actual.ab <- scaledAverage(data, assay.id=assay.data, prior.count=prior.count, scale=1)
 		return(list(abundances=actual.ab, threshold=ref$threshold, ref=ref))
 	}
 
@@ -27,7 +27,7 @@ filterDirect <- function(data, prior.count=2, reference=NULL, assay.data=1, assa
 {
    	all.chrs <- seqnames(regions(data))
 	is.inter <- !intrachr(data)
-	ave.ab <- scaledAverage(asDGEList(data, assay=assay), prior.count=prior.count, scale=scaling)
+	ave.ab <- scaledAverage(data, assay.id=assay, prior.count=prior.count, scale=scaling)
     empty.ab <- .makeEmpty(data, prior.count=prior.count, scale=scaling) 
 	threshold <- .getInterThreshold(all.chrs, ave.ab[is.inter], empty=empty.ab)
     return(list(abundances=ave.ab, threshold=threshold))
@@ -68,14 +68,14 @@ filterDirect <- function(data, prior.count=2, reference=NULL, assay.data=1, assa
 }
 
 .makeEmpty <- function(data, ...) { 
-    if (nrow(data)) { 
-        y <- asDGEList(data[1,])
-        y$counts[] <- 0L
+    if (!nrow(data)) { 
+        data <- SummarizedExperiment(list(counts=matrix(0, 1, ncol(data))),
+            colData=colData(data), metadata=metadata(data))
     } else {
-        y <- asDGEList(data)
-        y$counts <- rbind(integer(ncol(data)))
+        data <- data[1,]
+        assay(data, "counts")[] <- 0
     }
-    scaledAverage(y, ...) 
+    scaledAverage(data, ...) 
 }
 
 filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.data=1, assay.ref=1)
@@ -84,7 +84,6 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.
 #
 # written by Aaron Lun
 # created 5 March 2015
-# last modified 16 November 2016
 {
     .check_StrictGI(data)
 
@@ -93,7 +92,7 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.
         scaling <- (.getBinSize(reference)/.getBinSize(data))^2
         ref <- .trended_filter(reference, span=span, prior.count=prior.count, scaling=scaling, assay=assay.ref)
 
-        actual.ab <- scaledAverage(asDGEList(data, assay=assay.data), prior.count=prior.count, scale=1)
+        actual.ab <- scaledAverage(data, assay.id=assay.data, prior.count=prior.count, scale=1)
 		actual.dist <- log10(pairdist(data, type="mid") + .getBinSize(data))
 		
 		new.threshold <- approx(x=ref$log.distance, y=ref$threshold, xout=actual.dist, rule=2)$y
@@ -108,7 +107,7 @@ filterTrended <- function(data, span=0.25, prior.count=2, reference=NULL, assay.
 .trended_filter <- function(data, span, prior.count, scaling, assay) {
 	dist <- pairdist(data, type="mid")
 	log.dist <- log10(dist + .getBinSize(data)) # Adding an appropriate prior.
-	ave.ab <- scaledAverage(asDGEList(data, assay=assay), prior.count=prior.count, scale=scaling)
+	ave.ab <- scaledAverage(data, assay.id=assay, prior.count=prior.count, scale=scaling)
 
 	# Filling in the missing parts of the interaction space.
 	empty <- .makeEmpty(data, prior.count=prior.count, scale=scaling)
