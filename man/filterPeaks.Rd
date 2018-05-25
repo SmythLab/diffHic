@@ -80,7 +80,8 @@ regions <- GRanges(rep(c("chrA", "chrB"), c(a, b)), IRanges(c(1:a, 1:b), c(1:a, 
 set.seed(23943)
 all.anchor1 <- sample(length(regions), 50, replace=TRUE)
 all.anchor2 <- as.integer(runif(50, 1, all.anchor1+1))
-data <- InteractionSet(matrix(as.integer(rnbinom(200, mu=10, size=10)), 50, 4), 
+data <- InteractionSet(
+    list(counts=matrix(as.integer(rnbinom(200, mu=10, size=10)), 50, 4)), 
     GInteractions(anchor1=all.anchor1, anchor2=all.anchor2, regions=regions, mode="reverse"), 
     colData=DataFrame(totals=runif(4, 1e6, 2e6)), metadata=List(width=1))
 

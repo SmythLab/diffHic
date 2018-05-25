@@ -81,7 +81,7 @@ nlibs <- 4
 anchor1 <- sample(npts, npairs, replace=TRUE)
 anchor2 <- sample(npts, npairs, replace=TRUE)
 data <- InteractionSet(
-    matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs),
+    list(counts=matrix(rpois(npairs*nlibs, runif(npairs, 10, 100)), nrow=npairs)),
     GInteractions(anchor1=anchor1, anchor2=anchor2,
         regions=GRanges("chrA", IRanges(1:npts, 1:npts)), mode="reverse"),
 	colData=DataFrame(totals=runif(nlibs, 1e6, 2e6)))
