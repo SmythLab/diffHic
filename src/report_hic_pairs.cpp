@@ -3,7 +3,7 @@
 
 #include <cstdio>
 #include <cstring>
-#include "sam.h"
+#include "htslib/sam.h"
 
 /***********************************************
  * Something to hold segment, pair information.
