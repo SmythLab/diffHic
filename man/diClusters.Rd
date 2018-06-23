@@ -6,7 +6,7 @@
 
 \usage{
 diClusters(data.list, result.list, target, equiweight=TRUE, cluster.args=list(), 
-    pval.col="PValue", fc.col=NA, grid.param=NULL)
+    pval.col="PValue", fc.col=NA, grid.length=21, iterations=4)
 }
 
 \arguments{
@@ -17,7 +17,7 @@ diClusters(data.list, result.list, target, equiweight=TRUE, cluster.args=list(),
 \item{cluster.args}{a list of parameters to supply to \code{\link{clusterPairs}}.}
 \item{pval.col}{a character string or integer scalar specifying the column of p-values for elements in \code{result.list}.}
 \item{fc.col}{a character string or integer scalar specifying the column of log-fold changes for elements in \code{result.list}.}
-\item{grid.param}{a list of parameters to supply to \code{\link{controlClusterFDR}}.}
+\item{grid.length, iterations}{Parameters to supply to \code{\link{controlClusterFDR}}.}
 }
 
 \value{

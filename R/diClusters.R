@@ -1,4 +1,4 @@
-diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.args=list(), pval.col="PValue", fc.col=NA, grid.param=NULL) 
+diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.args=list(), pval.col="PValue", fc.col=NA, grid.length=21, iterations=4)
 # Performs post-hoc clustering of significant bin pairs, to control the 
 # cluster-level FDR at 'target'. Adjusts the weights so that the contribution
 # from each set of bin pairs is the same.
@@ -100,7 +100,7 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
     }
     out <- controlClusterFDR(target=target, adjp=adjp, FUN=function(sig) { 
         unlist(FUN(sig)) 
-    }, weight=weights, grid.param=grid.param)
+    }, weight=weights, grid.length=grid.length, iterations=iterations)
     sig <- adjp <= out$threshold
     clusters <- FUN(sig, index.only=FALSE)
 
