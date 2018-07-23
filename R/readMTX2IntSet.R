@@ -15,19 +15,19 @@ readMTX2IntSet <- function(mtx, bed, verbose=TRUE)
     GR <- GRanges(Regions[,1],IRanges(Regions[,2]+1L,Regions[,3]))
 
 #   Check for Matrix Market header (so it can be skipped)
-	con <- file(mtx[1], "r")	
-	skip <- 0L
+    con <- file(mtx[1], "r")    
+    skip <- 0L
 #   Count number of lines starting with comment: header are these plus one line.
-	repeat {
-		txt <- readLines(con,n=1L)
-		if(substring(txt,1,1) != "%") break
-		skip <- skip + 1L
-	}
-	if(skip > 0L) {
-	    if(verbose) cat("First MTX file header:",txt,"\n")
-	    skip <- skip + 1L
-	}
-	close(con)
+    repeat {
+        txt <- readLines(con,n=1L)
+        if(substring(txt,1,1) != "%") break
+        skip <- skip + 1L
+    }
+    if(skip > 0L) {
+        if(verbose) cat("First MTX file header:",txt,"\n")
+        skip <- skip + 1L
+    }
+    close(con)
 
 #   Read the mtx files
     nfiles <- length(mtx)
@@ -62,7 +62,7 @@ readMTX2IntSet <- function(mtx, bed, verbose=TRUE)
         Anchor2 <- (hashu - Anchor1) * (length(GR) + 1)
         Anchor1 <- as.integer(Anchor1)
         Anchor2 <- as.integer(round(Anchor2))
-        GI <- GInteractions(Anchor1,Anchor2,GR)
+        GI <- GInteractions(Anchor1,Anchor2,GR,mode="strict")
 
 #       Merge counts into one matrix
         counts <- matrix(0L,length(hashu),nfiles)
