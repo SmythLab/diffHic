@@ -39,40 +39,40 @@ readMTX2IntSet <- function(mtx, bed, verbose=TRUE)
         Anchor1 <- pmax(x[,1],x[,2])
         Anchor2 <- pmin(x[,1],x[,2])
         GI <- GInteractions(Anchor1,Anchor2,GR,mode="reverse")
-        lib.size <- sum(x[,3])
-        IS <- InteractionSet(as.matrix(x[,3]),GI,colData=DataFrame(totals=lib.size))
+        Total <- sum(x[,3])
+        IS <- InteractionSet(as.matrix(x[,3]),GI,colData=DataFrame(totals=Total))
 
     } else {
 
 #       Read mtx files into a list of data.frames
-        counts <- list()
-        lib.size <- numeric(nfiles)
-        hash <- list()
-        Bits <- as.integer(ceiling(log2(length(GR)+0.1)))
+        CountList <- list()
+        Total <- numeric(nfiles)
+        HashList <- list()
+        HashBase <- 2L^as.integer(ceiling(log2(length(GR+1L))))
         for (i in seq_len(nfiles)) {
             x <- utils::read.table(mtx[i],skip=skip,sep="",colClasses=c("integer","integer","integer"),comment.char="",quote="")
             if(verbose) cat("Read",mtx[i],"\n")
             Anchor1 <- pmax(x[,1],x[,2])
             Anchor2 <- pmin(x[,1],x[,2])
-            hash[[i]] <- Anchor1 + Anchor2 / 2L^Bits
-            counts[[i]] <- x[,3]
-            lib.size[i] <- sum(x[,3])
+            HashList[[i]] <- Anchor1 + Anchor2 / HashBase
+            CountList[[i]] <- x[,3]
+            Total[i] <- sum(x[,3])
         }
 
 #       Find union of interactions
         if(verbose) cat("Merging ...\n")
-        hashu <- unique(do.call("c",hash))
-        Anchor1 <- as.integer(floor(hashu))
-        Anchor2 <- as.integer((hashu - Anchor1) * 2L^Bits)
+        HashUnique <- unique(do.call("c",HashList))
+        Anchor1 <- as.integer(floor(HashUnique))
+        Anchor2 <- as.integer((HashUnique - Anchor1) * HashBase + 0.5)
         GI <- GInteractions(Anchor1,Anchor2,GR,mode="reverse")
 
 #       Merge counts into one matrix
-        Counts <- matrix(0L,length(hashu),nfiles)
+        Counts <- matrix(0L,length(HashUnique),nfiles)
         for (i in seq_len(nfiles)) {
-            m <- match(hash[[i]],hashu)
-            Counts[m,i] <- counts[[i]]
+            m <- match(HashList[[i]],HashUnique)
+            Counts[m,i] <- CountList[[i]]
         }
-        IS <- InteractionSet(Counts,GI,colData=DataFrame(totals=lib.size))
+        IS <- InteractionSet(Counts,GI,colData=DataFrame(totals=Total))
     }
 
 #   Set colnames and assayNames
