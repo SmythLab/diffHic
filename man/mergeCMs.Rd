@@ -5,14 +5,12 @@
 \description{Merge ContactMatrix objects into an InteractionSet object containing counts for pairs of interacting regions.}
 
 \usage{
-mergeCMs(..., deflate.args=list(), filter=1, binned=TRUE)
+mergeCMs(..., deflate.args=list())
 }
 
 \arguments{
 \item{...}{ContactMatrix objects containing read pair counts for the same area of the interaction space, usually defined as pairs of bins along a genomic interval.}
 \item{deflate.args}{A list of arguments to pass to \code{\link[InteractionSet]{deflate}}.}
-\item{filter}{A numeric scalar specifying the minimum count sum for which bin pairs are retained.}
-\item{binned}{A logical scalar indicating whether the input ContactMatrix objects contain counts for bin pairs.}
 }
 
 \details{
@@ -29,8 +27,8 @@ This step will throw errors if the original ContactMatrix objects do not cover t
 Column names are set to any names for \code{...}, and the total number of read pairs in each ContactMatrix is stored in \code{totals}.
 
 The \code{width} value in the \code{metadata} of the output InteractionSet is set to the median width of the interacting regions.
-This only makes sense if the ContactMatrix objects cover binned regions.
-If \code{binned=FALSE}, the \code{width} is not set, thus mimicking the output of \code{\link{connectCounts}} instead.
+The \code{totals} field in the output \code{colData} is also set to be equal to the sum of the counts in each ContactMatrix (after removing redundant regions).
+Note that this only makes sense if the ContactMatrix objects contain interactions between non-overlapping genomic bins.
 
 The \code{param} value is not set in the \code{metadata} of the output object.
 This depends on how the ContactMatrix objects were constructed in the first place, which is not known to the function.
