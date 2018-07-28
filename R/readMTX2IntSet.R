@@ -2,10 +2,12 @@
 #' @importFrom rtracklayer import.bed
 #' @importFrom utils read.table
 #' @importFrom InteractionSet InteractionSet GInteractions
-#' @importFrom S4Vectors DataFrame mcols<-
-#' @importFrom BiocGenerics match unique sort
+#' @importFrom SummarizedExperiment assayNames
+#' @importFrom S4Vectors DataFrame mcols<- metadata<-
+#' @importFrom BiocGenerics match unique sort colnames width
 #' @importMethodsFrom InteractionSet match c unique sort
-readMTX2IntSet <- function(mtx, bed, assay.type="counts", as.integer=TRUE)
+#' @importFrom stats median
+readMTX2IntSet <- function(mtx, bed, as.integer=TRUE)
 # Read contact matrix in Matrix Market Exchange Format into an Interaction Set
 #
 # written by Gordon Smyth
@@ -43,7 +45,9 @@ readMTX2IntSet <- function(mtx, bed, assay.type="counts", as.integer=TRUE)
         output[location,mdx] <- collected.counts[[mdx]]
     }
 
-    assays <- list(output)
-    names(assays) <- assay.type
-    InteractionSet(assays, all.gi, colData=DataFrame(totals=colSums(output)))
+    output <- InteractionSet(output, all.gi, colData=DataFrame(totals=colSums(output)))
+    assayNames(output) <- "counts"
+    colnames(output) <- names(mtx)
+    metadata(output)$width <- median(width(regions(output)))
+    return(output)
 }
