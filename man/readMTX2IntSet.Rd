@@ -1,51 +1,71 @@
 \name{readMTX2IntSet}
 \alias{readMTX2IntSet}
 
-\title{Read InteractionSet from a BED File and a Set of Matrix Market Files}
-\description{Read a set of Matrix Market Exchange Format files from disk and create an \code{InteractionSet}.}
+\title{Create an InteractionSet from a BED file and Matrix Market files}
+\description{Read a set of Matrix Market Exchange Format files from disk and create an \linkS4class{InteractionSet} object.}
 
 \usage{
-readMTX2IntSet(mtx, bed, verbose=TRUE)
+readMTX2IntSet(mtx, bed, as.integer=TRUE)
 }
 
 \arguments{
-\item{mtx}{character vector giving the names of the Matrix Market Exchange Format (MTX) files.
+\item{mtx}{A character vector containg paths to Matrix Market Exchange Format (MTX) files.
 Each file contains interaction read counts for one sample.}
-\item{bed}{character string, the name of the BED file specifying the genomic regions.}
-\item{verbose}{logical: if \code{TRUE}, progress information will be written to standard output as each file is read.}
+\item{bed}{String containing the path to the BED file specifying the genomic regions.}
+\item{as.integer}{Logical indicating whether the data should be read as integers.
+Otherwise values are stored in double-precision numbers.}
 }
 
 \value{
-An \code{InteractionSet} with regions as read from the BED file and reverse-strict interactions.
-A row will be included for every unique interaction found in any one of the MTX files.
+An \linkS4class{InteractionSet} object containing interactions between regions from the BED file (in reverse-strict mode, see \code{\link{GInteractions}}).
+Each row corresponds to a unique interaction found in any of the MTX files, and contains the read counts across all files.
 }
 
 \details{
-Each MTX file contains the number of reads supporting each Hi-C interaction for one biological sample.
-The MTX files are assumed be in Matrix Market Exchange Format (\url{https://math.nist.gov/MatrixMarket/formats.html}), for example as written by the \code{writeMM} function in the \code{Matrix} package.
-Files should contain three columns, indicating row number, column number and read count respectively.
-Counts are assumed to be symmetric and zero counts are omitted.
+Each MTX file is assumed to contain read counts for symmetric matrix representing the two-dimensional interaction space.
+Each row and column is assumed to correspond to contiguous bins of the genome, with coordinates specified by \code{bed} in standard BED format.
+This function will aggregate counts from all files to create an \linkS4class{InteractionSet} object that mimics the output of \code{\link{squareCounts}}.
 
-The MTX files may optionally contain a Matrix Market header specifying the matrix format and giving the total number of rows and columns for the contact matrix.
-Alternatively, the header can be omitted.
-If present, the header will be detected but not used, because a symmetric format with integer row and column coordinates is assumed.
-
-Rows and columns in the MTX files correspond to the regions defined in the BED file.
-The BED file is assumed to be in standard BED format (\url{https://genome.ucsc.edu/FAQ/FAQformat.html}) with no header lines.
-Only the first three columns are used, corresponding to chromosome names, start position (in 0-start coordinates) and end position.
-Any other columns in the file will be ignored.
-Regions shown in diffHic will show start positions in 1-start closed coordinates, being one-plus the start position in the BED file.
-
-The MTX files and the BED file can be either tab-delimited or space-limited.
+The \code{width} value in the \code{metadata} of the output InteractionSet is set to the median width of the regions.
+The \code{totals} field in the output \code{colData} is also set to be equal to the sum of the counts in each MTX file.
+Note that these settings only make sense if the ContactMatrix objects cover binned regions.
 
 This function can, in principle, read and merge any number of MTX files.
-However, if the resulting \code{InteractionSet} is very large, then it will be more memory efficient to read the MTX files into individual \code{InteractionSet} objects and to subset to those interactions of interest before merging into a combined \code{InteractionSet}.
+However, for large data sets, consider reading each MTX file separately, subsetting it to interactions of interest and then creating the InteractionSet object.
+For example, subsetted contact matrices can be used to create an InteractionSet via \code{\link{mergeCMs}}.
 }
 
-\author{Gordon Smyth}
+\author{Gordon Smyth, with modifications by Aaron Lun}
 
 \seealso{
-See \code{\link{GInteractions}} for the meaning of reverse-strict interactions.
+\code{\link{mergeCMs}}
+}
+
+\examples{
+library(Matrix)
+tmp.loc <- tempfile()
+dir.create(tmp.loc)
+
+# Mocking up some MTX and BED files.
+set.seed(110000)
+A <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, rand.x=function(n) round(runif(n, 1, 100)))
+A.name <- file.path(tmp.loc, "A.mtx")
+writeMM(file=A.name, A)
+
+B <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, rand.x=function(n) round(runif(n, 1, 100)))
+B.name <- file.path(tmp.loc, "B.mtx")
+writeMM(file=B.name, B)
+
+GR <- GRanges(sample(c("chrA", "chrB", "chrC"), 1000, replace=TRUE),
+    IRanges(start=round(runif(1000, 1, 10000)),
+        width=round(runif(1000, 50, 500))))
+GR <- sort(GR)
+bed.name <- file.path(tmp.loc, "regions.bed")
+rtracklayer::export.bed(GR, con=bed.name)
+
+# Reading everything in.
+iset <- readMTX2IntSet(c(A.name, B.name), bed.name)
+iset
 }
 
 \keyword{read}
