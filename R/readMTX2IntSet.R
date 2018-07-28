@@ -1,84 +1,49 @@
-readMTX2IntSet <- function(mtx, bed, verbose=TRUE)
+#' @export
+#' @importFrom rtracklayer import.bed
+#' @importFrom utils read.table
+#' @importFrom InteractionSet InteractionSet GInteractions
+#' @importFrom S4Vectors DataFrame mcols<-
+#' @importFrom BiocGenerics match unique sort
+#' @importMethodsFrom InteractionSet match c unique sort
+readMTX2IntSet <- function(mtx, bed, assay.type="counts", as.integer=TRUE)
 # Read contact matrix in Matrix Market Exchange Format into an Interaction Set
-# Gordon Smyth
-# Created 22 June 2018. Last modified 23 July 2018.
+#
+# written by Gordon Smyth
+# with modifications by Aaron Lun
+# created 22 June 2018
 {
-#   Read genomic regions from BED file
-#   Read first line to get number of columns
-    FirstLine <- utils::read.table(bed,nrows=1L,comment.char="",quote="",stringsAsFactors=FALSE)
-    nbedcols <- ncol(FirstLine)
-    if(nbedcols < 3L) stop("BED file must have at least 3 columns")
-    cii <- c("character","integer","integer")
-    if(nbedcols > 3L) colClasses <- c(colClasses,rep.int("NULL",nbedcols-3L))
-    Regions <- utils::read.table(bed,colClasses=cii,comment.char="",quote="")
-    if(verbose) cat("Read",bed,"with",nrow(Regions),"regions\n")
-    GR <- GRanges(Regions[,1],IRanges(Regions[,2]+1L,Regions[,3]))
+    GR <- import.bed(bed)
+    GR <- sort(GR)
+    mcols(GR) <- NULL
 
-#   Check for Matrix Market header (so it can be skipped)
-    con <- file(mtx[1], "r")    
-    skip <- 0L
-#   Count number of lines starting with comment: header are these plus one line.
-    repeat {
-        txt <- readLines(con,n=1L)
-        if(substring(txt,1,1) != "%") break
-        skip <- skip + 1L
+    collected.gi <- collected.counts <- vector("list", length(mtx))
+    for (mdx in seq_along(mtx)) {
+        current <- read.table(mtx[mdx], comment.char="%", quote="", 
+            colClasses=c("integer", "integer", if (as.integer) "integer" else "numeric"))
+
+        if (current[1,1]!=length(GR) || current[1,2]!=length(GR)) {
+            stop("dimensions in 'mtx' are not equal to number of regions in 'bed'")
+        }
+
+        collected.gi[[mdx]] <- GInteractions(current[-1,1], current[-1,2], GR, mode="reverse") 
+        collected.counts[[mdx]] <- current[-1,3] 
     }
-    if(skip > 0L) {
-        if(verbose) cat("First MTX file header:",txt,"\n")
-        skip <- skip + 1L
-    }
-    close(con)
 
-#   Read the mtx files
-    nfiles <- length(mtx)
-    if(nfiles==1L) {
-
-#       If only one mtx file, make InteractionSet directly. No need to merge interactions.
-        x <- utils::read.table(mtx,skip=skip,sep="",colClasses=c("integer","integer","integer"),comment.char="",quote="")
-        if(verbose) cat("Read",mtx,"\n")
-        Anchor1 <- pmax(x[,1],x[,2])
-        Anchor2 <- pmin(x[,1],x[,2])
-        GI <- GInteractions(Anchor1,Anchor2,GR,mode="reverse")
-        Total <- sum(x[,3])
-        IS <- InteractionSet(as.matrix(x[,3]),GI,colData=DataFrame(totals=Total))
-
+    # Defining the common set of interactions.
+    if (length(mtx)) { 
+        all.gi <- do.call(c, collected.gi)
+        all.gi <- unique(sort(all.gi))
     } else {
-
-#       Read mtx files into a list of data.frames
-        CountList <- list()
-        Total <- numeric(nfiles)
-        HashList <- list()
-        HashBase <- 2L^as.integer(ceiling(log2(length(GR+1L))))
-        for (i in seq_len(nfiles)) {
-            x <- utils::read.table(mtx[i],skip=skip,sep="",colClasses=c("integer","integer","integer"),comment.char="",quote="")
-            if(verbose) cat("Read",mtx[i],"\n")
-            Anchor1 <- pmax(x[,1],x[,2])
-            Anchor2 <- pmin(x[,1],x[,2])
-            HashList[[i]] <- Anchor1 + Anchor2 / HashBase
-            CountList[[i]] <- x[,3]
-            Total[i] <- sum(x[,3])
-        }
-
-#       Find union of interactions
-        if(verbose) cat("Merging ...\n")
-        HashUnique <- unique(do.call("c",HashList))
-        Anchor1 <- as.integer(floor(HashUnique))
-        Anchor2 <- as.integer((HashUnique - Anchor1) * HashBase + 0.5)
-        GI <- GInteractions(Anchor1,Anchor2,GR,mode="reverse")
-
-#       Merge counts into one matrix
-        Counts <- matrix(0L,length(HashUnique),nfiles)
-        for (i in seq_len(nfiles)) {
-            m <- match(HashList[[i]],HashUnique)
-            Counts[m,i] <- CountList[[i]]
-        }
-        IS <- InteractionSet(Counts,GI,colData=DataFrame(totals=Total))
+        all.gi <- GInteractions(integer(0), integer(0), GR)
     }
 
-#   Set colnames and assayNames
-    assayNames(IS) <- "counts"
-    mtx <- sub("\\.gz$","",mtx)
-    colnames(IS) <- limma::removeExt(mtx)
+    output <- matrix(if (as.integer) 0L else 0, nrow=length(all.gi), ncol=length(collected.gi))
+    for (mdx in seq_along(mtx)) {
+        location <- match(collected.gi[[mdx]], all.gi)
+        output[location,mdx] <- collected.counts[[mdx]]
+    }
 
-    IS
+    assays <- list(output)
+    names(assays) <- assay.type
+    InteractionSet(assays, all.gi, colData=DataFrame(totals=colSums(output)))
 }
