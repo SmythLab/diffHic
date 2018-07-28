@@ -1,14 +1,14 @@
 Package: diffHic
-Version: 1.13.4
-Date: 2018-07-22
+Version: 1.13.5
+Date: 2018-07-28
 Title: Differential Analyis of Hi-C Data
-Author: Aaron Lun [cre,aut], Gordon Smyth [aut] 
+Author: Aaron Lun [cre, aut], Gordon Smyth [aut] 
 Maintainer: Aaron Lun <alun@wehi.edu.au>
 Depends: R (>= 3.5), GenomicRanges, InteractionSet, SummarizedExperiment
 Imports: Rsamtools, Rhtslib, Biostrings, BSgenome, rhdf5, edgeR, limma, csaw,
         locfit, methods, IRanges, S4Vectors, GenomeInfoDb, BiocGenerics,
-        grDevices, graphics, stats, utils, Rcpp
-Suggests: BSgenome.Ecoli.NCBI.20080805, Matrix
+        grDevices, graphics, stats, utils, Rcpp, rtracklayer
+Suggests: BSgenome.Ecoli.NCBI.20080805, Matrix, testthat
 biocViews: MultipleComparison, Preprocessing, Sequencing, Coverage,
         Alignment, Normalization, Clustering, HiC
 Description: Detects differential interactions across biological
