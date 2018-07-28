@@ -1,4 +1,13 @@
-mergeCMs <- function(..., deflate.args=list(), filter=1, binned=TRUE) 
+#' @export
+#' @importFrom SummarizedExperiment assayNames assay
+#' @importFrom InteractionSet deflate regions anchors
+#' @importMethodsFrom InteractionSet as.matrix cbind
+#' @importFrom methods as
+#' @importClassesFrom InteractionSet ReverseStrictGInteractions
+#' @importFrom BiocGenerics colnames width
+#' @importFrom S4Vectors metadata<-
+#' @importFrom stats median
+mergeCMs <- function(..., deflate.args=list())
 # This function merges contact matrices into a single InteractionSet object.
 # It effectively mimics a squareCounts call, but with contact matrix inputs.
 #
@@ -23,25 +32,18 @@ mergeCMs <- function(..., deflate.args=list(), filter=1, binned=TRUE)
         }
         total.sum <- total.sum + as.matrix(cm)
     }
-    to.keep <- total.sum >= filter
 
-    # Constructing standardized ISet objects.
-    isets <- vector("list", length(inputs))
-    totals <- numeric(length(inputs))
-    for (i in seq_along(inputs)) {
-        cm <- inputs[[i]]
-        isets[[i]] <- do.call(deflate, c(list(cm, extract=to.keep), deflate.args))
-        totals[i] <- sum(as.matrix(cm))
-    }
+    to.keep <- total.sum >= 1L 
 
-    # Merging together into a single output object.
+    # Constructing standardized ISet objects for cbinding.
+    isets <- mapply(deflate, inputs, MoreArgs=c(list(extract=to.keep), deflate.args), SIMPLIFY=FALSE)
     data <- do.call(cbind, isets)
-    interactions(data) <- as(interactions(data), "ReverseStrictGInteractions")
-    colnames(data) <- names(inputs)
-    data$totals <- totals
+    data$totals <- unname(colSums(assay(data, withDimnames=FALSE)))
 
-    if (binned) {
-        metadata(data)$width <- median(width(regions(data)))
-    }
+    # Cleaning up the output.
+    interactions(data) <- as(interactions(data), "ReverseStrictGInteractions")
+    assayNames(data) <- "counts"
+    colnames(data) <- names(inputs)
+    metadata(data)$width <- median(width(regions(data)))
     return(data)
 }
