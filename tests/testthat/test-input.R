@@ -25,10 +25,12 @@ bed.name <- file.path(tmp.loc, "regions.bed")
 rtracklayer::export.bed(GR, con=bed.name)
 
 test_that("readMTX2IntSet works as expected", {
-    # Checking the input against mergeCMs.
     obs <- readMTX2IntSet(c(A.name, B.name), bed.name)
     expect_identical(regions(obs), GR)
+    expect_type(assay(obs), "integer")
+    expect_identical(assayNames(obs), "counts")
 
+    # Checking the input against mergeCMs.
     cmA <- ContactMatrix(A, seq_len(1000), seq_len(1000), GR)
     cmB <- ContactMatrix(B, seq_len(1000), seq_len(1000), GR)
     ref <- mergeCMs(cmA, cmB)
@@ -46,22 +48,11 @@ test_that("readMTX2IntSet works as expected", {
     expect_identical(interactions(ref), interactions(obs3))
     expect_equal(assay(ref), assay(obs3))
     expect_identical(ref$totals, obs3$totals)
-})
-
-test_that("readMTX2IntSet options work as expected", {
-    obs <- readMTX2IntSet(c(A.name, B.name), bed.name)
-    expect_type(assay(obs), "integer")
-    expect_identical(assayNames(obs), "counts")
 
     # Checking for consistent behaviour when not dealing with integers.
     obs2 <- readMTX2IntSet(c(A.name, B.name), bed.name, as.integer=FALSE)
     expect_type(assay(obs2), "double")
     expect_equal(assay(obs2), assay(obs))
-
-    # Responds to alternative names for consistent behaviour when not dealing with integers.
-    obs2 <- readMTX2IntSet(c(A.name, B.name), bed.name, assay.type="whee")
-    expect_identical(assayNames(obs2), "whee")
-    expect_identical(assay(obs), assay(obs2))
 })
 
 test_that("readMTX2IntSet behaves with silly inputs", {

@@ -48,11 +48,13 @@ dir.create(tmp.loc)
 
 # Mocking up some MTX and BED files.
 set.seed(110000)
-A <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, rand.x=function(n) round(runif(n, 1, 100)))
+A <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, 
+    rand.x=function(n) round(runif(n, 1, 100)))
 A.name <- file.path(tmp.loc, "A.mtx")
 writeMM(file=A.name, A)
 
-B <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, rand.x=function(n) round(runif(n, 1, 100)))
+B <- rsparsematrix(1000, 1000, density=0.1, symmetric=TRUE, 
+    rand.x=function(n) round(runif(n, 1, 100)))
 B.name <- file.path(tmp.loc, "B.mtx")
 writeMM(file=B.name, B)
 
