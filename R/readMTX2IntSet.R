@@ -15,11 +15,11 @@ readMTX2IntSet <- function(mtx, bed, as.integer=TRUE)
 # created 22 June 2018
 {
     GR <- import.bed(bed)
-    GR <- sort(GR)
     mcols(GR) <- NULL
 
-    collected.gi <- collected.counts <- vector("list", length(mtx))
-    for (mdx in seq_along(mtx)) {
+    nsamples <- length(mtx)
+    collected.first <- collected.second <- collected.counts <- vector("list", nsamples)
+    for (mdx in seq_len(nsamples)) {
         current <- read.table(mtx[mdx], comment.char="%", quote="", 
             colClasses=c("integer", "integer", if (as.integer) "integer" else "numeric"))
 
@@ -27,25 +27,39 @@ readMTX2IntSet <- function(mtx, bed, as.integer=TRUE)
             stop("dimensions in 'mtx' are not equal to number of regions in 'bed'")
         }
 
-        collected.gi[[mdx]] <- GInteractions(current[-1,1], current[-1,2], GR, mode="reverse") 
+        collected.first[[mdx]] <- current[-1,1]
+        collected.second[[mdx]] <- current[-1,2]
         collected.counts[[mdx]] <- current[-1,3] 
     }
 
     # Defining the common set of interactions.
-    if (length(mtx)) { 
-        all.gi <- do.call(c, collected.gi)
-        all.gi <- unique(sort(all.gi))
+    sample.ids <- rep(seq_len(nsamples), lengths(collected.first))
+    if (nsamples) {
+        collected.first <- unlist(collected.first)
+        collected.second <- unlist(collected.second)
+        collected.counts <- unlist(collected.counts)
     } else {
-        all.gi <- GInteractions(integer(0), integer(0), GR)
+        collected.first <- collected.second <- collected.counts <- integer(0)
+    }
+    all.gi <- GInteractions(collected.first, collected.second, GR, mode="reverse")
+    all.gi$samples <- sample.ids
+    all.gi$counts <- collected.counts
+
+    all.gi <- sort(all.gi)
+    first.of.type <- !duplicated(all.gi)
+    row.num <- cumsum(first.of.type)
+
+    # Creating the output matrix.
+    output <- matrix(if (as.integer) 0L else 0, nrow=sum(first.of.type), ncol=nsamples)
+    for (mdx in seq_len(nsamples)) {
+        chosen <- all.gi$samples==mdx
+        output[row.num[chosen],mdx] <- all.gi$counts[chosen]
     }
 
-    output <- matrix(if (as.integer) 0L else 0, nrow=length(all.gi), ncol=length(collected.gi))
-    for (mdx in seq_along(mtx)) {
-        location <- match(collected.gi[[mdx]], all.gi)
-        output[location,mdx] <- collected.counts[[mdx]]
-    }
-
-    output <- InteractionSet(output, all.gi, colData=DataFrame(totals=colSums(output)))
+    # Creating the output ISet.
+    uniq.gi <- all.gi[first.of.type]
+    mcols(uniq.gi) <- NULL
+    output <- InteractionSet(output, uniq.gi, colData=DataFrame(totals=colSums(output)))
     assayNames(output) <- "counts"
     colnames(output) <- names(mtx)
     metadata(output)$width <- median(width(regions(output)))
