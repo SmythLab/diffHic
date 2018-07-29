@@ -62,7 +62,7 @@ test_that("readMTX2IntSet is consistent with hashing", {
 
     for (i in seq_len(nfiles)) {
         current <- if (i==1L) A else B
-        x <- which(current!=0, arr.ind=TRUE)
+        x <- Matrix::which(current!=0, arr.ind=TRUE)
         Anchor1 <- pmax(x[,1],x[,2])
         Anchor2 <- pmin(x[,1],x[,2])
         HashList[[i]] <- Anchor1 + Anchor2 / HashBase
