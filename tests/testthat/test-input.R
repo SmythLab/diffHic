@@ -20,13 +20,12 @@ writeMM(file=B.name, B)
 GR <- GRanges(sample(c("chrA", "chrB", "chrC"), 1000, replace=TRUE),
     IRanges(start=round(runif(1000, 1, 10000)),
         width=round(runif(1000, 50, 500))))
-GR <- sort(GR)
 bed.name <- file.path(tmp.loc, "regions.bed")
 rtracklayer::export.bed(GR, con=bed.name)
 
 test_that("readMTX2IntSet works as expected", {
     obs <- readMTX2IntSet(c(A.name, B.name), bed.name)
-    expect_identical(regions(obs), GR)
+    expect_identical(regions(obs), sort(GR))
     expect_type(assay(obs), "integer")
     expect_identical(assayNames(obs), "counts")
 
@@ -55,11 +54,46 @@ test_that("readMTX2IntSet works as expected", {
     expect_equal(assay(obs2), assay(obs))
 })
 
+test_that("readMTX2IntSet is consistent with hashing", {
+    nfiles <- 2L
+	CountList <- list()
+    HashList <- list()
+    HashBase <- 2L^as.integer(ceiling(log2(length(GR+1L))))
+
+    for (i in seq_len(nfiles)) {
+        current <- if (i==1L) A else B
+        x <- which(current!=0, arr.ind=TRUE)
+        Anchor1 <- pmax(x[,1],x[,2])
+        Anchor2 <- pmin(x[,1],x[,2])
+        HashList[[i]] <- Anchor1 + Anchor2 / HashBase
+        CountList[[i]] <- current[x]
+    }
+
+    # Find union of interactions
+    HashUnique <- unique(do.call("c",HashList))
+    Anchor1 <- as.integer(floor(HashUnique))
+    Anchor2 <- as.integer((HashUnique - Anchor1) * HashBase + 0.5)
+    GI <- GInteractions(Anchor1, Anchor2, GR, mode="reverse")
+
+    # Merge counts into one matrix
+    Counts <- matrix(0L,length(HashUnique),nfiles)
+    for (i in seq_len(nfiles)) {
+        m <- match(HashList[[i]],HashUnique)
+        Counts[m,i] <- CountList[[i]]
+    } 
+    
+    # Compare to reference.
+    obs <- readMTX2IntSet(c(A.name, B.name), bed.name)
+    o <- order(GI)
+    expect_equal(interactions(obs), GI[o])
+    expect_equal(assay(obs, withDimnames=FALSE), Counts[o,])
+})
+
 test_that("readMTX2IntSet behaves with silly inputs", {
     # No files.
     silly <- readMTX2IntSet(character(0), bed.name)
     expect_identical(dim(silly), c(0L, 0L))
-    expect_identical(regions(silly), GR)
+    expect_identical(regions(silly), sort(GR))
 
     # Empty files.
     A2 <- A
@@ -68,7 +102,7 @@ test_that("readMTX2IntSet behaves with silly inputs", {
     writeMM(file=A2.name, A2)
     silly <- readMTX2IntSet(A2.name, bed.name)
     expect_identical(dim(silly), c(0L, 1L))
-    expect_identical(regions(silly), GR)
+    expect_identical(regions(silly), sort(GR))
 
     # Inconsistent dimensions.
     A2 <- A[1:10,1:10]
