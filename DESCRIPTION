@@ -1,9 +1,10 @@
 Package: diffHic
-Version: 1.13.5
-Date: 2018-07-28
+Version: 1.13.6
+Date: 2018-10-09
 Title: Differential Analyis of Hi-C Data
-Author: Aaron Lun [cre, aut], Gordon Smyth [aut] 
-Maintainer: Aaron Lun <alun@wehi.edu.au>
+Authors@R: c(person("Aaron", "Lun", role=c("aut", "cre"), email=
+        "infinite.monkeys.with.keyboards@gmail.com"),
+        person("Gordon", "Smyth", role="aut"))
 Depends: R (>= 3.5), GenomicRanges, InteractionSet, SummarizedExperiment
 Imports: Rsamtools, Rhtslib, Biostrings, BSgenome, rhdf5, edgeR, limma, csaw,
         locfit, methods, IRanges, S4Vectors, GenomeInfoDb, BiocGenerics,
