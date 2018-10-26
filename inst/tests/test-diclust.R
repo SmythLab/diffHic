@@ -64,7 +64,7 @@ checkResults(list(interactions, interactions[1:10]), list(data.frame(PValue=test
 checkResults(list(interactions, interactions[1:10]), list(data.frame(PValue=test.p, logFC=signs), data.frame(PValue=test.p[1:10], logFC=signs[1:10])), 
              tol=0, fc.col="logFC", target=0.05, true.pos=true.pos)
 
-checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.param=list(scale=5, iter=10), target=0.05, true.pos=true.pos) # Fiddling with grid search parameters.
-checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.param=list(len=11, it=10), target=0.05, true.pos=true.pos)
+checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.length=11, target=0.05, true.pos=true.pos) # Fiddling with grid search parameters.
+checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, iterations=10, target=0.05, true.pos=true.pos)
 
 ###################################################

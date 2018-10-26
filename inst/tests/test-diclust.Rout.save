@@ -1,6 +1,6 @@
 
-R version 3.4.0 Patched (2017-04-24 r72627) -- "You Stupid Darkness"
-Copyright (C) 2017 The R Foundation for Statistical Computing
+R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -67,11 +67,11 @@ Type 'q()' to quit R.
 1 0.03398058 0.04854369
 > checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=10, target=0.05, true.pos=true.pos)
     Observed  Estimated
-1 0.03333333 0.05333333
+1 0.03333333 0.04666667
 > 
 > checkResults(list(interactions, interactions[1:10]), list(data.frame(PValue=test.p), data.frame(PValue=test.p[1:10])), tol=0, target=0.05, true.pos=true.pos) # Multiple entries
     Observed  Estimated
-1 0.01485149 0.04950495
+1 0.01970443 0.04926108
 > checkResults(list(interactions, interactions[1:10]), list(data.frame(PValue=test.p), data.frame(PValue=test.p[1:10])), equiweight=FALSE, tol=0, target=0.05, true.pos=true.pos)
     Observed  Estimated
 1 0.03398058 0.04854369
@@ -89,8 +89,8 @@ Type 'q()' to quit R.
     Observed  Estimated
 1 0.04950495 0.04950495
 > checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=5, target=0.1, true.pos=true.pos)
-   Observed Estimated
-1 0.1111111 0.1018519
+   Observed  Estimated
+1 0.1111111 0.09259259
 > checkResults(list(interactions), list(data.frame(whee=test.p)), tol=2, pval.col="whee", target=0.05, true.pos=true.pos)
     Observed  Estimated
 1 0.05714286 0.04761905
@@ -105,10 +105,10 @@ Type 'q()' to quit R.
     Observed  Estimated
 1 0.02912621 0.04854369
 > 
-> checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.param=list(scale=5, iter=10), target=0.05, true.pos=true.pos) # Fiddling with grid search parameters.
+> checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.length=11, target=0.05, true.pos=true.pos) # Fiddling with grid search parameters.
     Observed  Estimated
 1 0.05660377 0.04716981
-> checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, grid.param=list(len=11, it=10), target=0.05, true.pos=true.pos)
+> checkResults(list(interactions), list(data.frame(PValue=test.p)), tol=0, iterations=10, target=0.05, true.pos=true.pos)
     Observed  Estimated
 1 0.05660377 0.04716981
 > 
@@ -116,4 +116,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
- 16.368   0.136  16.503 
+ 12.421   0.277  12.697 
