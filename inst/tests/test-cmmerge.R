@@ -25,10 +25,8 @@ cmcomp <- function(chrs, Nr, Nc, nsamples, lambda=10, mat.type="matrix", filter=
         collected[[i]] <- x
     }
 
-    # Without any filtering. Checking that this is the same as sample-wise inflations.
-    output <- do.call(mergeCMs, c(collected, list(filter=0)))
-    stopifnot(isTRUE(all.equal(output$totals, sapply(original, sum))))
-
+    # Checking that this is the same as sample-wise inflations.
+    output <- do.call(mergeCMs, collected)
     for (i in seq_along(nsamples)) {
         current <- collected[[i]]
         test <- deflate(current, use.zero=TRUE) # Forcing use of zeros for sparse matrices.
@@ -40,15 +38,13 @@ cmcomp <- function(chrs, Nr, Nc, nsamples, lambda=10, mat.type="matrix", filter=
         stopifnot(identical(assay(test)[,1], assay(output)[,i]))
     }
 
-    # With filtering.
-    filtered <- do.call(mergeCMs, c(collected, list(filter=filter)))
-    keep <- rowSums(assay(output)) >= filter
-    refiltered <- output[keep,]
-    
-    stopifnot(identical(regions(refiltered), regions(filtered)))
-    stopifnot(identical(anchors(refiltered, id=TRUE), anchors(filtered, id=TRUE)))
-    stopifnot(isTRUE(all.equal(assay(refiltered), assay(filtered))))
-    
+    # Checking that the totals are the same.
+    row.space <- as.integer(matrix(all.anchor1, Nr, Nc))
+    col.space <- as.integer(matrix(all.anchor2, Nr, Nc, byrow=TRUE))
+    combined <- cbind(pmax(col.space, row.space), pmin(col.space, row.space))
+    keep <- !duplicated(combined)
+    stopifnot(isTRUE(all.equal(output$totals, sapply(original, FUN=function(M) { sum(M[keep]) })))) 
+
     return(head(assay(output)))
 }
 

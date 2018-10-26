@@ -1,7 +1,7 @@
 
-R version 3.4.0 (2017-04-21) -- "You Stupid Darkness"
-Copyright (C) 2017 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin15.6.0 (64-bit)
+R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -44,10 +44,8 @@ Type 'q()' to quit R.
 +         collected[[i]] <- x
 +     }
 + 
-+     # Without any filtering. Checking that this is the same as sample-wise inflations.
-+     output <- do.call(mergeCMs, c(collected, list(filter=0)))
-+     stopifnot(isTRUE(all.equal(output$totals, sapply(original, sum))))
-+ 
++     # Checking that this is the same as sample-wise inflations.
++     output <- do.call(mergeCMs, collected)
 +     for (i in seq_along(nsamples)) {
 +         current <- collected[[i]]
 +         test <- deflate(current, use.zero=TRUE) # Forcing use of zeros for sparse matrices.
@@ -59,15 +57,13 @@ Type 'q()' to quit R.
 +         stopifnot(identical(assay(test)[,1], assay(output)[,i]))
 +     }
 + 
-+     # With filtering.
-+     filtered <- do.call(mergeCMs, c(collected, list(filter=filter)))
-+     keep <- rowSums(assay(output)) >= filter
-+     refiltered <- output[keep,]
-+     
-+     stopifnot(identical(regions(refiltered), regions(filtered)))
-+     stopifnot(identical(anchors(refiltered, id=TRUE), anchors(filtered, id=TRUE)))
-+     stopifnot(isTRUE(all.equal(assay(refiltered), assay(filtered))))
-+     
++     # Checking that the totals are the same.
++     row.space <- as.integer(matrix(all.anchor1, Nr, Nc))
++     col.space <- as.integer(matrix(all.anchor2, Nr, Nc, byrow=TRUE))
++     combined <- cbind(pmax(col.space, row.space), pmin(col.space, row.space))
++     keep <- !duplicated(combined)
++     stopifnot(isTRUE(all.equal(output$totals, sapply(original, FUN=function(M) { sum(M[keep]) })))) 
++ 
 +     return(head(assay(output)))
 + }
 > 
@@ -246,4 +242,4 @@ Error in mergeCMs(x, x2) :
 > 
 > proc.time()
    user  system elapsed 
- 13.420   0.345  13.981 
+  7.290   0.215   7.585 
