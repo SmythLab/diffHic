@@ -2,7 +2,11 @@
 \title{diffHic News}
 \encoding{UTF-8}
 
-\section{Version 1.11.8}{\itemize{
+\section{Version 1.14.0}{\itemize{
+\item Added the readMTX2IntSet() function to create InteractionSets from file.
+}}
+
+\section{Version 1.12.0}{\itemize{
 \item Extended prunePairs() to acknowledge restrict, discard and cap in param= argument.
 
 \item Extended getPairs() to acknowledge restrict, discard and cap in param= argument.
