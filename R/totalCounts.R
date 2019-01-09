@@ -20,7 +20,7 @@ totalCounts <- function(files, param)
 
 			# Getting totals.
             for (lib in seq_len(nlibs)) { 
-                full.sizes[lib] <- full.sizes[lib] + nrow(curfuns[[lib]]())
+                full.sizes[lib] <- .addToTotal(full.sizes[lib], nrow(curfuns[[lib]]()))
             }
 		}
 	}

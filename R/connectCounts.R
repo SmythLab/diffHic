@@ -240,7 +240,8 @@ connectCounts <- function(files, param, regions, filter=1L, type="any", second.r
             for (lib in seq_len(nlibs)) {
                 pairs[[lib]] <- curfuns[[lib]]()
             }
-            full.sizes <- full.sizes + vapply(pairs, FUN=nrow, FUN.VALUE=0L)
+
+            full.sizes <- .addToTotal(full.sizes, vapply(pairs, FUN=nrow, FUN.VALUE=0L))
 
             # This check needs to be done after loading to obtain a valid 'full.sizes'.
             if (! (target %in% my.chrs) || ! (anchor %in% my.chrs)) {

@@ -184,3 +184,12 @@
 
 ####################################################################################################
 
+.addToTotal <- function(total, x) 
+# Adding two values together while avoiding numeric overflow.
+{
+    suppressWarnings(total2 <- total + x)
+    if (any(is.na(total2) & !is.na(total) & !is.na(x))) {
+        total2 <- as.numeric(total) + as.numeric(x)
+    }
+    total2
+}

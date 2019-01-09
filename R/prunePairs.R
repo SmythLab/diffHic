@@ -34,7 +34,7 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
             # Removing reads above the max.
 			if (!is.na(max.frag)) { 
 				keep.len <- stats$length <= max.frag
-				by.len <- by.len + sum(!keep.len)
+				by.len <- .addToTotal(by.len, sum(!keep.len))
 			} else { 
                 keep.len <- TRUE 
             }
@@ -44,16 +44,15 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 			if (ax==tx) { 
 				if (!is.na(min.inward)) { 
 					keep.in <- stats$orientation!=1L | stats$insert >= min.inward
-					by.in <- by.in + sum(!keep.in)
+					by.in <- .addToTotal(by.in, sum(!keep.in))
 				}
 				if (!is.na(min.outward)) { 
 					keep.out <- stats$orientation!=2L | stats$insert >= min.outward
-					by.out <- by.out + sum(!keep.out)
+					by.out <- .addToTotal(by.out, sum(!keep.out))
 				}
 			} 
             
-            # Summing and filtering.
-			total <- total + nrow(collected) 
+			total <- .addToTotal(total, nrow(collected))
             collected <- collected[keep.len & keep.in & keep.out,]
 
             # Removing reads above the cap for a given restriction fragment pair.
@@ -64,7 +63,7 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
             if (!is.na(cap)) {
                 capped <- .Call(cxx_cap_input, collected$anchor1.id, collected$anchor2.id, cap)
                 collected <- collected[capped,]
-                total <- total - sum(!capped) 
+			    total <- total - sum(capped)
             }
 
             # Saving to a new file.
@@ -74,7 +73,7 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
 					loaded <- TRUE
 				}
 				.writePairs(collected, tmpf, ax, tx)
-				retained <- retained + nrow(collected)
+				retained <- .addToTotal(retained, nrow(collected))
 			}
 		}
 	}

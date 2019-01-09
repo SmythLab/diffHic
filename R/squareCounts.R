@@ -57,7 +57,8 @@ squareCounts <- function(files, param, width=50000, filter=1L, restrict.regions=
                 }
                 pairs[[lib]] <- cur.pairs
             }
-            full.sizes <- full.sizes + sapply(pairs, FUN=nrow)
+
+            full.sizes <- .addToTotal(full.sizes, vapply(pairs, FUN=nrow, FUN.VALUE=0L))
             
             # Aggregating them in C++ to obtain count combinations for each bin pair.
             out <- .Call(cxx_count_patch, pairs, bin.id, filter, first.anchor2, last.anchor2)
