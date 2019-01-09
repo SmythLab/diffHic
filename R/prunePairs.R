@@ -63,7 +63,7 @@ prunePairs <- function(file.in, param, file.out=file.in, max.frag=NA, min.inward
             if (!is.na(cap)) {
                 capped <- .Call(cxx_cap_input, collected$anchor1.id, collected$anchor2.id, cap)
                 collected <- collected[capped,]
-			    total <- total - sum(capped)
+			    total <- total - sum(!capped)
             }
 
             # Saving to a new file.
