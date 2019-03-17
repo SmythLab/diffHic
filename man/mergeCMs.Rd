@@ -49,7 +49,7 @@ Aaron Lun
 } 
 
 \examples{
-example(ContactMatrix)
+example(ContactMatrix, echo=FALSE)
 mergeCMs(x, x2)
 }
 
