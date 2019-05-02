@@ -1,5 +1,5 @@
 Package: diffHic
-Version: 1.15.2
+Version: 1.16.0
 Date: 2019-03-16
 Title: Differential Analyis of Hi-C Data
 Authors@R: c(person("Aaron", "Lun", role=c("aut", "cre"), email=
