@@ -6,7 +6,7 @@
 #' @importFrom GenomeInfoDb seqnames genome seqlevels<- seqinfo<- seqlengths Seqinfo
 #' @importFrom BiocGenerics sort
 #' @importFrom GenomicRanges GRanges
-#' @importFrom IRanges IRanges
+#' @importFrom IRanges IRanges findOverlaps pintersect
 cutGenome <- function(bs, pattern, overhang=4L) 
 # This finds the target cut sites in the genome. It currently only searches the
 # sense strand, which is fine because if the patterns is an inverse palindrome.
@@ -43,41 +43,45 @@ cutGenome <- function(bs, pattern, overhang=4L)
     }
 
     # Checking BSgenome object. 
-	if (is(bs, "BSgenome")) {
-		ref.names <- seqnames(bs)
-		gen <- genome(bs)
-	} else {
-		bs <- readDNAStringSet(bs)
-		ref.names <- names(bs)
-		gen <- NA
-	}	
+    if (is(bs, "BSgenome")) {
+        ref.names <- seqnames(bs)
+        gen <- genome(bs)
+    } else {
+        bs <- readDNAStringSet(bs)
+        ref.names <- names(bs)
+        gen <- NA
+    }
 
     # Running through the options.
     nchrs <- length(ref.names)
-	original <- vector("list", nchrs)
-	for (i in seq_len(nchrs)) {
-        chr <- ref.names[i]        
+    original <- vector("list", nchrs)
+    for (i in seq_len(nchrs)) {
+        chr <- ref.names[i]
         cur.seq <- bs[[chr]]
+        chrlen <- length(cur.seq)
 
-        match.start <- vector("list", length(all.patterns))
+        combined <- NULL
         for (p in seq_along(all.patterns)) {
-            x <- matchPattern(all.patterns[[p]], cur.seq)
-            match.start[[p]] <- start(x)
+            x <- matchPattern(all.patterns[[p]], cur.seq, fixed="subject")
+            match.start <- start(x)
+            starts <- match.start + remainder[p]
+            ends <- match.start + remainder[p] - 1L + overhang[p]
+            frags <- GRanges(chr, IRanges(c(1L, starts), c(ends, chrlen)))
+
+            if (is.null(combined)) {
+                combined <- frags
+            } else {
+                olap <- findOverlaps(combined, frags)
+                combined <- pintersect(combined[queryHits(olap)], frags[subjectHits(olap)])
+            }
         }
 
-        match.start <- unlist(match.start)
-        if (is.unsorted(match.start)) { 
-            match.start <- sort(match.start) 
-        }
+        combined$hit <- NULL
+        original[[i]] <- combined
+    }
 
-		chrlen <- length(cur.seq)
-   		starts <- c(1L, match.start+remainder)
-   		ends <- c(match.start+remainder-1L+overhang, chrlen)
-		original[[i]] <- GRanges(chr, IRanges(starts, ends))
-	}
-		
-	suppressWarnings(original <- do.call(c, original))
+    suppressWarnings(original <- do.call(c, original))
     seqlevels(original) <- ref.names
     suppressWarnings(seqinfo(original) <- Seqinfo(ref.names, seqlengths=seqlengths(bs), genome=gen))
-	original
+    sort(original)
 }
