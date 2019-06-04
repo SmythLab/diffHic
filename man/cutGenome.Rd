@@ -33,11 +33,11 @@ Multiple restriction enzymes can be specified by passing vectors to \code{patter
 All recognition sites are expected to be inverse palindromes,
 and for any given enzyme, the width of \code{pattern} and \code{overhang} must be both odd or even.
 
-Note that some of the reported fragments may be physically impossible to form, 
-e.g., for overlapping sites or consecutive sites when \code{overhang==nchar(pattern)}.
-Nonetheless, they are still reported to maintain the correspondence between fragments and cut sites.
-Cleavage sites on the forward strand can be obtained as the \code{start} locations of all fragments 
-(excepting the first fragment on each chromosome).
+No attempt is made to remove fragments that cannot be physically formed,
+e.g., from recognition sites that overlap with themselves or each other.
+This generally is not problematic for downstream analysis, as they are short and will not have many assigned reads.
+If they are a concern, most of them can be removed by simply applying a suitable threshold (e.g., 10 bp) on the fragment width.
+However, the best solution is to simply choose (combinations of) restriction enzymes that do not overlap.
 }
 
 \section{Note on FASTA sequence names}{
