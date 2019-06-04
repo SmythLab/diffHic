@@ -10,34 +10,42 @@ cutGenome(bs, pattern, overhang=4L)
 }
 
 \arguments{
-	\item{bs}{a \code{BSgenome} object or a character string pointing to a FASTA file}
-	\item{pattern}{character string describing the recognition site}
-	\item{overhang}{integer scalar specifying the length of the 5' overhang}
+\item{bs}{A \linkS4class{BSgenome} object or a character string containing a path to a FASTA file.}
+\item{pattern}{A character vector containing one or more recognition sites.}
+\item{overhang}{An integer vector specifying the length of the 5' overhang for each element in \code{pattern}.}
 }
 
 \value{
-A \code{GRanges} object containing the boundaries of each restriction fragment in the genome.
+A \linkS4class{GRanges} object containing the boundaries of each restriction fragment in the genome.
 }
 
 \details{
-This function simulates a restriction digestion of a specified genome, given the recognition site and 5' overhang of the cutter
-The total sequence spanned by each fragment is recorded, including the two sticky ends. 
+This function simulates a restriction digestion of a specified genome, 
+given the recognition site and 5' overhang of the restriction enzyme.
+The total sequence spanned by each fragment is recorded including the two sticky ends after they are filled in.
 No support is currently provided for searching the reverse strand, so the recognition site should be an inverse palindrome.
 
-The genome should be specified as a \code{BSgenome} object.
+The genome should be specified as a \linkS4class{BSgenome} object.
 However, a character string can also be provided, specifying a FASTA file containing all the reference sequences in a genome.
 The latter may be necessary to synchronise the fragments with the genome used for alignment.
 
-Note that some of the reported fragments may be physically impossible to form, e.g., for overlapping sites or consecutive sites when \code{overhang==nchar(pattern)}.
+Multiple restriction enzymes can be specified by passing vectors to \code{pattern} and \code{overhang}.
+All recognition sites are expected to be inverse palindromes,
+and for any given enzyme, the width of \code{pattern} and \code{overhang} must be both odd or even.
+
+Note that some of the reported fragments may be physically impossible to form, 
+e.g., for overlapping sites or consecutive sites when \code{overhang==nchar(pattern)}.
 Nonetheless, they are still reported to maintain the correspondence between fragments and cut sites.
-Cleavage sites on the forward strand can be obtained as the \code{start} locations of all fragments (excepting the first fragment on each chromosome).
+Cleavage sites on the forward strand can be obtained as the \code{start} locations of all fragments 
+(excepting the first fragment on each chromosome).
 }
 
-\section{Warning}{
+\section{Note on FASTA sequence names}{
 If \code{bs} is a FASTQ file, the chromosome names in the FASTQ headers will be loaded faithfully by \code{cutGenome}.
 However, many mapping pipelines will drop the rest of the name past the first whitespace when constructing the alignment index.
 To be safe, users should ensure that the chromosome names in the FASTQ headers consist of one word.
-Otherwise, there will be a discrepancy between the chromosome names in the output \code{GRanges}, and those in the BAM files after alignment.
+Otherwise, there will be a discrepancy between the chromosome names in the output \code{GRanges}
+and those in the BAM files after alignment.
 }
 
 % Interpretations of consecutive sites is generally tricky.
@@ -57,10 +65,13 @@ cutGenome(Ecoli, "AAGCTT", overhang=4L) # HindIII
 cutGenome(Ecoli, "CCGCGG", overhang=2L) # SacII
 cutGenome(Ecoli, "AGCT", overhang=0L) # AluI
 
-# Trying with FastA files.
+# Trying with FASTA files.
 x <- system.file("extdata", "fastaEx.fa", package="Biostrings")
 cutGenome(x, "AGCT", overhang=2)
 cutGenome(x, "AGCT", overhang=4)
+
+# Multiple sites with different overhangs are supported.
+cutGenome(x, c("AGCT", "AGNCT"), overhang=c(4, 3))
 }
 
 \seealso{
