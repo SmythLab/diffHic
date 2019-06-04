@@ -100,7 +100,7 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
     }
     out <- controlClusterFDR(target=target, adjp=adjp, FUN=function(sig) { 
         unlist(FUN(sig)) 
-    }, weight=weights, grid.length=grid.length, iterations=iterations)
+    }, weights=weights, grid.length=grid.length, iterations=iterations)
     sig <- adjp <= out$threshold
     clusters <- FUN(sig, index.only=FALSE)
 

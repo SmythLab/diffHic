@@ -29,6 +29,6 @@ consolidatePairs <- function(indices, result.list, equiweight=TRUE, combine.args
 	# Combining the p-values.
 	all.tab <- do.call(rbind, result.list)
 	result.com <- do.call(combineTests, c(list(ids=unlist(indices), 
-		tab=all.tab, weight=weights), combine.args))
+		tab=all.tab, weights=weights), combine.args))
 	return(result.com)
 }
