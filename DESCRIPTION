@@ -1,6 +1,6 @@
 Package: diffHic
-Version: 1.17.1
-Date: 2019-06-03
+Version: 1.17.2
+Date: 2019-10-12
 Title: Differential Analyis of Hi-C Data
 Authors@R: c(person("Aaron", "Lun", role=c("aut", "cre"), email=
         "infinite.monkeys.with.keyboards@gmail.com"),
@@ -21,4 +21,4 @@ Description: Detects differential interactions across biological
 License: GPL-3
 NeedsCompilation: yes
 LinkingTo: Rhtslib (>= 1.13.1), zlibbioc, Rcpp
-SystemRequirements: C++11
+SystemRequirements: C++11, GNU make
