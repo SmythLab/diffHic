@@ -2,6 +2,11 @@
 	y <- path.expand(y)
 	out <- h5read(y, file.path(anchor1, anchor2)) 
 
+    # Eliminating the dimensions from HDF5.
+    for (i in seq_along(ncol(out))) {
+        out[,i] <- as.vector(out[,i])
+    }
+
     # For legacy purposes:
     colnames(out) <- sub("anchor\\.", "anchor1.", colnames(out))
     colnames(out) <- sub("target\\.", "anchor2.", colnames(out))
