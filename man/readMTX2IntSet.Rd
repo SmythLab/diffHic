@@ -13,7 +13,7 @@ readMTX2IntSet(mtx, bed, as.integer=TRUE)
 Each file contains interaction read counts for one sample.}
 \item{bed}{String containing the path to the BED file specifying the genomic regions.}
 \item{as.integer}{Logical indicating whether the data should be read as integers.
-Otherwise values are stored in double-precision numbers.}
+Otherwise values are stored as double-precision numbers.}
 }
 
 \value{
