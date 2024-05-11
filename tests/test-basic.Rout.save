@@ -1,13 +1,11 @@
 
-R version 3.5.0 Patched (2018-04-30 r74679) -- "Joy in Playing"
-Copyright (C) 2018 The R Foundation for Statistical Computing
-Platform: x86_64-pc-linux-gnu (64-bit)
+R version 4.4.0 (2024-04-24 ucrt) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
 Type 'license()' or 'licence()' for distribution details.
-
-  Natural language support but running in an English locale
 
 R is a collaborative project with many contributors.
 Type 'contributors()' for more information and
@@ -222,6 +220,9 @@ Sample1     1       20            1
 > asDGEList(data, norm.factors=2, group="a")$samples
         group lib.size norm.factors
 Sample1     a       17            2
+Warning message:
+In DGEList.default(group = "a", lib.size = 17L, norm.factors = 2,  :
+  norm factors don't multiply to 1
 > 
 > # Playing around with some bin counts.
 > stuff <- correctedContact(data)
@@ -256,4 +257,4 @@ regions: 6
 > 
 > proc.time()
    user  system elapsed 
-  5.571   0.168   5.757 
+   4.00    0.42    6.53 
