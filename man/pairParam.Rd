@@ -44,34 +44,23 @@ Such spikes may be caused by technical artifacts like PCR duplication or repeats
 }
 
 \section{Constructor}{
-\describe{
-	\item{}{\code{pairParam(fragments, discard=GRanges(), restrict=NULL, cap=NA)}:
-		Creates a pairParam object. 
-		Each argument is placed in the corresponding slot, with coercion into the appropriate type.
-	}
-}
+\code{pairParam(fragments, discard=GRanges(), restrict=NULL, cap=NA)}
+creates a pairParam object. 
+Each argument is placed in the corresponding slot, with coercion into the appropriate type.
 }
 
 \section{Subsetting}{
 In the code snippets below, \code{x} is a pairParam object.
-\describe{
-	\item{}{\code{x$name}: 
-	Returns the value in slot \code{name}.
-	}
-}
+\code{x$name} returns the value in slot \code{name}.
 }
 
 \section{Other methods}{
 In the code snippets below, \code{x} is a pairParam object.
-\describe{
-    \item{}{\code{show(x)}:
-	Describes the parameter settings in plain English.
-  	}
-	\item{}{\code{reform(x, ...)}:
-		Creates a new pairParam object, based on the existing \code{x}.
-		Any named arguments in \code{...} are used to modify the values of the slots in the new object, with type coercion as necessary.
-	}
-}	
+
+\code{show(x)} describes the parameter settings in plain English.
+
+\code{reform(x, ...)} creates a new pairParam object, based on the existing \code{x}.
+Any named arguments in \code{...} are used to modify the values of the slots in the new object, with type coercion as necessary.
 }
 
 \author{

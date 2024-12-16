@@ -1,10 +1,9 @@
 Package: diffHic
-Version: 1.25.1
-Date: 2021-07-15
-Title: Differential Analyis of Hi-C Data
-Authors@R: c(person("Aaron", "Lun", role=c("aut", "cre"), email=
-        "infinite.monkeys.with.keyboards@gmail.com"),
-        person("Gordon", "Smyth", role="aut"))
+Version: 1.39.0
+Date: 2024-05-11
+Title: Differential Analysis of Hi-C Data
+Author: Aaron Lun, Gordon Smyth
+Maintainer: Aaron Lun <infinite.monkeys.with.keyboards@gmail.com>, Gordon Smyth <smyth@wehi.edu.au>, Hannah Coughlin <coughlin.h@wehi.edu.au>
 Depends: R (>= 3.5), GenomicRanges, InteractionSet, SummarizedExperiment
 Imports: Rsamtools, Rhtslib, Biostrings, BSgenome, rhdf5, edgeR, limma, csaw,
         locfit, methods, IRanges, S4Vectors, GenomeInfoDb, BiocGenerics,
@@ -21,4 +20,4 @@ Description: Detects differential interactions across biological
 License: GPL-3
 NeedsCompilation: yes
 LinkingTo: Rhtslib (>= 1.13.1), zlibbioc, Rcpp
-SystemRequirements: C++11, GNU make
+SystemRequirements: C++, GNU make

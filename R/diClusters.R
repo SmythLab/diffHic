@@ -5,7 +5,8 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
 #
 # written by Aaron Lun
 # created 12 January 2016
-# last modified 13 January 2016
+# last modified by Aaron Lun 4 June 2019
+# last modified 11 May 2024 to call local .weightedFDR
 {
     # Setting initial parameters.    
     if (missing(target)) {
@@ -49,7 +50,7 @@ diClusters <- function(data.list, result.list, target, equiweight=TRUE, cluster.
         last <- last + nrow(result.list[[x]])
     }
     all.ps <- unlist(all.ps)
-    adjp <- csaw:::.weightedFDR(all.ps, weights)
+    adjp <- .weightedFDR(all.ps, weights)
 
     # Getting the sign.
     if (is.na(fc.col)) { 
